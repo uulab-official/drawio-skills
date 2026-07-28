@@ -1,6 +1,6 @@
 ---
 name: drawio-diagram-engineer
-description: Create, edit, import, compare, compile, inspect, audit, preview, and export editable draw.io diagrams from natural-language requirements, structured JSON/YAML, source trees, OpenAPI, SQL DDL, Docker Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate coordinated architecture blueprints, field-level Crow's Foot ERDs, high-availability topology/failover packs, infrastructure maps, pipeline views, and semantic architecture-drift reports. Apply explicit edge ports, obstacle-aware orthogonal routing, reusable organization themes, verified shapes, contrast checks, and structured repairs. Use for architecture diagrams, database schemas, HA/DR designs, codebase maps, infrastructure and deployment topology, CI/CD pipelines, flowcharts, data flows, network maps, multi-page system views, and repairing or quality-checking existing .drawio files. Prefer when output must remain editable, deterministic, reviewable in source control, or exportable to PNG, SVG, or PDF.
+description: Create, edit, import, compare, compile, migrate, security-scan, audit, preview, and export editable draw.io diagrams from natural language, JSON/YAML, source trees, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate coordinated architecture blueprints, field-level Crow's Foot ERDs, HA topology/failover packs, infrastructure maps, CI/CD views, and semantic drift reports. Apply deterministic layout, explicit ports, obstacle-aware routing, themes, verified shapes, contrast and credential checks, and structured repairs. Use for architecture, database schemas, HA/DR, codebase maps, infrastructure/deployment topology, pipelines, flowcharts, data flows, network maps, multi-page system views, legacy Diagram IR migration, or repairing and quality-checking .drawio files. Prefer when output must stay editable, deterministic, secure, source-reviewable, or exportable to PNG, SVG, or PDF.
 ---
 
 # Draw.io Diagram Engineer
@@ -9,7 +9,8 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
 
 ## Workflow
 
-1. On first use or after an environment failure, run `doctor`. Read [user-workflows.md](references/user-workflows.md) for capability states, starter selection, bundle contents, safe overwrite behavior, and exit codes.
+1. On first use or after an environment failure, run `doctor`. Read [user-workflows.md](references/user-workflows.md) for capability states, starter selection, bundle contents, and safe overwrite behavior. Read [cli.md](references/cli.md) when composing less common commands or interpreting exit codes.
+   For legacy or versioned Diagram IR, read [compatibility.md](references/compatibility.md) and run `migrate --check` before editing.
 2. Inspect the request and relevant source material. Infer a sensible diagram type, scope, direction, and theme when the user does not specify them.
    For a coordinated architecture diagram pack, read [blueprint.md](references/blueprint.md), author against [blueprint.schema.json](references/blueprint.schema.json), and use `blueprint`.
    For an ERD, read [erd.md](references/erd.md), author against [erd.schema.json](references/erd.schema.json), and use `erd`. Accept SQL DDL directly when it is the source of truth.
@@ -18,6 +19,7 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
    When starting from a Python/TypeScript tree, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI, read [importers.md](references/importers.md) and generate the IR with `import`.
    When automatic connectors remain visually ambiguous or a fixed interface matters, read [routing.md](references/routing.md) before assigning explicit ports.
    When organization styling or deeper visual QA is required, read [style-system.md](references/style-system.md) and use a validated theme pack.
+   When importing untrusted content or preparing a release bundle, read [security.md](references/security.md). Never place credentials in labels, descriptions, links, metadata, or entity defaults.
 4. Prefer the one-command bundle workflow:
 
    ```bash
@@ -25,7 +27,7 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
      -o build/diagram --name diagram --strict
    ```
 
-   This creates normalized IR, editable `.drawio`, all SVG previews, `audit.json`, and `bundle.json`. Use the lower-level `compile`, `validate`, `preview`, and `audit` commands only when the user needs individual artifacts or an incremental workflow.
+   This creates normalized IR, editable `.drawio`, all SVG previews, `audit.json`, `security.json`, and `bundle.json`. Use the lower-level `compile`, `validate`, `preview`, `security`, and `audit` commands only when the user needs individual artifacts or an incremental workflow.
 5. If draw.io Desktop is available and a Desktop export is requested, render from the bundle's `.drawio`:
 
    ```bash
@@ -84,6 +86,7 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `doctor`: verify core files and Python/XML support, then report optional YAML and Desktop capabilities.
 - `init`: copy a safe starter for architecture, Blueprint, ERD, HA, routing, infrastructure, or CI.
 - `build`: auto-detect a model or source and create a complete, audited `drawio-diagram-bundle/v1`.
+- `migrate`: deterministically upgrade legacy/unversioned Diagram IR and emit a machine-readable change report.
 - `compile`: validate IR, calculate deterministic layout, and emit uncompressed editable draw.io XML.
 - `blueprint`: project one architecture model into context, logical, data, deployment, security, and decision pages.
 - `erd`: validate entities, fields, keys, types, and cardinalities, then generate an editable Crow's Foot ERD from a model or SQL DDL.
@@ -93,9 +96,10 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `patch`: atomically apply semantic node, edge, group, position, and diagram changes.
 - `preview`: create a reviewable SVG without draw.io Desktop.
 - `audit`: inspect structured source and generated geometry, then group findings with repair suggestions and preview paths.
+- `security`: scan a model, `.drawio`, or complete bundle for credentials, unsafe links, prohibited XML constructs, and decompression risks.
 - `validate`: lint IR or `.drawio`, print a 0–100 quality score, and fail under `--strict`.
 - `inspect`: summarize pages, nodes, edges, groups, and canvas bounds.
-- `render`: discover the draw.io Desktop CLI and export PNG, SVG, PDF, or JPG.
+- `render`: discover the draw.io Desktop CLI across macOS, Windows, and Linux, honor `DRAWIO_DESKTOP_BINARY` or `--binary`, and export PNG, SVG, PDF, or JPG.
 
 Before first use, verify `python3 -c "import xml.etree.ElementTree"`. If a macOS Homebrew Python reports a `pyexpat`/`libexpat` symbol error, use `/usr/bin/python3` or repair that Python installation; do not attribute the ABI failure to the diagram input.
 

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/drawio-diagram-bundle-v1.json",
+  "title": "Draw.io Diagram Bundle Manifest",
+  "type": "object",
+  "required": [
+    "format",
+    "generator",
+    "tool_version",
+    "name",
+    "model",
+    "source",
+    "score",
+    "artifacts"
+  ],
+  "properties": {
+    "format": {"const": "drawio-diagram-bundle/v1"},
+    "generator": {"const": "drawio-diagram-engineer"},
+    "tool_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "name": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "model": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object",
+      "required": ["name", "included"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "included": {"const": false}
+      },
+      "additionalProperties": true
+    },
+    "score": {"type": "integer", "minimum": 0, "maximum": 100},
+    "artifacts": {
+      "type": "object",
+      "required": ["ir", "drawio", "audit", "previews"],
+      "properties": {
+        "ir": {"const": "diagram.json"},
+        "drawio": {"type": "string", "pattern": "^[^/\\\\]+\\.drawio$"},
+        "audit": {"const": "audit.json"},
+        "security": {"const": "security.json"},
+        "previews": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^previews/[a-z0-9-]+\\.svg$"}
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

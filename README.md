@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v0.9 beta**. The engine now includes guided setup, environment diagnostics, one-command delivery bundles, deterministic release packages, and tested local installation in addition to architecture blueprints, field-level Crow's Foot ERDs, HA topology/failover packs, infrastructure and pipeline importers, semantic drift, routing, themes, and visual audits.
+> Status: **v0.10 beta**. The engine now adds a frozen Diagram IR v1 compatibility policy, deterministic legacy migration, bundle/report schemas, credential and unsafe-content scanning, bounded XML decompression, cross-platform Desktop discovery, and attested release automation to the v0.9 user workflow.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -47,6 +47,7 @@ build/my-system/
 ├── diagram.json       # normalized Diagram IR
 ├── previews/          # dependency-free SVGs, one per page
 ├── audit.json         # quality score, findings, and repairs
+├── security.json      # credentials, unsafe links, and XML safety gate
 └── bundle.json        # stable artifact manifest
 ```
 
@@ -221,6 +222,35 @@ python3 scripts/package_skill.py
 
 This writes `dist/drawio-diagram-engineer.zip` and its `.sha256` checksum.
 
+Tagged releases also include GitHub/Sigstore build provenance. Verify a downloaded ZIP with:
+
+```bash
+shasum -a 256 -c drawio-diagram-engineer-<version>.zip.sha256
+gh attestation verify drawio-diagram-engineer-<version>.zip \
+  --repo uulab-official/drawio-skills
+```
+
+## Compatibility and security
+
+Check or migrate an older unversioned Diagram IR before editing it:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  migrate legacy.json --check
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  migrate legacy.json -o diagram.json --report migration.json
+```
+
+Scan a model, generated `.drawio`, or complete delivery bundle:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  security build/my-system -o build/my-system/security.json --strict
+```
+
+The security gate rejects likely embedded credentials, private keys, unsafe link schemes, DTD/entity declarations, and oversized compressed pages without echoing suspected secret values. HTTP/HTTPS/mail links are listed for review and never fetched. See the [compatibility policy](skills/drawio-diagram-engineer/references/compatibility.md) and [security contract](skills/drawio-diagram-engineer/references/security.md).
+
 ## Diagram IR
 
 ```json
@@ -246,6 +276,8 @@ See [the IR reference](skills/drawio-diagram-engineer/references/ir-format.md) f
 drawio_tool.py doctor [--format human|json]
 drawio_tool.py init <architecture|blueprint|erd|ha|routing|terraform|kubernetes|github-actions|gitlab-ci> [-o <starter>]
 drawio_tool.py build <model|source> [-o <bundle-dir>] [--type auto|...] [--strict]
+drawio_tool.py migrate <legacy-ir.json> [-o <v1-ir.json>] [--report <report.json>] [--check]
+drawio_tool.py security <model|diagram.drawio|bundle-dir> [-o <report.json>] [--strict]
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
 drawio_tool.py blueprint <blueprint.json> -o <pack.drawio> [--ir-output <ir.json>] [--preview-dir <dir>] [--theme-file <theme.json>]
 drawio_tool.py erd <erd.json|schema.sql> -o <erd.drawio> [--ir-output <ir.json>] [--preview-dir <dir>]
@@ -257,23 +289,24 @@ drawio_tool.py preview <ir.json> -o <preview.svg> [--page <id>] [--theme-file <t
 drawio_tool.py audit <ir.json|blueprint.json|diagram.drawio> [-o <report.json>] [--preview-dir <dir>] [--strict]
 drawio_tool.py validate <ir.json|diagram.drawio> [--strict]
 drawio_tool.py inspect <diagram.drawio>
-drawio_tool.py render <diagram.drawio> -o <output.png|svg|pdf|jpg> [--embed]
+drawio_tool.py render <diagram.drawio> -o <output.png|svg|pdf|jpg> [--embed] [--binary <path>]
 ```
 
 JSON works without third-party packages. YAML input is optional and requires PyYAML.
 
 `build` auto-detects Diagram IR, Blueprint, ERD, HA, SQL DDL, Terraform, common Kubernetes/OpenAPI/Compose documents, repository source, and supported CI definitions. It does not copy the input into the bundle, which avoids accidentally packaging Kubernetes Secret documents or proprietary source trees.
 
-For copy-paste workflows, bundle semantics, exit codes, overwrite behavior, and troubleshooting, see the [user workflows guide](skills/drawio-diagram-engineer/references/user-workflows.md).
+For every command and exit code, see the [CLI reference](skills/drawio-diagram-engineer/references/cli.md). For copy-paste workflows, bundle semantics, overwrite behavior, and troubleshooting, see the [user workflows guide](skills/drawio-diagram-engineer/references/user-workflows.md).
 
 ## Roadmap
 
-The v0.3–v0.9 roadmap is complete. The next milestone freezes the v1 compatibility policy and adds cross-platform Desktop integration, deeper security auditing, and signed releases. See [ROADMAP.md](ROADMAP.md).
+The v0.3–v0.10 roadmap is complete. The remaining v1 work is real Desktop integration on hosted macOS/Windows/Linux runners and final release-candidate hardening. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 
 ```bash
 python3 -m unittest discover -s tests -v
+python3 scripts/audit_repository.py
 python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
   skills/drawio-diagram-engineer
 ```

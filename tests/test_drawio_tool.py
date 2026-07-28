@@ -48,6 +48,137 @@ class DrawioToolTests(unittest.TestCase):
             self.assertEqual(3, summary["nodes"])
             self.assertEqual(2, summary["edges"])
 
+    def test_legacy_ir_migration_is_deterministic_and_preserves_extensions(self):
+        legacy = {
+            "title": "Legacy",
+            "direction": "LR",
+            "components": [
+                {"id": "user", "label": "User", "type": "user"},
+                {"id": "api", "label": "API", "type": "api"},
+            ],
+            "connections": [
+                {"source": "user", "target": "api", "type": "sync"},
+            ],
+            "x-owner": "platform",
+        }
+        first, first_report = TOOL.migrate_diagram_ir(legacy)
+        second, second_report = TOOL.migrate_diagram_ir(legacy)
+        self.assertEqual(first, second)
+        self.assertEqual(first_report, second_report)
+        self.assertEqual("1", first["version"])
+        self.assertEqual("platform", first["x-owner"])
+        self.assertEqual("client", first["nodes"][0]["kind"])
+        self.assertEqual("user-to-api", first["edges"][0]["id"])
+        self.assertTrue(first_report["changes_required"])
+        self.assertNotIn("error", {item["level"] for item in first_report["issues"]})
+
+    def test_legacy_ir_migration_rejects_ambiguous_fields(self):
+        legacy = {
+            "components": [],
+            "nodes": [],
+            "connections": [],
+        }
+        with self.assertRaisesRegex(ValueError, "both components and nodes"):
+            TOOL.migrate_diagram_ir(legacy)
+
+    def test_security_scan_rejects_credentials_without_echoing_them(self):
+        credential = "not-for-output-123456"
+        report = TOOL.security_report_for_data(
+            {
+                "version": "1",
+                "diagram": {"title": "Unsafe"},
+                "nodes": [
+                    {"id": "api", "label": "API", "description": f"token={credential}"}
+                ],
+                "edges": [],
+            },
+            "unsafe.json",
+        )
+        self.assertFalse(report["passed"])
+        self.assertIn("security.inline-secret", {item["code"] for item in report["findings"]})
+        self.assertNotIn(credential, json.dumps(report))
+
+    def test_security_scan_allows_placeholders_and_lists_external_links(self):
+        report = TOOL.security_report_for_data(
+            {
+                "token": "${TOKEN}",
+                "node": {"link": "https://example.com/architecture"},
+            },
+            "safe.json",
+        )
+        self.assertTrue(report["passed"])
+        self.assertEqual(1, len(report["external_links"]))
+
+    def test_drawio_loader_rejects_dtd(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "unsafe.drawio"
+            path.write_text(
+                '<!DOCTYPE mxfile [<!ENTITY payload "unsafe">]>'
+                '<mxfile><diagram><mxGraphModel>&payload;</mxGraphModel></diagram></mxfile>',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "prohibited DTD"):
+                TOOL.load_drawio_root(path)
+
+    def test_structured_input_size_is_bounded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "large.json"
+            path.write_text('{"value": "' + ("x" * 100) + '"}', encoding="utf-8")
+            original_limit = TOOL.MAX_STRUCTURED_INPUT_BYTES
+            TOOL.MAX_STRUCTURED_INPUT_BYTES = 32
+            try:
+                with self.assertRaisesRegex(ValueError, "structured input exceeds"):
+                    TOOL.load_data(path)
+            finally:
+                TOOL.MAX_STRUCTURED_INPUT_BYTES = original_limit
+
+    def test_drawio_loader_bounds_compressed_pages(self):
+        inner_xml = "<mxGraphModel><root>" + ("x" * 1000) + "</root></mxGraphModel>"
+        encoded_xml = urllib.parse.quote(inner_xml).encode("utf-8")
+        compressor = zlib.compressobj(wbits=-15)
+        payload = base64.b64encode(compressor.compress(encoded_xml) + compressor.flush()).decode()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "large.drawio"
+            path.write_text(
+                f"<mxfile><diagram name=\"Main\">{payload}</diagram></mxfile>",
+                encoding="utf-8",
+            )
+            original_limit = TOOL.MAX_DECOMPRESSED_PAGE_BYTES
+            TOOL.MAX_DECOMPRESSED_PAGE_BYTES = 64
+            try:
+                with self.assertRaisesRegex(ValueError, "safety limit"):
+                    TOOL.load_drawio_root(path)
+            finally:
+                TOOL.MAX_DECOMPRESSED_PAGE_BYTES = original_limit
+
+    def test_drawio_desktop_candidates_cover_supported_platforms(self):
+        mac = TOOL.drawio_candidates(platform_name="darwin", os_name="posix")
+        windows = TOOL.drawio_candidates(
+            platform_name="win32",
+            os_name="nt",
+            environ={"LOCALAPPDATA": r"C:\Users\Test\AppData\Local"},
+        )
+        linux = TOOL.drawio_candidates(platform_name="linux", os_name="posix")
+        self.assertIn("/Applications/draw.io.app/Contents/MacOS/draw.io", mac)
+        self.assertIn(r"C:\Program Files\draw.io\draw.io.exe", windows)
+        self.assertTrue(any("LOCALAPPDATA" not in item and "Programs" in item for item in windows))
+        self.assertIn("/snap/bin/drawio", linux)
+
+    def test_drawio_export_command_is_shell_free_and_format_aware(self):
+        command = TOOL.drawio_export_command(
+            "/opt/drawio",
+            Path("input.drawio"),
+            Path("output.png"),
+            "png",
+            width=2400,
+            embed=True,
+        )
+        self.assertEqual("/opt/drawio", command[0])
+        self.assertIn("--width", command)
+        self.assertIn("2400", command)
+        self.assertIn("-e", command)
+        self.assertEqual("input.drawio", command[-1])
+
     def test_ir_rejects_dangling_edge(self):
         data = sample_ir()
         data["edges"].append({"id": "bad", "from": "api", "to": "missing"})

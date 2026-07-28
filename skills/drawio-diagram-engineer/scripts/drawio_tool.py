@@ -24,7 +24,12 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.9.0"
+VERSION = "0.10.0"
+IR_VERSION = "1"
+BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
+MAX_STRUCTURED_INPUT_BYTES = 50 * 1024 * 1024
+MAX_XML_INPUT_BYTES = 50 * 1024 * 1024
+MAX_DECOMPRESSED_PAGE_BYTES = 100 * 1024 * 1024
 ALLOWED_DIRECTIONS = {"LR", "TB"}
 ALLOWED_THEMES = {"light", "dark", "colorblind"}
 ALLOWED_KINDS = {
@@ -114,6 +119,10 @@ _SHAPE_REGISTRY: dict[str, Any] | None = None
 
 
 def load_data(path: Path) -> dict[str, Any]:
+    if path.stat().st_size > MAX_STRUCTURED_INPUT_BYTES:
+        raise ValueError(
+            f"structured input exceeds {MAX_STRUCTURED_INPUT_BYTES // (1024 * 1024)} MiB safety limit"
+        )
     text = path.read_text(encoding="utf-8")
     if path.suffix.lower() in {".yaml", ".yml"}:
         try:
@@ -1420,7 +1429,15 @@ def parse_number(value: str | None, default: float = 0) -> float:
 
 def load_drawio_root(path: Path) -> ET.Element:
     """Load uncompressed or standard compressed draw.io XML."""
-    root = ET.parse(path).getroot()
+    raw_xml = path.read_bytes()
+    if len(raw_xml) > MAX_XML_INPUT_BYTES:
+        raise ValueError(
+            f"draw.io input exceeds {MAX_XML_INPUT_BYTES // (1024 * 1024)} MiB safety limit"
+        )
+    upper_xml = raw_xml.upper()
+    if b"<!DOCTYPE" in upper_xml or b"<!ENTITY" in upper_xml:
+        raise ValueError("draw.io input contains a prohibited DTD or entity declaration")
+    root = ET.fromstring(raw_xml)
     if root.findall(".//mxCell"):
         return root
     decoded_models: list[ET.Element] = []
@@ -1429,10 +1446,21 @@ def load_drawio_root(path: Path) -> ET.Element:
         if not payload:
             continue
         try:
-            compressed = base64.b64decode(payload)
-            xml_text = urllib.parse.unquote(
-                zlib.decompress(compressed, -15).decode("utf-8")
-            )
+            compressed = base64.b64decode(payload, validate=True)
+            decompressor = zlib.decompressobj(-15)
+            decoded = decompressor.decompress(compressed, MAX_DECOMPRESSED_PAGE_BYTES + 1)
+            if len(decoded) > MAX_DECOMPRESSED_PAGE_BYTES or decompressor.unconsumed_tail:
+                raise ValueError(
+                    "decompressed page exceeds "
+                    f"{MAX_DECOMPRESSED_PAGE_BYTES // (1024 * 1024)} MiB safety limit"
+                )
+            decoded += decompressor.flush()
+            if len(decoded) > MAX_DECOMPRESSED_PAGE_BYTES:
+                raise ValueError(
+                    "decompressed page exceeds "
+                    f"{MAX_DECOMPRESSED_PAGE_BYTES // (1024 * 1024)} MiB safety limit"
+                )
+            xml_text = urllib.parse.unquote(decoded.decode("utf-8"))
             decoded_models.append(ET.fromstring(xml_text))
         except (ValueError, zlib.error, UnicodeDecodeError, ET.ParseError) as exc:
             raise ValueError(f"cannot decode compressed draw.io page {diagram.get('name', '')}: {exc}") from exc
@@ -4348,19 +4376,389 @@ def apply_ir_operations(data: dict[str, Any], operations: list[dict[str, Any]]) 
     return result
 
 
-def find_drawio() -> str | None:
+def drawio_candidates(
+    platform_name: str | None = None,
+    os_name: str | None = None,
+    environ: dict[str, str] | None = None,
+) -> list[str]:
+    platform_name = platform_name or sys.platform
+    os_name = os_name or os.name
+    environ = environ or dict(os.environ)
     candidates = ["drawio", "draw.io"]
-    if sys.platform == "darwin":
-        candidates.append("/Applications/draw.io.app/Contents/MacOS/draw.io")
-    if os.name == "nt":
+    if platform_name == "darwin":
+        candidates.extend([
+            "/Applications/draw.io.app/Contents/MacOS/draw.io",
+            str(Path.home() / "Applications/draw.io.app/Contents/MacOS/draw.io"),
+        ])
+    elif os_name == "nt":
         candidates.append(r"C:\Program Files\draw.io\draw.io.exe")
+        local_app_data = environ.get("LOCALAPPDATA")
+        if local_app_data:
+            candidates.append(str(Path(local_app_data) / "Programs/draw.io/draw.io.exe"))
+    else:
+        candidates.extend(["/usr/bin/drawio", "/snap/bin/drawio"])
+    return candidates
+
+
+def find_drawio(explicit: str | None = None) -> str | None:
+    override = explicit or os.environ.get("DRAWIO_DESKTOP_BINARY")
+    candidates = [override] if override else drawio_candidates()
     for candidate in candidates:
-        if os.path.isabs(candidate) and os.path.exists(candidate):
+        if not candidate:
+            continue
+        if (
+            os.path.isabs(candidate)
+            and os.path.isfile(candidate)
+            and (os.name == "nt" or os.access(candidate, os.X_OK))
+        ):
             return candidate
         resolved = shutil.which(candidate)
         if resolved:
             return resolved
     return None
+
+
+SENSITIVE_KEY_PATTERN = re.compile(
+    r"(?:^|[-_])(password|passwd|secret|token|api[-_]?key|private[-_]?key|"
+    r"client[-_]?secret|access[-_]?key|authorization)(?:$|[-_])",
+    re.IGNORECASE,
+)
+PLACEHOLDER_SECRET_PATTERN = re.compile(
+    r"^(?:|redacted|masked|example|sample|changeme|replace[-_ ]?me|"
+    r"\*+|<[^>]+>|\$\{[^}]+\})$",
+    re.IGNORECASE,
+)
+UNSAFE_LINK_SCHEMES = {"javascript", "vbscript", "file"}
+INLINE_SECRET_PATTERN = re.compile(
+    r"(?:password|passwd|secret|token|api[-_]?key|client[-_]?secret)"
+    r"\s*[:=]\s*([^\s,;]+)",
+    re.IGNORECASE,
+)
+KNOWN_SECRET_PATTERN = re.compile(
+    r"(?:AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,}|"
+    r"xox[baprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9_-]{20,})"
+)
+
+
+def security_finding(
+    level: str,
+    code: str,
+    message: str,
+    location: str,
+) -> dict[str, Any]:
+    return {
+        "level": level,
+        "code": code,
+        "message": message,
+        "location": location,
+    }
+
+
+def scan_security_value(
+    value: Any,
+    location: str = "$",
+    key_name: str | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    findings: list[dict[str, Any]] = []
+    external_links: list[dict[str, str]] = []
+    if isinstance(value, dict):
+        for key in sorted(value, key=str):
+            child_location = f"{location}.{key}"
+            child_findings, child_links = scan_security_value(
+                value[key], child_location, str(key),
+            )
+            findings.extend(child_findings)
+            external_links.extend(child_links)
+        return findings, external_links
+    if isinstance(value, list):
+        for index, child in enumerate(value):
+            child_findings, child_links = scan_security_value(
+                child, f"{location}[{index}]", key_name,
+            )
+            findings.extend(child_findings)
+            external_links.extend(child_links)
+        return findings, external_links
+    if not isinstance(value, str):
+        return findings, external_links
+
+    stripped = value.strip()
+    if (
+        key_name
+        and SENSITIVE_KEY_PATTERN.search(key_name)
+        and stripped
+        and not PLACEHOLDER_SECRET_PATTERN.fullmatch(stripped)
+    ):
+        findings.append(security_finding(
+            "error",
+            "security.embedded-secret",
+            f"possible credential value stored in sensitive field {key_name}",
+            location,
+        ))
+    if "-----BEGIN " in stripped and "PRIVATE KEY-----" in stripped:
+        findings.append(security_finding(
+            "error",
+            "security.private-key",
+            "embedded private key material is prohibited",
+            location,
+        ))
+    inline_match = INLINE_SECRET_PATTERN.search(stripped)
+    if inline_match and not PLACEHOLDER_SECRET_PATTERN.fullmatch(inline_match.group(1)):
+        findings.append(security_finding(
+            "error",
+            "security.inline-secret",
+            "possible inline credential assignment is prohibited",
+            location,
+        ))
+    if KNOWN_SECRET_PATTERN.search(stripped):
+        findings.append(security_finding(
+            "error",
+            "security.credential-pattern",
+            "value matches a known credential pattern",
+            location,
+        ))
+    if key_name and key_name.lower() in {"link", "url", "href"}:
+        parsed = urllib.parse.urlparse(stripped)
+        scheme = parsed.scheme.lower()
+        if scheme in UNSAFE_LINK_SCHEMES:
+            findings.append(security_finding(
+                "error",
+                "security.unsafe-link",
+                f"unsafe link scheme: {scheme}",
+                location,
+            ))
+        elif scheme in {"http", "https", "mailto"}:
+            external_links.append({"location": location, "url": stripped})
+    return findings, external_links
+
+
+def security_report_for_data(data: dict[str, Any], source: str) -> dict[str, Any]:
+    findings, external_links = scan_security_value(data)
+    return {
+        "format": "drawio-security-report/v1",
+        "source": source,
+        "passed": not any(item["level"] == "error" for item in findings),
+        "errors": sum(1 for item in findings if item["level"] == "error"),
+        "warnings": sum(1 for item in findings if item["level"] == "warning"),
+        "findings": findings,
+        "external_links": external_links,
+        "limits": {
+            "structured_input_bytes": MAX_STRUCTURED_INPUT_BYTES,
+            "xml_input_bytes": MAX_XML_INPUT_BYTES,
+            "decompressed_page_bytes": MAX_DECOMPRESSED_PAGE_BYTES,
+        },
+    }
+
+
+def security_report_for_drawio(path: Path) -> dict[str, Any]:
+    root = load_drawio_root(path)
+    values = []
+    for cell in root.findall(".//mxCell"):
+        values.append({
+            "id": cell.get("id", ""),
+            "value": cell.get("value", ""),
+            "link": cell.get("link", ""),
+        })
+    return security_report_for_data({"cells": values}, str(path))
+
+
+def security_report_for_path(path: Path) -> dict[str, Any]:
+    if path.is_dir():
+        manifest = path / "bundle.json"
+        diagram_ir = path / "diagram.json"
+        if not manifest.is_file() or not diagram_ir.is_file():
+            raise ValueError("security directory input must be a drawio-diagram bundle")
+        reports = [
+            security_report_for_data(load_data(manifest), str(manifest)),
+            security_report_for_data(load_data(diagram_ir), str(diagram_ir)),
+        ]
+        drawio_files = sorted(path.glob("*.drawio"))
+        reports.extend(security_report_for_drawio(item) for item in drawio_files)
+        findings = [item for report in reports for item in report["findings"]]
+        links = [item for report in reports for item in report["external_links"]]
+        return {
+            "format": "drawio-security-report/v1",
+            "source": str(path),
+            "passed": not any(item["level"] == "error" for item in findings),
+            "errors": sum(1 for item in findings if item["level"] == "error"),
+            "warnings": sum(1 for item in findings if item["level"] == "warning"),
+            "findings": findings,
+            "external_links": links,
+            "scanned": [report["source"] for report in reports],
+            "limits": reports[0]["limits"],
+        }
+    if path.suffix.lower() == ".drawio":
+        return security_report_for_drawio(path)
+    return security_report_for_data(load_data(path), str(path))
+
+
+def command_security(args: argparse.Namespace) -> int:
+    report = security_report_for_path(Path(args.input))
+    if args.output:
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    if report["errors"]:
+        return 2
+    if args.strict and report["warnings"]:
+        return 3
+    return 0
+
+
+LEGACY_NODE_KIND_MAP = {
+    "api": "service",
+    "app": "service",
+    "broker": "queue",
+    "db": "database",
+    "user": "client",
+}
+
+
+def rename_legacy_field(
+    target: dict[str, Any],
+    old: str,
+    new: str,
+    location: str,
+    changes: list[dict[str, str]],
+) -> None:
+    if old not in target:
+        return
+    if new in target:
+        raise ValueError(f"legacy field conflict at {location}: both {old} and {new} are present")
+    target[new] = target.pop(old)
+    changes.append({
+        "location": location,
+        "operation": "rename",
+        "from": old,
+        "to": new,
+    })
+
+
+def migrate_diagram_ir(data: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    result = copy.deepcopy(data)
+    if any(key in result for key in ("blueprint", "erd", "ha")):
+        raise ValueError("migrate currently accepts Diagram IR, not Blueprint, ERD, or HA models")
+    if not any(
+        key in result
+        for key in ("diagram", "layout", "nodes", "components", "pages", "edges", "connections")
+    ):
+        raise ValueError("input is not recognized as Diagram IR")
+    original_version = result.get("version")
+    if original_version is not None and str(original_version) not in {"0", "1"}:
+        raise ValueError(f"unsupported Diagram IR version: {original_version}")
+    changes: list[dict[str, str]] = []
+    if str(original_version or "0") == "0":
+        rename_legacy_field(result, "layout", "diagram", "$", changes)
+        rename_legacy_field(result, "components", "nodes", "$", changes)
+        rename_legacy_field(result, "connections", "edges", "$", changes)
+        diagram = result.setdefault("diagram", {})
+        if not isinstance(diagram, dict):
+            raise ValueError("legacy diagram/layout must be an object")
+        for field in ("title", "direction", "theme", "gap", "background"):
+            if field in result:
+                if field in diagram:
+                    raise ValueError(f"legacy field conflict: {field} exists at root and in diagram")
+                diagram[field] = result.pop(field)
+                changes.append({
+                    "location": "$",
+                    "operation": "move",
+                    "from": field,
+                    "to": f"diagram.{field}",
+                })
+        if "pages" not in result:
+            result.setdefault("groups", [])
+            result.setdefault("nodes", [])
+            result.setdefault("edges", [])
+
+        for index, node in enumerate(result.get("nodes", [])):
+            if not isinstance(node, dict):
+                continue
+            location = f"$.nodes[{index}]"
+            rename_legacy_field(node, "type", "kind", location, changes)
+            rename_legacy_field(node, "container", "group", location, changes)
+            kind = str(node.get("kind", "service"))
+            if kind in LEGACY_NODE_KIND_MAP:
+                node["kind"] = LEGACY_NODE_KIND_MAP[kind]
+                changes.append({
+                    "location": location,
+                    "operation": "map",
+                    "from": kind,
+                    "to": str(node["kind"]),
+                })
+        used_edge_ids: set[str] = set()
+        for index, edge in enumerate(result.get("edges", [])):
+            if not isinstance(edge, dict):
+                continue
+            location = f"$.edges[{index}]"
+            rename_legacy_field(edge, "source", "from", location, changes)
+            rename_legacy_field(edge, "target", "to", location, changes)
+            rename_legacy_field(edge, "type", "kind", location, changes)
+            if not edge.get("id") and edge.get("from") and edge.get("to"):
+                base = slugify(f"{edge['from']}-to-{edge['to']}")
+                edge_id = base
+                suffix = 2
+                while edge_id in used_edge_ids:
+                    edge_id = f"{base}-{suffix}"
+                    suffix += 1
+                edge["id"] = edge_id
+                changes.append({
+                    "location": location,
+                    "operation": "add",
+                    "from": "",
+                    "to": f"id={edge_id}",
+                })
+            if edge.get("id"):
+                used_edge_ids.add(str(edge["id"]))
+    if result.get("version") != IR_VERSION:
+        result["version"] = IR_VERSION
+        changes.append({
+            "location": "$.version",
+            "operation": "set",
+            "from": "" if original_version is None else str(original_version),
+            "to": IR_VERSION,
+        })
+    issues = validate_ir(result)
+    report = {
+        "format": "drawio-migration-report/v1",
+        "from_version": "legacy-unversioned" if original_version is None else str(original_version),
+        "to_version": IR_VERSION,
+        "changes_required": bool(changes),
+        "changes": changes,
+        "score": score_issues(issues),
+        "issues": issues,
+    }
+    return result, report
+
+
+def command_migrate(args: argparse.Namespace) -> int:
+    source = Path(args.input)
+    result, report = migrate_diagram_ir(load_data(source))
+    if not args.check:
+        if not args.output:
+            raise ValueError("migrate requires -o/--output unless --check is used")
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(result, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        report["output"] = str(output)
+    if args.report:
+        report_path = Path(args.report)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    if any(item["level"] == "error" for item in report["issues"]):
+        return 2
+    if args.check and report["changes_required"]:
+        return 6
+    return 0
 
 
 STARTER_PROFILES = {
@@ -4399,6 +4797,11 @@ def doctor_report() -> dict[str, Any]:
         SKILL_DIR / "LICENSE.txt",
         SKILL_DIR / "agents/openai.yaml",
         SKILL_DIR / "references/diagram-ir.schema.json",
+        SKILL_DIR / "references/bundle.schema.json",
+        SKILL_DIR / "references/security-report.schema.json",
+        SKILL_DIR / "references/migration-report.schema.json",
+        SKILL_DIR / "references/compatibility.md",
+        SKILL_DIR / "references/security.md",
         ASSET_DIR / "shape-registry.json",
         ASSET_DIR / "example.architecture.json",
         ASSET_DIR / "example.erd.json",
@@ -4556,8 +4959,9 @@ def command_build(args: argparse.Namespace) -> int:
     )
     if args.theme_file:
         diagram_ir = apply_theme_pack(diagram_ir, load_theme_pack(Path(args.theme_file)))
+    security = security_report_for_data(diagram_ir, source.name)
     ir_issues = validate_ir(diagram_ir)
-    initial_issues = source_issues + ir_issues
+    initial_issues = source_issues + ir_issues + security["findings"]
     if any(item["level"] == "error" for item in initial_issues):
         print_report(initial_issues, {"model": model_type, "input": str(source)})
         return 2
@@ -4589,8 +4993,12 @@ def command_build(args: argparse.Namespace) -> int:
             json.dumps(audit, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+        (staging / "security.json").write_text(
+            json.dumps(security, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
         manifest = {
-            "format": "drawio-diagram-bundle/v1",
+            "format": BUNDLE_FORMAT,
             "generator": "drawio-diagram-engineer",
             "tool_version": VERSION,
             "name": name,
@@ -4601,6 +5009,7 @@ def command_build(args: argparse.Namespace) -> int:
                 "ir": "diagram.json",
                 "drawio": f"{name}.drawio",
                 "audit": "audit.json",
+                "security": "security.json",
                 "previews": preview_names,
             },
         }
@@ -4626,6 +5035,7 @@ def command_build(args: argparse.Namespace) -> int:
         "drawio": str(output / manifest["artifacts"]["drawio"]),
         "previews": [str(output / item) for item in preview_names],
         "audit": str(output / "audit.json"),
+        "security": str(output / "security.json"),
     }, indent=2, ensure_ascii=False))
     if audit["errors"]:
         return 2
@@ -4987,7 +5397,7 @@ def command_inspect(args: argparse.Namespace) -> int:
 
 
 def command_render(args: argparse.Namespace) -> int:
-    binary = find_drawio()
+    binary = find_drawio(args.binary)
     if not binary:
         print("draw.io Desktop CLI was not found", file=sys.stderr)
         return 4
@@ -4999,18 +5409,40 @@ def command_render(args: argparse.Namespace) -> int:
         print(f"unsupported export format: {fmt}", file=sys.stderr)
         return 2
     output.parent.mkdir(parents=True, exist_ok=True)
-    command = [binary, "-x", "-f", fmt, "-o", str(output)]
-    if fmt == "png":
-        command += ["--width", str(args.width)]
-    if args.embed and fmt in {"png", "svg", "pdf"}:
-        command.append("-e")
-    command.append(str(Path(args.input)))
+    command = drawio_export_command(
+        binary,
+        Path(args.input),
+        output,
+        fmt,
+        args.width,
+        args.embed,
+    )
     completed = subprocess.run(command, text=True, capture_output=True, timeout=90)
     if completed.returncode != 0:
         print(completed.stderr or completed.stdout, file=sys.stderr)
         return completed.returncode
+    if not output.is_file():
+        print("draw.io Desktop reported success but did not create the requested output", file=sys.stderr)
+        return 2
     print(json.dumps({"output": str(output), "format": fmt, "binary": binary}, indent=2))
     return 0
+
+
+def drawio_export_command(
+    binary: str,
+    input_path: Path,
+    output_path: Path,
+    output_format: str,
+    width: int = 2000,
+    embed: bool = False,
+) -> list[str]:
+    command = [binary, "-x", "-f", output_format, "-o", str(output_path)]
+    if output_format == "png":
+        command += ["--width", str(width)]
+    if embed and output_format in {"png", "svg", "pdf"}:
+        command.append("-e")
+    command.append(str(input_path))
+    return command
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -5073,6 +5505,15 @@ def build_parser() -> argparse.ArgumentParser:
     import_parser.add_argument("--title")
     import_parser.add_argument("--max-files", type=int, default=500)
     import_parser.set_defaults(func=command_import)
+
+    migrate_parser = subparsers.add_parser(
+        "migrate", help="upgrade legacy or non-canonical Diagram IR to the v1 contract"
+    )
+    migrate_parser.add_argument("input")
+    migrate_parser.add_argument("-o", "--output")
+    migrate_parser.add_argument("--report")
+    migrate_parser.add_argument("--check", action="store_true")
+    migrate_parser.set_defaults(func=command_migrate)
 
     diff_parser = subparsers.add_parser(
         "diff", help="compare Diagram IR semantically and visualize architecture drift"
@@ -5146,6 +5587,14 @@ def build_parser() -> argparse.ArgumentParser:
     audit_parser.add_argument("--strict", action="store_true")
     audit_parser.set_defaults(func=command_audit)
 
+    security_parser = subparsers.add_parser(
+        "security", help="scan a model, draw.io file, or bundle for unsafe embedded content"
+    )
+    security_parser.add_argument("input")
+    security_parser.add_argument("-o", "--output")
+    security_parser.add_argument("--strict", action="store_true")
+    security_parser.set_defaults(func=command_security)
+
     validate_parser = subparsers.add_parser("validate", help="validate Diagram IR or .drawio")
     validate_parser.add_argument("input")
     validate_parser.add_argument("--strict", action="store_true")
@@ -5161,6 +5610,10 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("-f", "--format")
     render_parser.add_argument("--width", type=int, default=2000)
     render_parser.add_argument("--embed", action="store_true")
+    render_parser.add_argument(
+        "--binary",
+        help="draw.io Desktop executable; overrides DRAWIO_DESKTOP_BINARY and auto-discovery",
+    )
     render_parser.set_defaults(func=command_render)
     return parser
 

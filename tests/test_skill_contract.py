@@ -1,3 +1,4 @@
+import json
 import re
 import unittest
 from pathlib import Path
@@ -39,6 +40,9 @@ class SkillContractTests(unittest.TestCase):
             "erd.schema.json",
             "ha.schema.json",
             "drift-report.schema.json",
+            "bundle.schema.json",
+            "security-report.schema.json",
+            "migration-report.schema.json",
         ):
             schema = SKILL / f"references/{filename}"
             self.assertIn('"$schema"', schema.read_text(encoding="utf-8"))
@@ -49,10 +53,42 @@ class SkillContractTests(unittest.TestCase):
         self.assertIn('"Apache-2.0"', shape_registry.read_text(encoding="utf-8"))
         self.assertIn('"tokens"', theme.read_text(encoding="utf-8"))
 
+    def test_bundle_v1_security_artifact_is_additive_for_v09_compatibility(self):
+        schema = json.loads(
+            (SKILL / "references/bundle.schema.json").read_text(encoding="utf-8")
+        )
+        artifacts = schema["properties"]["artifacts"]
+        self.assertIn("security", artifacts["properties"])
+        self.assertNotIn("security", artifacts["required"])
+
     def test_skill_distribution_includes_its_license(self):
         license_text = (SKILL / "LICENSE.txt").read_text(encoding="utf-8")
         self.assertIn("Apache License", license_text)
         self.assertIn("Version 2.0", license_text)
+
+    def test_cli_reference_covers_every_public_command(self):
+        reference = (SKILL / "references/cli.md").read_text(encoding="utf-8")
+        commands = {
+            "audit",
+            "blueprint",
+            "build",
+            "compile",
+            "diff",
+            "doctor",
+            "erd",
+            "ha",
+            "import",
+            "init",
+            "inspect",
+            "migrate",
+            "patch",
+            "preview",
+            "render",
+            "security",
+            "validate",
+        }
+        for command in commands:
+            self.assertRegex(reference, rf"\b{re.escape(command)}\b", command)
 
 
 if __name__ == "__main__":

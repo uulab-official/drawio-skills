@@ -12,6 +12,7 @@ TOOL = ROOT / "skills/drawio-diagram-engineer/scripts/drawio_tool.py"
 ASSETS = ROOT / "skills/drawio-diagram-engineer/assets"
 INSTALLER = ROOT / "scripts/install_skill.py"
 PACKAGER = ROOT / "scripts/package_skill.py"
+AUDITOR = ROOT / "scripts/audit_repository.py"
 
 
 def run(*arguments, check=True):
@@ -24,6 +25,23 @@ def run(*arguments, check=True):
 
 
 class UserExperienceTests(unittest.TestCase):
+    def test_repository_dependency_and_workflow_audit_passes(self):
+        completed = run(AUDITOR)
+        report = json.loads(completed.stdout)
+        self.assertTrue(report["passed"])
+        self.assertEqual([], report["runtime_dependencies"])
+        self.assertEqual(["yaml"], report["optional_dependencies"])
+        self.assertEqual([], report["unpinned_actions"])
+        self.assertEqual(
+            {
+                "actions/attest",
+                "actions/checkout",
+                "actions/setup-python",
+                "actions/upload-artifact",
+            },
+            {item["action"] for item in report["workflow_actions"]},
+        )
+
     def test_doctor_reports_core_ready_and_optional_capabilities(self):
         completed = run(TOOL, "doctor", "--format", "json")
         report = json.loads(completed.stdout)
@@ -74,7 +92,66 @@ class UserExperienceTests(unittest.TestCase):
             self.assertEqual("drawio-diagram-bundle/v1", manifest["format"])
             self.assertFalse(manifest["source"]["included"])
             self.assertTrue((output / manifest["artifacts"]["drawio"]).is_file())
+            self.assertTrue((output / manifest["artifacts"]["security"]).is_file())
+            security = json.loads((output / "security.json").read_text(encoding="utf-8"))
+            self.assertTrue(security["passed"])
+            self.assertEqual("example.blueprint.json", security["source"])
             self.assertEqual(6, len(manifest["artifacts"]["previews"]))
+
+    def test_migrate_check_and_write_workflow(self):
+        legacy = {
+            "title": "Legacy",
+            "components": [
+                {"id": "client", "label": "Client", "type": "user"},
+                {"id": "api", "label": "API", "type": "api"},
+            ],
+            "connections": [{"source": "client", "target": "api"}],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            source = temp / "legacy.json"
+            output = temp / "diagram.json"
+            report = temp / "migration.json"
+            source.write_text(json.dumps(legacy), encoding="utf-8")
+            check = run(TOOL, "migrate", source, "--check", check=False)
+            self.assertEqual(6, check.returncode)
+            run(TOOL, "migrate", source, "-o", output, "--report", report)
+            migrated = json.loads(output.read_text(encoding="utf-8"))
+            migration = json.loads(report.read_text(encoding="utf-8"))
+            self.assertEqual("1", migrated["version"])
+            self.assertTrue(migration["changes_required"])
+            self.assertEqual(0, run(TOOL, "migrate", output, "--check").returncode)
+
+    def test_security_command_rejects_unsafe_link(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "unsafe.json"
+            source.write_text(
+                json.dumps({
+                    "version": "1",
+                    "diagram": {"title": "Unsafe"},
+                    "nodes": [
+                        {"id": "api", "label": "API", "link": "javascript:alert(1)"}
+                    ],
+                    "edges": [],
+                }),
+                encoding="utf-8",
+            )
+            completed = run(TOOL, "security", source, check=False)
+            self.assertEqual(2, completed.returncode)
+            report = json.loads(completed.stdout)
+            self.assertIn(
+                "security.unsafe-link",
+                {item["code"] for item in report["findings"]},
+            )
+
+    def test_security_command_scans_complete_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "bundle"
+            run(TOOL, "build", ASSETS / "example.architecture.json", "-o", output, "--strict")
+            completed = run(TOOL, "security", output, "--strict")
+            report = json.loads(completed.stdout)
+            self.assertTrue(report["passed"])
+            self.assertGreaterEqual(len(report["scanned"]), 3)
 
     def test_build_auto_selects_crows_foot_erd_for_sql(self):
         with tempfile.TemporaryDirectory() as directory:

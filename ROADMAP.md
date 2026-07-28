@@ -105,14 +105,31 @@ Exit criteria: explicit ports validate against the IR schema, automatic fan-out 
 
 Exit criteria: a new user can install, diagnose, initialize, and produce a strict-valid architecture, ERD, or HA bundle without composing lower-level commands; installation is verified in an isolated skills directory; and release ZIPs are byte-identical across repeated builds.
 
+## v0.10 — Contract and security hardening
+
+- [x] Diagram IR v1 compatibility and additive-change policy
+- [x] Deprecation and major-version migration rules
+- [x] Deterministic legacy/unversioned IR migration with CI check mode
+- [x] Versioned bundle, migration-report, and security-report schemas
+- [x] Credential, private-key, unsafe-link, and external-link scanning
+- [x] DTD/entity rejection and bounded compressed-page decoding
+- [x] macOS, Windows, and Linux Desktop discovery contracts
+- [x] Explicit Desktop binary override through environment and CLI
+- [x] Standard-library dependency audit and commit-pinned GitHub Actions
+- [x] Tagged release checksums and GitHub/Sigstore provenance attestations
+- [x] Complete public CLI and exit-code reference
+
+Exit criteria: legacy input migrates deterministically without losing extensions, unsafe bundles fail before publication, compressed input is bounded, every workflow dependency is pinned, and tagged release artifacts can be verified cryptographically.
+
 ## v1.0 — Stable public contract
 
-- [ ] Freeze Diagram IR v1 compatibility policy
-- [ ] Publish migration and deprecation rules
+- [x] Freeze Diagram IR v1 compatibility policy
+- [x] Publish migration and deprecation rules
 - [ ] Cross-platform draw.io Desktop integration tests
-- [ ] Security and dependency audit
+- [x] Security and dependency audit
 - [x] Installation tests for Codex and other Agent Skills-compatible clients
 - [x] Reproducible unsigned release artifacts
-- [ ] Signed release tags and published checksums
+- [x] Attested release artifacts and published checksums
+- [ ] Signed release tags
 
 The v1.0 release requires zero known critical defects, deterministic output across supported Python versions, and complete documentation for every public command.

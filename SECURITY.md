@@ -15,4 +15,10 @@ The compiler reads local JSON, optional YAML, and `.drawio` XML. The render comm
 
 No telemetry or network requests are performed by the compiler, validator, or inspector.
 
+The `security` command scans models, `.drawio` files, and bundles for embedded credential patterns, private keys, unsafe URL schemes, prohibited XML declarations, and decompression-limit violations. Successful `build` bundles include `security.json`. Findings name locations but never echo suspected credential values.
+
+Structured JSON/YAML and uncompressed draw.io input are limited to 50 MiB; each compressed page is limited to 100 MiB after decompression. DTD and entity declarations are rejected before XML parsing.
+
+Release workflows use only first-party GitHub actions pinned to full commit hashes. Tagged ZIP artifacts include SHA-256 checksums and GitHub/Sigstore provenance attestations.
+
 The Kubernetes importer never copies `Secret.data` or `Secret.stringData` values into Diagram IR. It emits resource metadata and a redaction notice only. Other resource names, namespaces, image/runtime descriptions, Terraform addresses, and pipeline job names can still be sensitive; inspect generated IR before publishing it.

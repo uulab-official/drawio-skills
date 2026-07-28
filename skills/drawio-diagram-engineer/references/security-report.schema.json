@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/security-report-v1.json",
+  "title": "Draw.io Security Report",
+  "type": "object",
+  "required": [
+    "format",
+    "source",
+    "passed",
+    "errors",
+    "warnings",
+    "findings",
+    "external_links",
+    "limits"
+  ],
+  "properties": {
+    "format": {"const": "drawio-security-report/v1"},
+    "source": {"type": "string"},
+    "passed": {"type": "boolean"},
+    "errors": {"type": "integer", "minimum": 0},
+    "warnings": {"type": "integer", "minimum": 0},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["level", "code", "message", "location"],
+        "properties": {
+          "level": {"enum": ["error", "warning"]},
+          "code": {"type": "string"},
+          "message": {"type": "string"},
+          "location": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "external_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["location", "url"],
+        "properties": {
+          "location": {"type": "string"},
+          "url": {"type": "string"}
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "structured_input_bytes",
+        "xml_input_bytes",
+        "decompressed_page_bytes"
+      ],
+      "properties": {
+        "structured_input_bytes": {"type": "integer", "minimum": 1},
+        "xml_input_bytes": {"type": "integer", "minimum": 1},
+        "decompressed_page_bytes": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "additionalProperties": true
+}

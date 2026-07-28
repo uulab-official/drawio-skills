@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/migration-report-v1.json",
+  "title": "Diagram IR Migration Report",
+  "type": "object",
+  "required": [
+    "format",
+    "from_version",
+    "to_version",
+    "changes_required",
+    "changes",
+    "score",
+    "issues"
+  ],
+  "properties": {
+    "format": {"const": "drawio-migration-report/v1"},
+    "from_version": {"type": "string"},
+    "to_version": {"const": "1"},
+    "changes_required": {"type": "boolean"},
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["location", "operation", "from", "to"],
+        "properties": {
+          "location": {"type": "string"},
+          "operation": {"enum": ["add", "map", "move", "rename", "set"]},
+          "from": {"type": "string"},
+          "to": {"type": "string"}
+        }
+      }
+    },
+    "score": {"type": "integer", "minimum": 0, "maximum": 100},
+    "issues": {"type": "array"}
+  },
+  "additionalProperties": true
+}

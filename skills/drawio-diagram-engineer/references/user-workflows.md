@@ -46,6 +46,7 @@ The output directory contains:
 - `<name>.drawio`: editable, uncompressed draw.io XML.
 - `previews/*.svg`: one dependency-free review preview per page.
 - `audit.json`: the 0–100 quality score, findings, and suggested repairs.
+- `security.json`: credential, unsafe-link, and XML safety findings.
 - `bundle.json`: a stable `drawio-diagram-bundle/v1` artifact manifest.
 
 The input is referenced by name but is not copied into the bundle.
@@ -90,10 +91,13 @@ Use generic `--type sql` only for a table dependency overview. Use `--type sql-e
 | `3` | `--strict` quality score is below 90 |
 | `4` | draw.io Desktop was not found for `render` |
 | `5` | Semantic drift found with `diff --fail-on-drift` |
+| `6` | Diagram IR migration required with `migrate --check` |
 
 ## Troubleshooting
 
 - Run `doctor --format json` when another agent or script needs machine-readable capability state.
+- Run `migrate --check` before editing unversioned or legacy Diagram IR.
+- Run `security <bundle> --strict` as the final publication gate.
 - If YAML fails, use JSON or install PyYAML. No third-party package is required for JSON.
 - If Desktop export is unavailable, deliver the editable `.drawio` and bundled SVG previews.
 - If automatic source detection fails, pass `--type` explicitly.

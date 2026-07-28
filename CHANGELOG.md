@@ -2,6 +2,19 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 0.10.0 — 2026-07-28
+
+- Publish Diagram IR v1 compatibility, additive-change, deprecation, and bundle-evolution policies.
+- Add deterministic migration for unversioned and version 0 Diagram IR with CI `--check` mode and machine-readable reports.
+- Add machine-readable bundle, security-report, and migration-report schemas.
+- Add a `security` gate for suspected credentials, private keys, unsafe links, DTD/entities, and decompression limits without echoing secret values.
+- Add `security.json` to every successful one-command build bundle.
+- Bound structured input plus raw and compressed draw.io XML parsing to resist oversized and decompression-bomb inputs.
+- Add macOS, Windows, and Linux Desktop discovery contracts plus `DRAWIO_DESKTOP_BINARY` and `render --binary`.
+- Pin all GitHub Actions to commit hashes and add repository dependency/workflow auditing.
+- Add tagged release automation with deterministic ZIPs, SHA-256 checksums, and GitHub/Sigstore provenance attestations.
+- Expand the test suite across migration, security, XML hardening, cross-platform discovery, and bundle publication paths.
+
 ## 0.9.0 — 2026-07-28
 
 - Add `doctor` with machine-readable core readiness and optional YAML/Desktop capability reporting.

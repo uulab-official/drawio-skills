@@ -1,0 +1,67 @@
+{
+  "version": "1",
+  "diagram": {
+    "title": "Release Pipeline",
+    "direction": "TB",
+    "theme": "colorblind"
+  },
+  "groups": [
+    {
+      "id": "workflow-example-github-actions-json",
+      "label": "Release"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "workflow-example-github-actions-json-job-build",
+      "label": "Build image",
+      "kind": "process",
+      "group": "workflow-example-github-actions-json",
+      "description": "ubuntu-latest"
+    },
+    {
+      "id": "workflow-example-github-actions-json-job-deploy",
+      "label": "Deploy production",
+      "kind": "process",
+      "group": "workflow-example-github-actions-json",
+      "description": "ubuntu-latest"
+    },
+    {
+      "id": "workflow-example-github-actions-json-job-lint",
+      "label": "Lint",
+      "kind": "process",
+      "group": "workflow-example-github-actions-json",
+      "description": "ubuntu-latest"
+    },
+    {
+      "id": "workflow-example-github-actions-json-job-test",
+      "label": "Test",
+      "kind": "process",
+      "group": "workflow-example-github-actions-json",
+      "description": "ubuntu-latest"
+    }
+  ],
+  "edges": [
+    {
+      "id": "workflow-example-github-actions-json-job-test-before-workflow-example-github-actions-json-job-build",
+      "from": "workflow-example-github-actions-json-job-test",
+      "to": "workflow-example-github-actions-json-job-build",
+      "label": "needs",
+      "kind": "dependency"
+    },
+    {
+      "id": "workflow-example-github-actions-json-job-build-before-workflow-example-github-actions-json-job-deploy",
+      "from": "workflow-example-github-actions-json-job-build",
+      "to": "workflow-example-github-actions-json-job-deploy",
+      "label": "needs",
+      "kind": "dependency"
+    },
+    {
+      "id": "workflow-example-github-actions-json-job-lint-before-workflow-example-github-actions-json-job-test",
+      "from": "workflow-example-github-actions-json-job-lint",
+      "to": "workflow-example-github-actions-json-job-test",
+      "label": "needs",
+      "kind": "dependency"
+    }
+  ]
+}

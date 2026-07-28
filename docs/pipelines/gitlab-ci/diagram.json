@@ -1,0 +1,75 @@
+{
+  "version": "1",
+  "diagram": {
+    "title": "GitLab Delivery Pipeline",
+    "direction": "TB",
+    "theme": "colorblind"
+  },
+  "groups": [
+    {
+      "id": "stage-verify",
+      "label": "verify"
+    },
+    {
+      "id": "stage-build",
+      "label": "build"
+    },
+    {
+      "id": "stage-deploy",
+      "label": "deploy"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "gitlab-job-build",
+      "label": "build",
+      "kind": "process",
+      "group": "stage-build",
+      "description": "1 script step(s)"
+    },
+    {
+      "id": "gitlab-job-deploy",
+      "label": "deploy",
+      "kind": "process",
+      "group": "stage-deploy",
+      "description": "1 script step(s)"
+    },
+    {
+      "id": "gitlab-job-lint",
+      "label": "lint",
+      "kind": "process",
+      "group": "stage-verify",
+      "description": "1 script step(s)"
+    },
+    {
+      "id": "gitlab-job-test",
+      "label": "test",
+      "kind": "process",
+      "group": "stage-verify",
+      "description": "1 script step(s)"
+    }
+  ],
+  "edges": [
+    {
+      "id": "gitlab-job-build-before-gitlab-job-deploy",
+      "from": "gitlab-job-build",
+      "to": "gitlab-job-deploy",
+      "label": "needs",
+      "kind": "dependency"
+    },
+    {
+      "id": "gitlab-job-lint-before-gitlab-job-build",
+      "from": "gitlab-job-lint",
+      "to": "gitlab-job-build",
+      "label": "needs",
+      "kind": "dependency"
+    },
+    {
+      "id": "gitlab-job-test-before-gitlab-job-build",
+      "from": "gitlab-job-test",
+      "to": "gitlab-job-build",
+      "label": "needs",
+      "kind": "dependency"
+    }
+  ]
+}

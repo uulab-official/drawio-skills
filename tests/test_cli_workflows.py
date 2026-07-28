@@ -222,6 +222,88 @@ class CliWorkflowTests(unittest.TestCase):
             run_tool("validate", drawio, "--strict")
             self.assertIn("ERzeroToMany", drawio.read_text(encoding="utf-8"))
 
+    def test_infrastructure_and_pipeline_importers_compile_through_cli(self):
+        corpus = json.loads(
+            (ROOT / "tests/fixtures/importers/corpus.json").read_text(encoding="utf-8")
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            for source_type in (
+                "terraform", "kubernetes", "github-actions", "gitlab-ci",
+            ):
+                case = corpus[source_type][0]
+                project = temp / source_type
+                project.mkdir()
+                if source_type == "terraform":
+                    (project / "main.tf").write_text(case["source"], encoding="utf-8")
+                elif source_type == "github-actions":
+                    workflows = project / ".github" / "workflows"
+                    workflows.mkdir(parents=True)
+                    (workflows / "workflow.json").write_text(
+                        json.dumps(case["source"]), encoding="utf-8"
+                    )
+                elif source_type == "gitlab-ci":
+                    (project / ".gitlab-ci.json").write_text(
+                        json.dumps(case["source"]), encoding="utf-8"
+                    )
+                else:
+                    (project / "manifest.json").write_text(
+                        json.dumps(case["source"]), encoding="utf-8"
+                    )
+                ir = temp / f"{source_type}.json"
+                drawio = temp / f"{source_type}.drawio"
+                run_tool(
+                    "import", project, "--type", source_type, "-o", ir
+                )
+                run_tool("compile", ir, "-o", drawio)
+                run_tool("validate", drawio, "--strict")
+
+    def test_diff_generates_machine_report_editable_view_and_preview(self):
+        baseline = {
+            "version": "1",
+            "diagram": {"title": "Payments", "direction": "LR", "theme": "colorblind"},
+            "nodes": [
+                {"id": "api", "label": "API", "kind": "service"},
+                {"id": "db", "label": "DB", "kind": "database"},
+            ],
+            "edges": [{"id": "api-db", "from": "api", "to": "db", "kind": "data"}],
+            "groups": [],
+        }
+        candidate = json.loads(json.dumps(baseline))
+        candidate["nodes"][0]["label"] = "Payments API"
+        candidate["nodes"].append({"id": "queue", "label": "Queue", "kind": "queue"})
+        candidate["edges"].append({
+            "id": "api-queue", "from": "api", "to": "queue", "kind": "async",
+        })
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            before = temp / "before.json"
+            after = temp / "after.json"
+            report = temp / "drift.json"
+            drawio = temp / "drift.drawio"
+            previews = temp / "previews"
+            before.write_text(json.dumps(baseline), encoding="utf-8")
+            after.write_text(json.dumps(candidate), encoding="utf-8")
+            run_tool(
+                "diff", before, after, "-o", report,
+                "--diagram-output", drawio, "--preview-dir", previews,
+            )
+            payload = json.loads(report.read_text(encoding="utf-8"))
+            self.assertTrue(payload["drift"])
+            self.assertEqual(3, payload["summary"]["total"])
+            self.assertTrue((previews / "main.svg").exists())
+            run_tool("validate", drawio, "--strict")
+            completed = subprocess.run(
+                [
+                    sys.executable, str(TOOL), "diff", str(before), str(after),
+                    "-o", str(temp / "gated-drift.json"), "--fail-on-drift",
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(5, completed.returncode)
+
 
 if __name__ == "__main__":
     unittest.main()

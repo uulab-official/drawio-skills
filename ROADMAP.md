@@ -25,13 +25,14 @@ The project advances through measurable quality gates, not feature-count alone. 
 ## v0.3 — Repository and infrastructure intelligence
 
 - [x] Python and TypeScript import-graph extraction
-- [ ] Terraform and Kubernetes resource importers
-- [ ] GitHub Actions and GitLab CI pipeline importers
-- [ ] Diagram diff and architecture-drift view
+- [x] Terraform and Kubernetes resource importers
+- [x] GitHub Actions and GitLab CI pipeline importers
+- [x] Diagram diff and architecture-drift view
 - [ ] Explicit port assignment and stronger orthogonal routing
-- [ ] Importer fixture corpus with real-world edge cases
+- [x] Five-case deterministic fixture corpus for each Terraform, Kubernetes, GitHub Actions, and GitLab CI importer
+- [ ] Expand the five-case fixture corpus to every legacy importer
 
-Exit criteria: at least five fixture projects per importer, deterministic snapshots, no strict validation failures, and bounded output for repositories above 500 source files.
+Exit criteria: at least five fixture projects per importer, deterministic snapshots, no strict validation failures, bounded output for repositories above 500 source files, and explicit routing controls. The infrastructure/CI importer cohort meets its fixture and strict-validation gates; legacy importer expansion and routing remain.
 
 ## v0.4 — Architecture blueprints
 
@@ -64,6 +65,19 @@ Exit criteria: WCAG-aware palettes, verified shape resolution, structured before
 - [x] Editable ERD/HA examples, SVG reviews, audits, schemas, and CI workflows
 
 Exit criteria: ERD and HA examples score 100 without warnings, regenerate byte-identically, preserve domain semantics in editable draw.io XML, and pass all supported Python versions.
+
+## v0.7 — Infrastructure intelligence and drift
+
+- [x] Dependency-free Terraform block and direct-reference extraction
+- [x] Namespace-aware Kubernetes topology with selector, backend, configuration, storage, and ownership relations
+- [x] Secret-safe Kubernetes import that excludes payload values
+- [x] GitHub Actions workflow/job and GitLab CI stage/job projection
+- [x] Semantic page, group, node, and edge comparison that ignores layout-only changes
+- [x] Machine-readable drift report with an editable, non-color-only drift view
+- [x] Twenty infrastructure/CI fixture projects with deterministic strict-valid snapshots
+- [x] Editable Terraform, Kubernetes, GitHub Actions, GitLab CI, and drift examples
+
+Exit criteria: all four importers remain deterministic and bounded, every new importer has at least five strict-valid fixtures, Secret values are absent from generated IR, drift has a CI failure mode, public examples score 100 without warnings, and all supported Python versions pass.
 
 ## v1.0 — Stable public contract
 

@@ -1,0 +1,7 @@
+{
+  "stages": ["verify", "build", "deploy"],
+  "lint": {"stage": "verify", "script": ["make lint"]},
+  "test": {"stage": "verify", "script": ["make test"]},
+  "build": {"stage": "build", "needs": ["lint", "test"], "script": ["make image"]},
+  "deploy": {"stage": "deploy", "needs": [{"job": "build"}], "script": ["make deploy"]}
+}

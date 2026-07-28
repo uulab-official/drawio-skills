@@ -1,4 +1,4 @@
 interface:
   display_name: "Draw.io Diagram Engineer"
-  short_description: "Generate audited architecture, ERD, and HA draw.io packs"
-  default_prompt: "Use $drawio-diagram-engineer to create a validated editable draw.io architecture, Crow’s Foot ERD, or high-availability topology and failover pack from this source."
+  short_description: "Generate audited architecture and infrastructure diagrams"
+  default_prompt: "Use $drawio-diagram-engineer to create or compare a validated editable draw.io architecture, Crow’s Foot ERD, HA pack, infrastructure topology, or CI/CD pipeline from this source."

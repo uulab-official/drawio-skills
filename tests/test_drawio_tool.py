@@ -239,6 +239,228 @@ class DrawioToolTests(unittest.TestCase):
             self.assertEqual(1, len(data["edges"]))
             self.assertEqual([], [item for item in TOOL.validate_ir(data) if item["level"] == "error"])
 
+    def test_terraform_import_resolves_resource_data_and_module_references(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "main.tf").write_text(
+                """
+                data "aws_ami" "api" { most_recent = true }
+                module "network" { source = "./network" }
+                resource "aws_instance" "api" {
+                  ami       = data.aws_ami.api.id
+                  subnet_id = module.network.private_subnet_id
+                }
+                """,
+                encoding="utf-8",
+            )
+            data = TOOL.import_terraform(root)
+            self.assertEqual(3, len(data["nodes"]))
+            self.assertEqual(2, len(data["edges"]))
+            self.assertEqual(
+                {"data.aws_ami.api", "module.network"},
+                {
+                    next(
+                        node["description"].rsplit(" · ", 1)[-1]
+                        for node in data["nodes"] if node["id"] == edge["to"]
+                    )
+                    for edge in data["edges"]
+                },
+            )
+            self.assertEqual(
+                [], [item for item in TOOL.validate_ir(data) if item["level"] == "error"]
+            )
+
+    def test_kubernetes_import_connects_ingress_service_workload_and_secret(self):
+        resources = {
+            "apiVersion": "v1",
+            "kind": "List",
+            "items": [
+                {
+                    "apiVersion": "networking.k8s.io/v1",
+                    "kind": "Ingress",
+                    "metadata": {"name": "shop", "namespace": "prod"},
+                    "spec": {
+                        "rules": [{
+                            "http": {"paths": [{
+                                "backend": {"service": {"name": "api", "port": {"number": 80}}}
+                            }]}
+                        }]
+                    },
+                },
+                {
+                    "apiVersion": "v1",
+                    "kind": "Service",
+                    "metadata": {"name": "api", "namespace": "prod"},
+                    "spec": {"selector": {"app": "api"}},
+                },
+                {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "metadata": {"name": "api", "namespace": "prod"},
+                    "spec": {
+                        "replicas": 3,
+                        "template": {
+                            "metadata": {"labels": {"app": "api"}},
+                            "spec": {
+                                "containers": [{
+                                    "name": "api",
+                                    "envFrom": [{"secretRef": {"name": "api-secret"}}],
+                                }]
+                            },
+                        },
+                    },
+                },
+                {
+                    "apiVersion": "v1",
+                    "kind": "Secret",
+                    "metadata": {"name": "api-secret", "namespace": "prod"},
+                    "data": {"password": "must-not-appear"},
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "manifests.json"
+            path.write_text(json.dumps(resources), encoding="utf-8")
+            data = TOOL.import_kubernetes(path)
+            self.assertEqual(4, len(data["nodes"]))
+            self.assertEqual({"routes", "selects", "uses"}, {edge["label"] for edge in data["edges"]})
+            self.assertNotIn("must-not-appear", json.dumps(data))
+            self.assertIn("values redacted", json.dumps(data))
+            self.assertEqual(
+                [], [item for item in TOOL.validate_ir(data) if item["level"] == "error"]
+            )
+
+    def test_github_actions_import_uses_needs_execution_order(self):
+        workflow = {
+            "name": "Release",
+            "on": ["push"],
+            "jobs": {
+                "test": {"runs-on": "ubuntu-latest", "steps": []},
+                "release": {"runs-on": "ubuntu-latest", "needs": "test", "steps": []},
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "release.json"
+            path.write_text(json.dumps(workflow), encoding="utf-8")
+            data = TOOL.import_github_actions(path)
+            self.assertEqual(2, len(data["nodes"]))
+            self.assertEqual("needs", data["edges"][0]["label"])
+            self.assertIn("-job-test-before-", data["edges"][0]["id"])
+
+    def test_github_actions_import_links_reusable_workflow_jobs(self):
+        workflow = {
+            "name": "Delegated release",
+            "jobs": {
+                "deploy": {
+                    "uses": "example/platform/.github/workflows/deploy.yml@v2"
+                }
+            },
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "release.json"
+            path.write_text(json.dumps(workflow), encoding="utf-8")
+            data = TOOL.import_github_actions(path)
+            self.assertEqual(2, len(data["nodes"]))
+            self.assertEqual("calls", data["edges"][0]["label"])
+            self.assertIn(
+                "example/platform/.github/workflows/deploy.yml@v2",
+                {node["description"] for node in data["nodes"]},
+            )
+
+    def test_gitlab_ci_import_builds_stage_and_explicit_needs_edges(self):
+        pipeline = {
+            "stages": ["build", "test", "deploy"],
+            "build": {"stage": "build", "script": ["make"]},
+            "test": {"stage": "test", "script": ["make test"]},
+            "deploy": {"stage": "deploy", "needs": [{"job": "test"}], "script": ["ship"]},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "gitlab.json"
+            path.write_text(json.dumps(pipeline), encoding="utf-8")
+            data = TOOL.import_gitlab_ci(path)
+            self.assertEqual(3, len(data["nodes"]))
+            self.assertEqual({"stage", "needs"}, {edge["label"] for edge in data["edges"]})
+            self.assertEqual(
+                [], [item for item in TOOL.validate_ir(data) if item["level"] == "error"]
+            )
+
+    def test_architecture_diff_ignores_layout_and_reports_semantic_drift(self):
+        baseline = sample_ir()
+        candidate = sample_ir()
+        candidate["nodes"][0]["position"] = {"x": 800, "y": 500}
+        no_drift = TOOL.architecture_diff(baseline, candidate)
+        self.assertFalse(no_drift["drift"])
+        candidate["nodes"][1]["label"] = "Public API"
+        candidate["nodes"].append({
+            "id": "worker", "label": "Worker", "kind": "service", "group": "core",
+        })
+        candidate["edges"].append({
+            "id": "api-worker", "from": "api", "to": "worker", "kind": "async",
+        })
+        report = TOOL.architecture_diff(baseline, candidate)
+        self.assertTrue(report["drift"])
+        self.assertEqual(2, report["summary"]["added"])
+        self.assertEqual(1, report["summary"]["changed"])
+        drift = TOOL.drift_diagram(baseline, candidate, report)
+        self.assertEqual(
+            [], [item for item in TOOL.validate_ir(drift) if item["level"] == "error"]
+        )
+        api = next(node for node in drift["pages"][0]["nodes"] if node["id"] == "api")
+        worker = next(node for node in drift["pages"][0]["nodes"] if node["id"] == "worker")
+        self.assertEqual("#fff2cc", api["style"]["fill"])
+        self.assertEqual("#d9f0d3", worker["style"]["fill"])
+
+    def test_infrastructure_importer_fixture_corpus_is_deterministic_and_strict(self):
+        corpus = json.loads(
+            (ROOT / "tests/fixtures/importers/corpus.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            {"terraform", "kubernetes", "github-actions", "gitlab-ci"}, set(corpus)
+        )
+        self.assertTrue(all(len(cases) >= 5 for cases in corpus.values()))
+        for source_type, cases in corpus.items():
+            for case in cases:
+                with self.subTest(source_type=source_type, case=case["name"]):
+                    with tempfile.TemporaryDirectory() as directory:
+                        root = Path(directory)
+                        if source_type == "terraform":
+                            (root / "main.tf").write_text(
+                                case["source"], encoding="utf-8"
+                            )
+                        elif source_type == "github-actions":
+                            workflows = root / ".github" / "workflows"
+                            workflows.mkdir(parents=True)
+                            (workflows / "workflow.json").write_text(
+                                json.dumps(case["source"]), encoding="utf-8"
+                            )
+                        elif source_type == "gitlab-ci":
+                            (root / ".gitlab-ci.json").write_text(
+                                json.dumps(case["source"]), encoding="utf-8"
+                            )
+                        else:
+                            (root / "manifest.json").write_text(
+                                json.dumps(case["source"]), encoding="utf-8"
+                            )
+                        data = TOOL.import_source(root, source_type)
+                        self.assertEqual(case["nodes"], len(data["nodes"]))
+                        self.assertEqual(case["edges"], len(data["edges"]))
+                        self.assertEqual([], TOOL.validate_ir(data))
+                        first = TOOL.ET.tostring(TOOL.compile_drawio(data).getroot())
+                        second = TOOL.ET.tostring(TOOL.compile_drawio(data).getroot())
+                        self.assertEqual(first, second)
+
+    def test_directory_importers_enforce_explicit_file_bound(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "main.tf").write_text(
+                'resource "aws_vpc" "main" {}\n', encoding="utf-8"
+            )
+            (root / "data.tf").write_text(
+                'data "aws_region" "current" {}\n', encoding="utf-8"
+            )
+            with self.assertRaisesRegex(ValueError, "raise --max-files"):
+                TOOL.import_terraform(root, max_files=1)
+
     def test_dependency_free_svg_preview_is_valid_xml(self):
         tree = TOOL.compile_svg(sample_ir())
         root = tree.getroot()

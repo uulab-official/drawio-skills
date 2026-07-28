@@ -2,6 +2,15 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 0.7.0 — 2026-07-28
+
+- Add bounded, deterministic Terraform resource/data/module importing with direct-reference dependency edges.
+- Add namespace-aware Kubernetes importing for ingress routing, service selectors, workloads, configuration, Secrets, storage, and owner references.
+- Redact Kubernetes Secret values by construction.
+- Add GitHub Actions and GitLab CI pipeline importers with prerequisite-to-dependent execution flow.
+- Add semantic Diagram IR diff reports and editable architecture-drift views with CI `--fail-on-drift`.
+- Add a versioned drift report schema, 20-case infrastructure/CI fixture corpus, and 100-point editable examples.
+
 ## 0.6.0 — 2026-07-28
 
 - Add a field-level ERD model, schema, validator, SQL DDL importer, and Crow's Foot renderer.

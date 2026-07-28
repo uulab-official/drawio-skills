@@ -1,0 +1,81 @@
+{
+  "version": "1",
+  "diagram": {
+    "title": "Checkout Kubernetes Runtime",
+    "direction": "LR",
+    "theme": "colorblind"
+  },
+  "groups": [
+    {
+      "id": "namespace-commerce",
+      "label": "namespace/commerce"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "k8s-commerce-configmap-checkout-config",
+      "label": "checkout-config",
+      "kind": "document",
+      "group": "namespace-commerce",
+      "description": "ConfigMap · namespace/commerce"
+    },
+    {
+      "id": "k8s-commerce-deployment-checkout-api",
+      "label": "checkout-api",
+      "kind": "service",
+      "group": "namespace-commerce",
+      "description": "Deployment · namespace/commerce · replicas=3"
+    },
+    {
+      "id": "k8s-commerce-ingress-checkout",
+      "label": "checkout",
+      "kind": "external",
+      "group": "namespace-commerce",
+      "description": "Ingress · namespace/commerce"
+    },
+    {
+      "id": "k8s-commerce-secret-checkout-secrets",
+      "label": "checkout-secrets",
+      "kind": "document",
+      "group": "namespace-commerce",
+      "description": "Secret · namespace/commerce · metadata only; values redacted"
+    },
+    {
+      "id": "k8s-commerce-service-checkout-api",
+      "label": "checkout-api",
+      "kind": "service",
+      "group": "namespace-commerce",
+      "description": "Service · namespace/commerce · type=ClusterIP"
+    }
+  ],
+  "edges": [
+    {
+      "id": "k8s-commerce-deployment-checkout-api-uses-k8s-commerce-configmap-checkout-config",
+      "from": "k8s-commerce-deployment-checkout-api",
+      "to": "k8s-commerce-configmap-checkout-config",
+      "label": "uses",
+      "kind": "data"
+    },
+    {
+      "id": "k8s-commerce-deployment-checkout-api-uses-k8s-commerce-secret-checkout-secrets",
+      "from": "k8s-commerce-deployment-checkout-api",
+      "to": "k8s-commerce-secret-checkout-secrets",
+      "label": "uses",
+      "kind": "data"
+    },
+    {
+      "id": "k8s-commerce-ingress-checkout-routes-k8s-commerce-service-checkout-api",
+      "from": "k8s-commerce-ingress-checkout",
+      "to": "k8s-commerce-service-checkout-api",
+      "label": "routes",
+      "kind": "sync"
+    },
+    {
+      "id": "k8s-commerce-service-checkout-api-selects-k8s-commerce-deployment-checkout-api",
+      "from": "k8s-commerce-service-checkout-api",
+      "to": "k8s-commerce-deployment-checkout-api",
+      "label": "selects",
+      "kind": "sync"
+    }
+  ]
+}

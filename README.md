@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v0.6 alpha**. Deterministic compilation, architecture blueprint packs, field-level Crow's Foot ERDs, HA topology/failover packs, reusable themes, verified shapes, structured visual audits, semantic patches, source importers, and dependency-free previews are usable.
+> Status: **v0.7 alpha**. Deterministic compilation, architecture blueprint packs, field-level Crow's Foot ERDs, HA topology/failover packs, Terraform/Kubernetes and CI pipeline importers, semantic architecture drift, reusable themes, structured visual audits, and dependency-free previews are usable.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -94,6 +94,50 @@ Open the [editable HA pack](docs/ha/checkout-ha.drawio), [generated IR](docs/ha/
 
 ![Checkout high-availability topology](docs/ha/topology.svg)
 
+## Infrastructure and pipeline intelligence
+
+Generate editable topology directly from Terraform, Kubernetes, GitHub Actions, or GitLab CI:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  import ./infra --type terraform -o terraform.diagram.json
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  import ./manifests --type kubernetes -o kubernetes.diagram.json
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  import . --type github-actions -o delivery.diagram.json
+```
+
+Terraform references become dependency edges. Kubernetes namespaces become groups, with Ingress → Service → workload and workload → configuration/storage relations derived from declared selectors and references. Secret values are redacted. CI jobs are grouped by workflow or stage and ordered from prerequisite to dependent job.
+
+See the complete [importer contract](skills/drawio-diagram-engineer/references/importers.md) and the deterministic 20-case fixture corpus in [tests/fixtures/importers/corpus.json](tests/fixtures/importers/corpus.json).
+
+Open the editable and audited examples:
+
+- [Terraform diagram](docs/infrastructure/terraform/infrastructure.drawio), [SVG](docs/infrastructure/terraform/main.svg), and [100-point audit](docs/infrastructure/terraform/audit.json).
+- [Kubernetes diagram](docs/infrastructure/kubernetes/runtime.drawio), [SVG](docs/infrastructure/kubernetes/main.svg), and [100-point audit](docs/infrastructure/kubernetes/audit.json).
+- [GitHub Actions](docs/pipelines/github-actions/pipeline.drawio) and [GitLab CI](docs/pipelines/gitlab-ci/pipeline.drawio), each with a generated SVG and 100-point audit.
+
+![Kubernetes runtime topology imported from manifests](docs/infrastructure/kubernetes/main.svg)
+
+## Semantic architecture drift
+
+Compare two Diagram IR versions while ignoring layout-only movement:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  diff approved.diagram.json generated.diagram.json \
+  -o drift.report.json \
+  --diagram-output drift.drawio \
+  --preview-dir drift-previews \
+  --fail-on-drift
+```
+
+The report classifies page, group, node, and edge changes by stable semantic ID. The editable view uses green for additions, red dashed shapes for removals, and amber for changes, with text status markers for non-color-only review. See the [drift contract](skills/drawio-diagram-engineer/references/drift.md), [example report](docs/drift/report.json), [editable view](docs/drift/architecture-drift.drawio), [SVG preview](docs/drift/main.svg), and [100-point audit](docs/drift/audit.json).
+
+![Semantic architecture drift view](docs/drift/main.svg)
+
 ## Organization themes and visual audit
 
 Apply a reusable theme pack and generate a machine-readable QA report:
@@ -147,7 +191,8 @@ drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
 drawio_tool.py blueprint <blueprint.json> -o <pack.drawio> [--ir-output <ir.json>] [--preview-dir <dir>] [--theme-file <theme.json>]
 drawio_tool.py erd <erd.json|schema.sql> -o <erd.drawio> [--ir-output <ir.json>] [--preview-dir <dir>]
 drawio_tool.py ha <ha.json> -o <ha.drawio> [--ir-output <ir.json>] [--preview-dir <dir>]
-drawio_tool.py import <source-tree|openapi|schema.sql|compose> --type <type> -o <ir.json>
+drawio_tool.py import <source> --type <python|typescript|openapi|sql|compose|terraform|kubernetes|github-actions|gitlab-ci> -o <ir.json>
+drawio_tool.py diff <baseline.ir.json> <candidate.ir.json> -o <report.json> [--diagram-output <drift.drawio>] [--preview-dir <dir>] [--fail-on-drift]
 drawio_tool.py patch <ir.json> <operations.json> -o <updated.json>
 drawio_tool.py preview <ir.json> -o <preview.svg> [--page <id>] [--theme-file <theme.json>]
 drawio_tool.py audit <ir.json|blueprint.json|diagram.drawio> [-o <report.json>] [--preview-dir <dir>] [--strict]
@@ -160,7 +205,7 @@ JSON works without third-party packages. YAML input is optional and requires PyY
 
 ## Roadmap
 
-The next milestone expands infrastructure intelligence with Terraform, Kubernetes, CI pipelines, architecture drift, and stronger routing. See the measurable milestone and release criteria in [ROADMAP.md](ROADMAP.md).
+The next milestone focuses on explicit ports, stronger orthogonal routing, broader legacy-importer fixtures, and the v1 compatibility contract. See the measurable release criteria in [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

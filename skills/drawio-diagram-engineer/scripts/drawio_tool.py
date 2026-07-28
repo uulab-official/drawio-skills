@@ -23,7 +23,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 ALLOWED_DIRECTIONS = {"LR", "TB"}
 ALLOWED_THEMES = {"light", "dark", "colorblind"}
 ALLOWED_KINDS = {
@@ -856,11 +856,25 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
         "fill": str(diagram.get("background", theme["background"])),
     })
     defs = ET.SubElement(svg, "defs")
-    marker = ET.SubElement(defs, "marker", {
-        "id": "arrow", "viewBox": "0 0 10 10", "refX": "9", "refY": "5",
-        "markerWidth": "7", "markerHeight": "7", "orient": "auto-start-reverse",
-    })
-    ET.SubElement(marker, "path", {"d": "M 0 0 L 10 5 L 0 10 z", "fill": theme["edge"]})
+    edge_colors = {
+        str(
+            edge.get("style", {}).get("color", theme["edge"])
+            if isinstance(edge.get("style"), dict) else theme["edge"]
+        )
+        for edge in data.get("edges", [])
+        if isinstance(edge, dict)
+    } | {str(theme["edge"])}
+    marker_ids: dict[str, str] = {}
+    for color in sorted(edge_colors):
+        marker_id = f"arrow-{slugify(color)}"
+        marker_ids[color] = marker_id
+        marker = ET.SubElement(defs, "marker", {
+            "id": marker_id, "viewBox": "0 0 10 10", "refX": "9", "refY": "5",
+            "markerWidth": "7", "markerHeight": "7", "orient": "auto-start-reverse",
+        })
+        ET.SubElement(marker, "path", {
+            "d": "M 0 0 L 10 5 L 0 10 z", "fill": color,
+        })
 
     for group, x, y, width, height in group_boxes:
         ET.SubElement(svg, "rect", {
@@ -900,11 +914,14 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
             points = [start, (start[0], midpoint), (end[0], midpoint), end]
         edge_kind = str(edge.get("kind", "sync"))
         edge_custom = edge.get("style", {}) if isinstance(edge.get("style"), dict) else {}
+        edge_color = str(edge_custom.get("color", theme["edge"]))
         attrs = {
             "points": " ".join(f"{x},{y}" for x, y in points), "fill": "none",
-            "stroke": theme["edge"], "stroke-width": "2", "marker-end": "url(#arrow)",
+            "stroke": edge_color,
+            "stroke-width": str(edge_custom.get("width", 2)),
+            "marker-end": f"url(#{marker_ids[edge_color]})",
         }
-        if edge_kind in {"async", "dependency"}:
+        if edge_kind in {"async", "dependency"} or edge_custom.get("dashed"):
             attrs["stroke-dasharray"] = "7 5"
         if edge_kind == "association":
             attrs.pop("marker-end")
@@ -1008,7 +1025,10 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
             ET.SubElement(svg, "rect", {
                 "x": str(x), "y": str(y), "width": str(width), "height": str(height),
                 "rx": "12", "fill": fill, "stroke": stroke, "stroke-width": "2",
-                **({"stroke-dasharray": "7 5"} if kind == "external" else {}),
+                **(
+                    {"stroke-dasharray": "7 5"}
+                    if kind == "external" or custom.get("dashed") else {}
+                ),
             })
             if kind == "database":
                 ET.SubElement(svg, "ellipse", {
@@ -1620,11 +1640,11 @@ def discover_source_files(root: Path, suffixes: set[str], max_files: int) -> lis
     return files
 
 
-def unique_module_ids(relative_names: list[str]) -> dict[str, str]:
+def unique_prefixed_ids(names: list[str], prefix: str) -> dict[str, str]:
     result: dict[str, str] = {}
     used: set[str] = set()
-    for name in sorted(relative_names):
-        base = f"module-{slugify(name)}"
+    for name in sorted(names):
+        base = f"{prefix}-{slugify(name)}"
         candidate = base
         suffix = 2
         while candidate in used:
@@ -1633,6 +1653,10 @@ def unique_module_ids(relative_names: list[str]) -> dict[str, str]:
         result[name] = candidate
         used.add(candidate)
     return result
+
+
+def unique_module_ids(relative_names: list[str]) -> dict[str, str]:
+    return unique_prefixed_ids(relative_names, "module")
 
 
 def code_groups(relative_paths: list[Path]) -> tuple[list[dict[str, Any]], dict[str, str]]:
@@ -1797,34 +1821,649 @@ def import_typescript_tree(root: Path, title: str | None = None, max_files: int 
     }
 
 
+def discover_input_files(
+    path: Path, suffixes: set[str], max_files: int, preferred_names: set[str] | None = None,
+) -> list[Path]:
+    if path.is_file():
+        files = [path]
+    elif path.is_dir():
+        files = sorted(
+            item for item in path.rglob("*")
+            if item.is_file()
+            and (
+                item.suffix.lower() in suffixes
+                or (preferred_names is not None and item.name in preferred_names)
+            )
+            and not (set(item.relative_to(path).parts) & IGNORED_SOURCE_DIRS)
+        )
+    else:
+        raise ValueError(f"input does not exist: {path}")
+    if len(files) > max_files:
+        raise ValueError(
+            f"input has {len(files)} matching files; raise --max-files above {max_files} explicitly"
+        )
+    return files
+
+
+def hcl_blocks(text: str) -> list[tuple[str, list[str], str]]:
+    """Return top-level Terraform blocks without requiring an HCL dependency."""
+    header = re.compile(
+        r'(?m)^\s*(resource|data|module)\s+"([^"]+)"'
+        r'(?:\s+"([^"]+)")?\s*\{'
+    )
+    blocks: list[tuple[str, list[str], str]] = []
+    for match in header.finditer(text):
+        depth = 1
+        index = match.end()
+        quote: str | None = None
+        escaped = False
+        line_comment = False
+        block_comment = False
+        while index < len(text) and depth:
+            char = text[index]
+            following = text[index:index + 2]
+            if line_comment:
+                if char == "\n":
+                    line_comment = False
+            elif block_comment:
+                if following == "*/":
+                    block_comment = False
+                    index += 1
+            elif quote:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == quote:
+                    quote = None
+            elif following == "//" or char == "#":
+                line_comment = True
+                if following == "//":
+                    index += 1
+            elif following == "/*":
+                block_comment = True
+                index += 1
+            elif char in {'"', "'"}:
+                quote = char
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+            index += 1
+        if depth:
+            raise ValueError(f"unclosed Terraform {match.group(1)} block: {match.group(2)}")
+        labels = [match.group(2)]
+        if match.group(3):
+            labels.append(match.group(3))
+        blocks.append((match.group(1), labels, text[match.end():index - 1]))
+    return blocks
+
+
+def terraform_kind(address: str) -> str:
+    lowered = address.lower()
+    if any(token in lowered for token in (
+        "db_", "database", "rds", "dynamodb", "elasticache", "redis", "storage",
+        "bucket", "volume", "disk",
+    )):
+        return "database"
+    if any(token in lowered for token in (
+        "queue", "topic", "sns", "sqs", "pubsub", "eventhub", "kafka",
+    )):
+        return "queue"
+    if address.startswith(("data.", "module.")):
+        return "external"
+    return "service"
+
+
+def import_terraform(
+    path: Path, title: str | None = None, max_files: int = 500,
+) -> dict[str, Any]:
+    files = discover_input_files(path, {".tf"}, max_files)
+    if not files:
+        raise ValueError("no Terraform .tf files found")
+    base = path if path.is_dir() else path.parent
+    records: list[dict[str, str]] = []
+    for source_file in files:
+        relative = str(source_file.relative_to(base)) if source_file != path else source_file.name
+        text = source_file.read_text(encoding="utf-8")
+        for block_type, labels, body in hcl_blocks(text):
+            if block_type == "module":
+                address = f"module.{labels[0]}"
+                label = labels[0]
+            elif block_type == "data":
+                address = f"data.{labels[0]}.{labels[1]}"
+                label = f"{labels[0]}.{labels[1]}"
+            else:
+                address = f"{labels[0]}.{labels[1]}"
+                label = f"{labels[0]}.{labels[1]}"
+            records.append({
+                "address": address, "label": label, "block_type": block_type,
+                "body": body, "file": relative,
+            })
+    if not records:
+        raise ValueError("no Terraform resource, data, or module blocks found")
+    addresses = sorted({record["address"] for record in records})
+    ids = unique_module_ids(addresses)
+    file_names = sorted({record["file"] for record in records})
+    group_ids = unique_prefixed_ids(file_names, "terraform")
+    groups = [{"id": group_ids[name], "label": name} for name in file_names]
+    by_address = {record["address"]: record for record in records}
+    nodes = [
+        {
+            "id": ids[address],
+            "label": by_address[address]["label"],
+            "kind": terraform_kind(address),
+            "group": group_ids[by_address[address]["file"]],
+            "description": (
+                f"{by_address[address]['block_type']} · {by_address[address]['file']} · {address}"
+            ),
+        }
+        for address in addresses
+    ]
+    reference_pattern = re.compile(
+        r"\b("
+        r"data\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+"
+        r"|module\.[A-Za-z0-9_-]+"
+        r"|[A-Za-z][A-Za-z0-9_-]*\.[A-Za-z0-9_-]+"
+        r")\b"
+    )
+    ignored_prefixes = {
+        "var", "local", "each", "count", "path", "terraform", "self",
+    }
+    relations: set[tuple[str, str]] = set()
+    for record in records:
+        for reference in reference_pattern.findall(record["body"]):
+            if reference.split(".", 1)[0] in ignored_prefixes:
+                continue
+            if reference in ids and reference != record["address"]:
+                relations.add((record["address"], reference))
+    edges = [
+        {
+            "id": f"{ids[source]}-depends-{ids[target]}",
+            "from": ids[source], "to": ids[target],
+            "label": "depends on", "kind": "dependency",
+        }
+        for source, target in sorted(relations)
+    ]
+    return {
+        "version": "1",
+        "diagram": {
+            "title": title or f"{path.stem if path.is_file() else path.name} Terraform",
+            "direction": "LR", "theme": "colorblind",
+        },
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def load_document_stream(path: Path) -> list[dict[str, Any]]:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() == ".json":
+        loaded = json.loads(text)
+        values = loaded if isinstance(loaded, list) else [loaded]
+    else:
+        try:
+            import yaml  # type: ignore
+        except ImportError as exc:
+            raise ValueError(
+                "YAML manifest input requires PyYAML; use JSON or install pyyaml"
+            ) from exc
+        values = list(yaml.safe_load_all(text))
+    documents: list[dict[str, Any]] = []
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        if value.get("kind") == "List" and isinstance(value.get("items"), list):
+            documents.extend(item for item in value["items"] if isinstance(item, dict))
+        else:
+            documents.append(value)
+    return documents
+
+
+def kubernetes_kind(kind: str) -> str:
+    if kind in {"ConfigMap", "Secret"}:
+        return "document"
+    if kind in {"PersistentVolume", "PersistentVolumeClaim", "StorageClass"}:
+        return "database"
+    if kind in {"Ingress", "Gateway", "HTTPRoute", "LoadBalancer"}:
+        return "external"
+    if kind in {"Job", "CronJob"}:
+        return "process"
+    return "service"
+
+
+def kubernetes_pod_spec(resource: dict[str, Any]) -> dict[str, Any]:
+    spec = resource.get("spec", {}) if isinstance(resource.get("spec"), dict) else {}
+    kind = str(resource.get("kind", ""))
+    if kind == "CronJob":
+        return (
+            spec.get("jobTemplate", {}).get("spec", {}).get("template", {}).get("spec", {})
+            if isinstance(spec.get("jobTemplate"), dict) else {}
+        )
+    template = spec.get("template", {}) if isinstance(spec.get("template"), dict) else {}
+    return template.get("spec", {}) if isinstance(template.get("spec"), dict) else {}
+
+
+def import_kubernetes(
+    path: Path, title: str | None = None, max_files: int = 500,
+) -> dict[str, Any]:
+    files = discover_input_files(path, {".json", ".yaml", ".yml"}, max_files)
+    if not files:
+        raise ValueError("no Kubernetes JSON or YAML manifests found")
+    resources: list[dict[str, Any]] = []
+    for source_file in files:
+        resources.extend(load_document_stream(source_file))
+    resources = [
+        resource for resource in resources
+        if resource.get("kind")
+        and isinstance(resource.get("metadata"), dict)
+        and resource["metadata"].get("name")
+    ]
+    if not resources:
+        raise ValueError("no Kubernetes resources with kind and metadata.name found")
+    keyed: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for resource in resources:
+        metadata = resource["metadata"]
+        namespace = str(metadata.get("namespace") or "default")
+        key = (namespace, str(resource["kind"]), str(metadata["name"]))
+        keyed[key] = resource
+    namespaces = sorted({key[0] for key in keyed})
+    group_ids = unique_prefixed_ids(namespaces, "namespace")
+    groups = [
+        {"id": group_ids[namespace], "label": f"namespace/{namespace}"}
+        for namespace in namespaces
+    ]
+    resource_addresses = {
+        key: f"{key[0]}/{key[1]}/{key[2]}" for key in keyed
+    }
+    address_ids = unique_prefixed_ids(list(resource_addresses.values()), "k8s")
+    resource_ids = {
+        key: address_ids[address] for key, address in resource_addresses.items()
+    }
+    nodes = []
+    for key in sorted(keyed):
+        namespace, kind, name = key
+        resource = keyed[key]
+        spec = resource.get("spec", {}) if isinstance(resource.get("spec"), dict) else {}
+        details: list[str] = [kind, f"namespace/{namespace}"]
+        if kind in {"Deployment", "StatefulSet", "DaemonSet"}:
+            details.append(f"replicas={spec.get('replicas', 1)}")
+        if kind == "Service":
+            details.append(f"type={spec.get('type', 'ClusterIP')}")
+        if kind == "Secret":
+            details.append("metadata only; values redacted")
+        nodes.append({
+            "id": resource_ids[key], "label": name, "kind": kubernetes_kind(kind),
+            "group": group_ids[namespace], "description": " · ".join(details),
+        })
+
+    relations: set[tuple[tuple[str, str, str], tuple[str, str, str], str, str]] = set()
+    workloads = {"Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob", "Pod"}
+    for key in sorted(keyed):
+        namespace, kind, _ = key
+        resource = keyed[key]
+        metadata = resource.get("metadata", {})
+        spec = resource.get("spec", {}) if isinstance(resource.get("spec"), dict) else {}
+        for owner in metadata.get("ownerReferences", []) if isinstance(metadata.get("ownerReferences"), list) else []:
+            if not isinstance(owner, dict):
+                continue
+            target = (namespace, str(owner.get("kind", "")), str(owner.get("name", "")))
+            if target in keyed:
+                relations.add((target, key, "owns", "dependency"))
+        if kind == "Service":
+            selector = spec.get("selector", {}) if isinstance(spec.get("selector"), dict) else {}
+            if selector:
+                for target, candidate in keyed.items():
+                    if target[0] != namespace or target[1] not in workloads:
+                        continue
+                    candidate_spec = candidate.get("spec", {}) if isinstance(candidate.get("spec"), dict) else {}
+                    template = candidate_spec.get("template", {}) if isinstance(candidate_spec.get("template"), dict) else {}
+                    template_metadata = (
+                        template.get("metadata", {}) if isinstance(template.get("metadata"), dict) else {}
+                    )
+                    labels = template_metadata.get("labels", {})
+                    if target[1] == "Pod":
+                        labels = candidate.get("metadata", {}).get("labels", {})
+                    if isinstance(labels, dict) and all(labels.get(name) == value for name, value in selector.items()):
+                        relations.add((key, target, "selects", "sync"))
+        if kind in {"Ingress", "HTTPRoute"}:
+            backend_names: set[str] = set()
+            default_backend = spec.get("defaultBackend", {})
+            if isinstance(default_backend, dict):
+                service = default_backend.get("service", {})
+                if isinstance(service, dict) and service.get("name"):
+                    backend_names.add(str(service["name"]))
+                elif default_backend.get("serviceName"):
+                    backend_names.add(str(default_backend["serviceName"]))
+            for rule in spec.get("rules", []) if isinstance(spec.get("rules"), list) else []:
+                if not isinstance(rule, dict):
+                    continue
+                http = rule.get("http", {}) if isinstance(rule.get("http"), dict) else {}
+                paths = http.get("paths", []) if isinstance(http.get("paths"), list) else []
+                for route_path in paths:
+                    backend = route_path.get("backend", {}) if isinstance(route_path, dict) else {}
+                    service = backend.get("service", {}) if isinstance(backend.get("service"), dict) else {}
+                    name = service.get("name") or backend.get("serviceName")
+                    if name:
+                        backend_names.add(str(name))
+                for backend in rule.get("backendRefs", []) if isinstance(rule.get("backendRefs"), list) else []:
+                    if isinstance(backend, dict) and backend.get("name"):
+                        backend_names.add(str(backend["name"]))
+            for backend_name in sorted(backend_names):
+                target = (namespace, "Service", backend_name)
+                if target in keyed:
+                    relations.add((key, target, "routes", "sync"))
+        if kind in workloads:
+            pod_spec = spec if kind == "Pod" else kubernetes_pod_spec(resource)
+            config_refs: set[tuple[str, str]] = set()
+            for container in pod_spec.get("containers", []) if isinstance(pod_spec.get("containers"), list) else []:
+                if not isinstance(container, dict):
+                    continue
+                for env_from in container.get("envFrom", []) if isinstance(container.get("envFrom"), list) else []:
+                    if not isinstance(env_from, dict):
+                        continue
+                    for field, target_kind in (("configMapRef", "ConfigMap"), ("secretRef", "Secret")):
+                        reference = env_from.get(field, {})
+                        if isinstance(reference, dict) and reference.get("name"):
+                            config_refs.add((target_kind, str(reference["name"])))
+                for env in container.get("env", []) if isinstance(container.get("env"), list) else []:
+                    value_from = env.get("valueFrom", {}) if isinstance(env, dict) else {}
+                    for field, target_kind in (("configMapKeyRef", "ConfigMap"), ("secretKeyRef", "Secret")):
+                        reference = value_from.get(field, {}) if isinstance(value_from, dict) else {}
+                        if isinstance(reference, dict) and reference.get("name"):
+                            config_refs.add((target_kind, str(reference["name"])))
+            for volume in pod_spec.get("volumes", []) if isinstance(pod_spec.get("volumes"), list) else []:
+                if not isinstance(volume, dict):
+                    continue
+                for field, target_kind in (
+                    ("configMap", "ConfigMap"), ("secret", "Secret"),
+                    ("persistentVolumeClaim", "PersistentVolumeClaim"),
+                ):
+                    reference = volume.get(field, {})
+                    if not isinstance(reference, dict):
+                        continue
+                    name = reference.get("claimName") if target_kind == "PersistentVolumeClaim" else reference.get("name") or reference.get("secretName")
+                    if name:
+                        config_refs.add((target_kind, str(name)))
+            for target_kind, name in sorted(config_refs):
+                target = (namespace, target_kind, name)
+                if target in keyed:
+                    relations.add((key, target, "uses", "data"))
+    edges = [
+        {
+            "id": (
+                f"{resource_ids[source]}-{slugify(label)}-{resource_ids[target]}"
+            ),
+            "from": resource_ids[source], "to": resource_ids[target],
+            "label": label, "kind": edge_kind,
+        }
+        for source, target, label, edge_kind in sorted(relations)
+    ]
+    return {
+        "version": "1",
+        "diagram": {
+            "title": title or f"{path.stem if path.is_file() else path.name} Kubernetes",
+            "direction": "LR", "theme": "colorblind",
+        },
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def pipeline_files(
+    path: Path, pipeline_type: str, max_files: int,
+) -> list[Path]:
+    if path.is_file():
+        return [path]
+    if pipeline_type == "github-actions":
+        workflows = path / ".github" / "workflows"
+        if not workflows.is_dir():
+            workflows = path
+        return discover_input_files(workflows, {".json", ".yaml", ".yml"}, max_files)
+    return discover_input_files(
+        path, {".json", ".yaml", ".yml"}, max_files,
+        preferred_names={".gitlab-ci.yml", ".gitlab-ci.yaml"},
+    )
+
+
+def import_github_actions(
+    path: Path, title: str | None = None, max_files: int = 500,
+) -> dict[str, Any]:
+    files = pipeline_files(path, "github-actions", max_files)
+    workflows: list[tuple[Path, dict[str, Any]]] = []
+    for source_file in files:
+        loaded = load_data(source_file)
+        if isinstance(loaded.get("jobs"), dict):
+            workflows.append((source_file, loaded))
+    if not workflows:
+        raise ValueError("no GitHub Actions workflows with jobs found")
+    groups: list[dict[str, Any]] = []
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    base = path if path.is_dir() else path.parent
+    workflow_names = [
+        str(source_file.relative_to(base)) if source_file != path else source_file.name
+        for source_file, _ in workflows
+    ]
+    workflow_ids = unique_prefixed_ids(workflow_names, "workflow")
+    for source_file, workflow in sorted(workflows, key=lambda item: str(item[0])):
+        workflow_name = (
+            str(source_file.relative_to(base)) if source_file != path else source_file.name
+        )
+        workflow_id = workflow_ids[workflow_name]
+        groups.append({
+            "id": workflow_id,
+            "label": str(workflow.get("name") or source_file.stem),
+        })
+        jobs = workflow["jobs"]
+        local_job_ids = unique_prefixed_ids(
+            [str(name) for name in jobs], f"{workflow_id}-job",
+        )
+        job_ids = {str(name): local_job_ids[str(name)] for name in jobs}
+        reusable_names = sorted({
+            str(config["uses"])
+            for config in jobs.values()
+            if isinstance(config, dict) and config.get("uses")
+        })
+        reusable_ids = unique_prefixed_ids(
+            reusable_names, f"{workflow_id}-reusable",
+        )
+        for reusable in reusable_names:
+            nodes.append({
+                "id": reusable_ids[reusable],
+                "label": reusable.split("@", 1)[0],
+                "kind": "external",
+                "group": workflow_id,
+                "description": reusable,
+            })
+        for name in sorted(jobs):
+            config = jobs[name] if isinstance(jobs[name], dict) else {}
+            description = str(config.get("runs-on") or config.get("uses") or "job")
+            nodes.append({
+                "id": job_ids[str(name)],
+                "label": str(config.get("name") or name),
+                "kind": "process",
+                "group": workflow_id,
+                "description": description,
+            })
+            needs = config.get("needs", [])
+            if isinstance(needs, str):
+                needs = [needs]
+            if isinstance(needs, list):
+                for dependency in sorted(str(item) for item in needs):
+                    if dependency in job_ids:
+                        edges.append({
+                            "id": f"{job_ids[dependency]}-before-{job_ids[str(name)]}",
+                            "from": job_ids[dependency], "to": job_ids[str(name)],
+                            "label": "needs", "kind": "dependency",
+                        })
+            reusable = str(config.get("uses", ""))
+            if reusable in reusable_ids:
+                edges.append({
+                    "id": f"{job_ids[str(name)]}-calls-{reusable_ids[reusable]}",
+                    "from": job_ids[str(name)], "to": reusable_ids[reusable],
+                    "label": "calls", "kind": "dependency",
+                })
+    return {
+        "version": "1",
+        "diagram": {
+            "title": title or f"{path.stem if path.is_file() else path.name} GitHub Actions",
+            "direction": "TB", "theme": "colorblind",
+        },
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+GITLAB_RESERVED_KEYS = {
+    "default", "include", "stages", "variables", "workflow", "image", "services",
+    "before_script", "after_script", "cache", "pages", "interruptible",
+}
+
+
+def import_gitlab_ci(
+    path: Path, title: str | None = None, max_files: int = 500,
+) -> dict[str, Any]:
+    files = pipeline_files(path, "gitlab-ci", max_files)
+    if not files:
+        raise ValueError("no GitLab CI files found")
+    source_file = next(
+        (item for item in files if item.name in {".gitlab-ci.yml", ".gitlab-ci.yaml"}),
+        files[0],
+    )
+    source = load_data(source_file)
+    jobs = {
+        str(name): config for name, config in source.items()
+        if name not in GITLAB_RESERVED_KEYS
+        and not str(name).startswith(".")
+        and isinstance(config, dict)
+        and any(key in config for key in ("script", "trigger", "stage"))
+    }
+    if not jobs:
+        raise ValueError("no GitLab CI jobs found")
+    declared_stages = source.get("stages", [])
+    stage_names = [str(item) for item in declared_stages] if isinstance(declared_stages, list) else []
+    for config in jobs.values():
+        stage = str(config.get("stage", "test"))
+        if stage not in stage_names:
+            stage_names.append(stage)
+    group_ids = {stage: f"stage-{slugify(stage)}" for stage in stage_names}
+    groups = [{"id": group_ids[stage], "label": stage} for stage in stage_names]
+    job_ids = unique_prefixed_ids(list(jobs), "gitlab-job")
+    nodes = [
+        {
+            "id": job_ids[name],
+            "label": name,
+            "kind": "process",
+            "group": group_ids[str(jobs[name].get("stage", "test"))],
+            "description": (
+                "trigger" if "trigger" in jobs[name]
+                else f"{len(jobs[name].get('script', [])) if isinstance(jobs[name].get('script'), list) else 1} script step(s)"
+            ),
+        }
+        for name in sorted(jobs)
+    ]
+    relations: set[tuple[str, str, str]] = set()
+    explicit_jobs: set[str] = set()
+    for name, config in jobs.items():
+        needs = config.get("needs", config.get("dependencies", []))
+        if isinstance(needs, str):
+            needs = [needs]
+        if isinstance(needs, list) and needs:
+            explicit_jobs.add(name)
+            for dependency in needs:
+                dependency_name = (
+                    str(dependency.get("job")) if isinstance(dependency, dict) else str(dependency)
+                )
+                if dependency_name in jobs and dependency_name != name:
+                    relations.add((dependency_name, name, "needs"))
+    jobs_by_stage: dict[str, list[str]] = defaultdict(list)
+    for name, config in jobs.items():
+        jobs_by_stage[str(config.get("stage", "test"))].append(name)
+    for index in range(1, len(stage_names)):
+        for target in sorted(jobs_by_stage[stage_names[index]]):
+            if target in explicit_jobs:
+                continue
+            for source_name in sorted(jobs_by_stage[stage_names[index - 1]]):
+                relations.add((source_name, target, "stage"))
+    edges = [
+        {
+            "id": f"{job_ids[source_name]}-before-{job_ids[target]}",
+            "from": job_ids[source_name], "to": job_ids[target],
+            "label": label, "kind": "dependency",
+        }
+        for source_name, target, label in sorted(relations)
+    ]
+    return {
+        "version": "1",
+        "diagram": {
+            "title": title or f"{source_file.name} GitLab CI",
+            "direction": "TB", "theme": "colorblind",
+        },
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
 def import_source(
     path: Path, source_type: str, title: str | None = None, max_files: int = 500,
 ) -> dict[str, Any]:
     if source_type == "auto":
         if path.is_dir():
-            python_count = sum(1 for item in path.rglob("*.py") if not (set(item.relative_to(path).parts) & IGNORED_SOURCE_DIRS))
-            typescript_count = sum(
-                1 for item in path.rglob("*")
-                if item.suffix.lower() in {".ts", ".tsx", ".js", ".jsx"}
-                and not (set(item.relative_to(path).parts) & IGNORED_SOURCE_DIRS)
+            terraform_count = sum(
+                1 for item in path.rglob("*.tf")
+                if not (set(item.relative_to(path).parts) & IGNORED_SOURCE_DIRS)
             )
-            if python_count == typescript_count == 0:
-                raise ValueError("cannot detect source type in directory; use --type")
-            source_type = "python" if python_count >= typescript_count else "typescript"
+            if terraform_count:
+                source_type = "terraform"
+            elif (path / ".github" / "workflows").is_dir():
+                source_type = "github-actions"
+            elif (path / ".gitlab-ci.yml").is_file() or (path / ".gitlab-ci.yaml").is_file():
+                source_type = "gitlab-ci"
+            else:
+                python_count = sum(1 for item in path.rglob("*.py") if not (set(item.relative_to(path).parts) & IGNORED_SOURCE_DIRS))
+                typescript_count = sum(
+                    1 for item in path.rglob("*")
+                    if item.suffix.lower() in {".ts", ".tsx", ".js", ".jsx"}
+                    and not (set(item.relative_to(path).parts) & IGNORED_SOURCE_DIRS)
+                )
+                if python_count == typescript_count == 0:
+                    raise ValueError("cannot detect source type in directory; use --type")
+                source_type = "python" if python_count >= typescript_count else "typescript"
+        elif path.suffix.lower() == ".tf":
+            source_type = "terraform"
         elif path.suffix.lower() == ".sql":
             source_type = "sql"
         else:
             loaded = load_data(path)
-            if "openapi" in loaded or "swagger" in loaded:
+            if loaded.get("apiVersion") and loaded.get("kind"):
+                source_type = "kubernetes"
+            elif "openapi" in loaded or "swagger" in loaded:
                 source_type = "openapi"
             elif "services" in loaded:
                 source_type = "compose"
+            elif isinstance(loaded.get("jobs"), dict):
+                source_type = "github-actions"
+            elif isinstance(loaded.get("stages"), list):
+                source_type = "gitlab-ci"
             else:
                 raise ValueError("cannot detect source type; use --type")
     if source_type == "python":
         return import_python_tree(path, title, max_files)
     if source_type == "typescript":
         return import_typescript_tree(path, title, max_files)
+    if source_type == "terraform":
+        return import_terraform(path, title, max_files)
+    if source_type == "kubernetes":
+        return import_kubernetes(path, title, max_files)
+    if source_type == "github-actions":
+        return import_github_actions(path, title, max_files)
+    if source_type == "gitlab-ci":
+        return import_gitlab_ci(path, title, max_files)
     if source_type == "sql":
         return import_sql(path.read_text(encoding="utf-8"), title)
     loaded = load_data(path)
@@ -1833,6 +2472,240 @@ def import_source(
     if source_type == "compose":
         return import_compose(loaded, title)
     raise ValueError(f"unsupported source type: {source_type}")
+
+
+def semantic_pages(data: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    if "pages" not in data:
+        return {
+            "main": {
+                "id": "main",
+                "title": str(data.get("diagram", {}).get("title", "Diagram")),
+                "diagram": data.get("diagram", {}),
+                "groups": data.get("groups", []),
+                "nodes": data.get("nodes", []),
+                "edges": data.get("edges", []),
+            }
+        }
+    return {
+        str(page["id"]): page
+        for page in data.get("pages", [])
+        if isinstance(page, dict) and page.get("id")
+    }
+
+
+def semantic_value(category: str, value: dict[str, Any]) -> dict[str, Any]:
+    ignored = {
+        "nodes": {"position", "size", "style"},
+        "edges": {"style"},
+        "groups": set(),
+    }[category]
+    return {
+        key: copy.deepcopy(value[key])
+        for key in sorted(value)
+        if key not in ignored
+    }
+
+
+def architecture_diff(
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    baseline_name: str = "baseline",
+    candidate_name: str = "candidate",
+) -> dict[str, Any]:
+    baseline_errors = [
+        item for item in validate_ir(baseline) if item["level"] == "error"
+    ]
+    candidate_errors = [
+        item for item in validate_ir(candidate) if item["level"] == "error"
+    ]
+    if baseline_errors:
+        raise ValueError(f"baseline is invalid: {baseline_errors[0]['message']}")
+    if candidate_errors:
+        raise ValueError(f"candidate is invalid: {candidate_errors[0]['message']}")
+    before_pages = semantic_pages(baseline)
+    after_pages = semantic_pages(candidate)
+    changes: dict[str, dict[str, list[dict[str, Any]]]] = {
+        category: {"added": [], "removed": [], "changed": []}
+        for category in ("pages", "groups", "nodes", "edges")
+    }
+    before_page_ids, after_page_ids = set(before_pages), set(after_pages)
+    for page_id in sorted(after_page_ids - before_page_ids):
+        changes["pages"]["added"].append({
+            "id": page_id, "after": {"title": str(after_pages[page_id].get("title", page_id))},
+        })
+    for page_id in sorted(before_page_ids - after_page_ids):
+        changes["pages"]["removed"].append({
+            "id": page_id, "before": {"title": str(before_pages[page_id].get("title", page_id))},
+        })
+    for page_id in sorted(before_page_ids & after_page_ids):
+        before_title = str(before_pages[page_id].get("title", page_id))
+        after_title = str(after_pages[page_id].get("title", page_id))
+        if before_title != after_title:
+            changes["pages"]["changed"].append({
+                "id": page_id,
+                "before": {"title": before_title},
+                "after": {"title": after_title},
+            })
+    for page_id in sorted(before_page_ids | after_page_ids):
+        before_page = before_pages.get(page_id, {})
+        after_page = after_pages.get(page_id, {})
+        for category in ("groups", "nodes", "edges"):
+            before_items = {
+                str(item["id"]): semantic_value(category, item)
+                for item in before_page.get(category, [])
+                if isinstance(item, dict) and item.get("id")
+            }
+            after_items = {
+                str(item["id"]): semantic_value(category, item)
+                for item in after_page.get(category, [])
+                if isinstance(item, dict) and item.get("id")
+            }
+            for item_id in sorted(set(after_items) - set(before_items)):
+                changes[category]["added"].append({
+                    "page": page_id, "id": item_id, "after": after_items[item_id],
+                })
+            for item_id in sorted(set(before_items) - set(after_items)):
+                changes[category]["removed"].append({
+                    "page": page_id, "id": item_id, "before": before_items[item_id],
+                })
+            for item_id in sorted(set(before_items) & set(after_items)):
+                if before_items[item_id] != after_items[item_id]:
+                    changes[category]["changed"].append({
+                        "page": page_id, "id": item_id,
+                        "before": before_items[item_id], "after": after_items[item_id],
+                    })
+    summary = {
+        status: sum(
+            len(changes[category][status])
+            for category in changes
+        )
+        for status in ("added", "removed", "changed")
+    }
+    return {
+        "version": "1",
+        "baseline": baseline_name,
+        "candidate": candidate_name,
+        "drift": any(summary.values()),
+        "summary": {**summary, "total": sum(summary.values())},
+        "changes": changes,
+    }
+
+
+DRIFT_STYLES = {
+    "added": {"fill": "#d9f0d3", "stroke": "#009e73", "font": "#111111"},
+    "removed": {
+        "fill": "#f4cccc", "stroke": "#d55e00", "font": "#111111", "dashed": True,
+    },
+    "changed": {"fill": "#fff2cc", "stroke": "#a65f00", "font": "#111111"},
+}
+DRIFT_EDGE_STYLES = {
+    "added": {"color": "#009e73", "width": 3},
+    "removed": {"color": "#d55e00", "width": 3, "dashed": True},
+    "changed": {"color": "#a65f00", "width": 3},
+}
+DRIFT_CONTEXT_STYLE = {
+    "fill": "#eeeeee", "stroke": "#7a7a7a", "font": "#111111",
+}
+DRIFT_CONTEXT_EDGE_STYLE = {"color": "#7a7a7a", "width": 2}
+
+
+def drift_diagram(
+    baseline: dict[str, Any],
+    candidate: dict[str, Any],
+    report: dict[str, Any],
+) -> dict[str, Any]:
+    before_pages = semantic_pages(baseline)
+    after_pages = semantic_pages(candidate)
+    status_by_item: dict[tuple[str, str, str], str] = {}
+    for category in ("groups", "nodes", "edges"):
+        for status in ("added", "removed", "changed"):
+            for item in report["changes"][category][status]:
+                status_by_item[(category, str(item["page"]), str(item["id"]))] = status
+    pages: list[dict[str, Any]] = []
+    for page_id in sorted(set(before_pages) | set(after_pages)):
+        before_page = before_pages.get(page_id, {})
+        after_page = after_pages.get(page_id, {})
+        source_page = after_page or before_page
+        before_groups = {
+            str(item["id"]): item for item in before_page.get("groups", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        after_groups = {
+            str(item["id"]): item for item in after_page.get("groups", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        groups = []
+        for group_id in sorted(set(before_groups) | set(after_groups)):
+            group = copy.deepcopy(
+                after_groups[group_id] if group_id in after_groups else before_groups[group_id]
+            )
+            status = status_by_item.get(("groups", page_id, group_id))
+            if status:
+                group["label"] = f"{group['label']} [{status.upper()}]"
+            groups.append(group)
+        before_nodes = {
+            str(item["id"]): item for item in before_page.get("nodes", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        after_nodes = {
+            str(item["id"]): item for item in after_page.get("nodes", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        nodes = []
+        for node_id in sorted(set(before_nodes) | set(after_nodes)):
+            node = copy.deepcopy(
+                after_nodes[node_id] if node_id in after_nodes else before_nodes[node_id]
+            )
+            status = status_by_item.get(("nodes", page_id, node_id))
+            if status:
+                node["style"] = {**node.get("style", {}), **DRIFT_STYLES[status]}
+                description = str(node.get("description", "")).strip()
+                node["description"] = f"{status.upper()} · {description}".rstrip(" ·")
+            else:
+                node["style"] = {
+                    **node.get("style", {}), **DRIFT_CONTEXT_STYLE,
+                }
+            nodes.append(node)
+        before_edges = {
+            str(item["id"]): item for item in before_page.get("edges", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        after_edges = {
+            str(item["id"]): item for item in after_page.get("edges", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        edges = []
+        for edge_id in sorted(set(before_edges) | set(after_edges)):
+            edge = copy.deepcopy(
+                after_edges[edge_id] if edge_id in after_edges else before_edges[edge_id]
+            )
+            status = status_by_item.get(("edges", page_id, edge_id))
+            if status:
+                edge["style"] = {
+                    **edge.get("style", {}), **DRIFT_EDGE_STYLES[status],
+                }
+                label = str(edge.get("label", "")).strip()
+                edge["label"] = f"{status.upper()} · {label}".rstrip(" ·")
+            else:
+                edge["style"] = {
+                    **edge.get("style", {}), **DRIFT_CONTEXT_EDGE_STYLE,
+                }
+            edges.append(edge)
+        pages.append({
+            "id": page_id,
+            "title": f"Drift · {source_page.get('title', page_id)}",
+            "diagram": copy.deepcopy(source_page.get("diagram", {})),
+            "groups": groups,
+            "nodes": nodes,
+            "edges": edges,
+        })
+    return {
+        "version": "1",
+        "diagram": {
+            "direction": "LR", "theme": "colorblind", "gap": 120,
+        },
+        "pages": pages,
+    }
 
 
 def validate_blueprint(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -3137,6 +4010,52 @@ def command_import(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_diff(args: argparse.Namespace) -> int:
+    baseline_path = Path(args.baseline)
+    candidate_path = Path(args.candidate)
+    baseline = load_data(baseline_path)
+    candidate = load_data(candidate_path)
+    report = architecture_diff(
+        baseline, candidate, str(baseline_path), str(candidate_path),
+    )
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    generated_ir: dict[str, Any] | None = None
+    if args.diagram_output or args.preview_dir:
+        generated_ir = drift_diagram(baseline, candidate, report)
+        drift_issues = validate_ir(generated_ir)
+        errors = [item for item in drift_issues if item["level"] == "error"]
+        if errors:
+            raise ValueError(f"cannot generate drift diagram: {errors[0]['message']}")
+    if args.diagram_output and generated_ir is not None:
+        diagram_output = Path(args.diagram_output)
+        diagram_output.parent.mkdir(parents=True, exist_ok=True)
+        compile_drawio(generated_ir).write(
+            diagram_output, encoding="utf-8", xml_declaration=True,
+        )
+    if args.preview_dir and generated_ir is not None:
+        preview_dir = Path(args.preview_dir)
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        for page_id, page in page_documents(generated_ir):
+            compile_svg(page).write(
+                preview_dir / f"{page_id}.svg",
+                encoding="utf-8",
+                xml_declaration=True,
+            )
+    print(json.dumps({
+        "output": str(output),
+        "diagram_output": str(args.diagram_output) if args.diagram_output else None,
+        "preview_dir": str(args.preview_dir) if args.preview_dir else None,
+        "drift": report["drift"],
+        "summary": report["summary"],
+    }, indent=2, ensure_ascii=False))
+    return 5 if args.fail_on_drift and report["drift"] else 0
+
+
 def write_generated_model(
     diagram_ir: dict[str, Any],
     source_issues: list[dict[str, Any]],
@@ -3444,18 +4363,33 @@ def build_parser() -> argparse.ArgumentParser:
     compile_parser.set_defaults(func=command_compile)
 
     import_parser = subparsers.add_parser(
-        "import", help="convert source trees, OpenAPI, SQL, or Compose to Diagram IR"
+        "import",
+        help="convert source, infrastructure, and pipeline definitions to Diagram IR",
     )
     import_parser.add_argument("input")
     import_parser.add_argument("-o", "--output", required=True)
     import_parser.add_argument(
         "--type",
-        choices=["auto", "python", "typescript", "openapi", "sql", "compose"],
+        choices=[
+            "auto", "python", "typescript", "openapi", "sql", "compose",
+            "terraform", "kubernetes", "github-actions", "gitlab-ci",
+        ],
         default="auto",
     )
     import_parser.add_argument("--title")
     import_parser.add_argument("--max-files", type=int, default=500)
     import_parser.set_defaults(func=command_import)
+
+    diff_parser = subparsers.add_parser(
+        "diff", help="compare Diagram IR semantically and visualize architecture drift"
+    )
+    diff_parser.add_argument("baseline")
+    diff_parser.add_argument("candidate")
+    diff_parser.add_argument("-o", "--output", required=True)
+    diff_parser.add_argument("--diagram-output")
+    diff_parser.add_argument("--preview-dir")
+    diff_parser.add_argument("--fail-on-drift", action="store_true")
+    diff_parser.set_defaults(func=command_diff)
 
     erd_parser = subparsers.add_parser(
         "erd", help="generate a validated Crow's Foot ERD from JSON/YAML or SQL DDL"

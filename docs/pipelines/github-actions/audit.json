@@ -1,0 +1,31 @@
+{
+  "version": "1",
+  "score": 100,
+  "errors": 0,
+  "warnings": 0,
+  "summary": {
+    "pages": 1,
+    "nodes": 4,
+    "edges": 3,
+    "groups": 1,
+    "bounds": {
+      "width": 275,
+      "height": 868
+    }
+  },
+  "issues": [],
+  "repairs": [],
+  "visual_review": {
+    "status": "required",
+    "previews": [
+      "docs/pipelines/github-actions/main.svg"
+    ],
+    "checklist": [
+      "Verify the primary reading path and hierarchy.",
+      "Inspect actual orthogonal edge crossings and stacked connectors.",
+      "Confirm labels remain legible at normal zoom.",
+      "Confirm color meaning is consistent and not the only differentiator.",
+      "Confirm every page answers one architecture question."
+    ]
+  }
+}

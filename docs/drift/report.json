@@ -1,0 +1,131 @@
+{
+  "version": "1",
+  "baseline": "skills/drawio-diagram-engineer/assets/example.drift.before.json",
+  "candidate": "skills/drawio-diagram-engineer/assets/example.drift.after.json",
+  "drift": true,
+  "summary": {
+    "added": 4,
+    "removed": 2,
+    "changed": 2,
+    "total": 8
+  },
+  "changes": {
+    "pages": {
+      "added": [],
+      "removed": [],
+      "changed": []
+    },
+    "groups": {
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "page": "main",
+          "id": "platform",
+          "before": {
+            "id": "platform",
+            "label": "Platform"
+          },
+          "after": {
+            "id": "platform",
+            "label": "Commerce Platform"
+          }
+        }
+      ]
+    },
+    "nodes": {
+      "added": [
+        {
+          "page": "main",
+          "id": "queue",
+          "after": {
+            "group": "platform",
+            "id": "queue",
+            "kind": "queue",
+            "label": "Order Queue"
+          }
+        },
+        {
+          "page": "main",
+          "id": "worker",
+          "after": {
+            "group": "platform",
+            "id": "worker",
+            "kind": "service",
+            "label": "Order Worker"
+          }
+        }
+      ],
+      "removed": [
+        {
+          "page": "main",
+          "id": "database",
+          "before": {
+            "group": "platform",
+            "id": "database",
+            "kind": "database",
+            "label": "Orders DB"
+          }
+        }
+      ],
+      "changed": [
+        {
+          "page": "main",
+          "id": "api",
+          "before": {
+            "group": "platform",
+            "id": "api",
+            "kind": "service",
+            "label": "Checkout API"
+          },
+          "after": {
+            "group": "platform",
+            "id": "api",
+            "kind": "service",
+            "label": "Checkout API v2"
+          }
+        }
+      ]
+    },
+    "edges": {
+      "added": [
+        {
+          "page": "main",
+          "id": "api-queue",
+          "after": {
+            "from": "api",
+            "id": "api-queue",
+            "kind": "async",
+            "label": "publish",
+            "to": "queue"
+          }
+        },
+        {
+          "page": "main",
+          "id": "queue-worker",
+          "after": {
+            "from": "queue",
+            "id": "queue-worker",
+            "kind": "async",
+            "label": "consume",
+            "to": "worker"
+          }
+        }
+      ],
+      "removed": [
+        {
+          "page": "main",
+          "id": "api-database",
+          "before": {
+            "from": "api",
+            "id": "api-database",
+            "kind": "data",
+            "label": "SQL",
+            "to": "database"
+          }
+        }
+      ],
+      "changed": []
+    }
+  }
+}

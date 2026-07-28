@@ -1,0 +1,246 @@
+{
+  "terraform": [
+    {
+      "name": "vpc-subnet",
+      "source": "resource \"aws_vpc\" \"main\" { cidr_block = \"10.0.0.0/16\" }\nresource \"aws_subnet\" \"private\" { vpc_id = aws_vpc.main.id }\n",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "ami-instance",
+      "source": "data \"aws_ami\" \"api\" { most_recent = true }\nresource \"aws_instance\" \"api\" { ami = data.aws_ami.api.id }\n",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "module-cluster",
+      "source": "module \"network\" { source = \"./network\" }\nresource \"aws_eks_cluster\" \"main\" { subnet_ids = module.network.private_subnet_ids }\n",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "bucket-policy",
+      "source": "resource \"aws_s3_bucket\" \"assets\" { bucket = \"assets\" }\nresource \"aws_s3_bucket_policy\" \"assets\" { bucket = aws_s3_bucket.assets.id }\n",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "queue-lambda",
+      "source": "resource \"aws_sqs_queue\" \"orders\" { name = \"orders\" }\nresource \"aws_lambda_event_source_mapping\" \"orders\" { event_source_arn = aws_sqs_queue.orders.arn }\n",
+      "nodes": 2,
+      "edges": 1
+    }
+  ],
+  "kubernetes": [
+    {
+      "name": "ingress-service",
+      "source": {
+        "apiVersion": "v1",
+        "kind": "List",
+        "items": [
+          {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "Ingress",
+            "metadata": {"name": "web"},
+            "spec": {"defaultBackend": {"service": {"name": "web", "port": {"number": 80}}}}
+          },
+          {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {"name": "web"},
+            "spec": {}
+          }
+        ]
+      },
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "service-deployment",
+      "source": {
+        "apiVersion": "v1",
+        "kind": "List",
+        "items": [
+          {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {"name": "api"},
+            "spec": {"selector": {"app": "api"}}
+          },
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {"name": "api"},
+            "spec": {
+              "template": {
+                "metadata": {"labels": {"app": "api"}},
+                "spec": {"containers": [{"name": "api"}]}
+              }
+            }
+          }
+        ]
+      },
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "deployment-config",
+      "source": {
+        "apiVersion": "v1",
+        "kind": "List",
+        "items": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {"name": "worker"},
+            "spec": {
+              "template": {
+                "metadata": {"labels": {"app": "worker"}},
+                "spec": {
+                  "containers": [
+                    {"name": "worker", "envFrom": [{"configMapRef": {"name": "worker-config"}}]}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": "worker-config"}
+          }
+        ]
+      },
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "stateful-storage",
+      "source": {
+        "apiVersion": "v1",
+        "kind": "List",
+        "items": [
+          {
+            "apiVersion": "apps/v1",
+            "kind": "StatefulSet",
+            "metadata": {"name": "postgres"},
+            "spec": {
+              "template": {
+                "metadata": {"labels": {"app": "postgres"}},
+                "spec": {
+                  "containers": [{"name": "postgres"}],
+                  "volumes": [
+                    {"name": "data", "persistentVolumeClaim": {"claimName": "postgres-data"}}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "apiVersion": "v1",
+            "kind": "PersistentVolumeClaim",
+            "metadata": {"name": "postgres-data"}
+          }
+        ]
+      },
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "job-secret",
+      "source": {
+        "apiVersion": "v1",
+        "kind": "List",
+        "items": [
+          {
+            "apiVersion": "batch/v1",
+            "kind": "Job",
+            "metadata": {"name": "migration"},
+            "spec": {
+              "template": {
+                "metadata": {"labels": {"app": "migration"}},
+                "spec": {
+                  "containers": [
+                    {"name": "migration", "envFrom": [{"secretRef": {"name": "database"}}]}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "apiVersion": "v1",
+            "kind": "Secret",
+            "metadata": {"name": "database"},
+            "data": {"password": "redacted-by-importer"}
+          }
+        ]
+      },
+      "nodes": 2,
+      "edges": 1
+    }
+  ],
+  "github-actions": [
+    {
+      "name": "test-release",
+      "source": {"name": "Release", "jobs": {"test": {"runs-on": "ubuntu-latest"}, "release": {"runs-on": "ubuntu-latest", "needs": "test"}}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "lint-build",
+      "source": {"name": "Build", "jobs": {"lint": {"runs-on": "ubuntu-latest"}, "build": {"runs-on": "ubuntu-latest", "needs": ["lint"]}}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "scan-publish",
+      "source": {"name": "Security", "jobs": {"scan": {"runs-on": "ubuntu-latest"}, "publish": {"runs-on": "ubuntu-latest", "needs": "scan"}}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "plan-apply",
+      "source": {"name": "Infrastructure", "jobs": {"plan": {"runs-on": "ubuntu-latest"}, "apply": {"runs-on": "ubuntu-latest", "needs": "plan"}}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "build-deploy",
+      "source": {"name": "Deploy", "jobs": {"build-image": {"runs-on": "ubuntu-latest"}, "deploy-prod": {"runs-on": "ubuntu-latest", "needs": "build-image"}}},
+      "nodes": 2,
+      "edges": 1
+    }
+  ],
+  "gitlab-ci": [
+    {
+      "name": "build-test",
+      "source": {"stages": ["build", "test"], "build": {"stage": "build", "script": ["make"]}, "test": {"stage": "test", "script": ["make test"]}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "lint-package",
+      "source": {"stages": ["verify", "package"], "lint": {"stage": "verify", "script": ["lint"]}, "package": {"stage": "package", "script": ["package"]}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "scan-release",
+      "source": {"stages": ["scan", "release"], "scan": {"stage": "scan", "script": ["scan"]}, "release": {"stage": "release", "needs": ["scan"], "script": ["release"]}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "plan-apply",
+      "source": {"stages": ["plan", "apply"], "plan": {"stage": "plan", "script": ["plan"]}, "apply": {"stage": "apply", "needs": [{"job": "plan"}], "script": ["apply"]}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "compile-deploy",
+      "source": {"stages": ["compile", "deploy"], "compile": {"stage": "compile", "script": ["compile"]}, "deploy": {"stage": "deploy", "script": ["deploy"]}},
+      "nodes": 2,
+      "edges": 1
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/drift-report.schema.json",
+  "title": "Architecture Drift Report",
+  "type": "object",
+  "required": ["version", "baseline", "candidate", "drift", "summary", "changes"],
+  "properties": {
+    "version": {"const": "1"},
+    "baseline": {"type": "string"},
+    "candidate": {"type": "string"},
+    "drift": {"type": "boolean"},
+    "summary": {
+      "type": "object",
+      "required": ["added", "removed", "changed", "total"],
+      "properties": {
+        "added": {"type": "integer", "minimum": 0},
+        "removed": {"type": "integer", "minimum": 0},
+        "changed": {"type": "integer", "minimum": 0},
+        "total": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "changes": {
+      "type": "object",
+      "required": ["pages", "groups", "nodes", "edges"],
+      "properties": {
+        "pages": {"$ref": "#/$defs/changeSet"},
+        "groups": {"$ref": "#/$defs/changeSet"},
+        "nodes": {"$ref": "#/$defs/changeSet"},
+        "edges": {"$ref": "#/$defs/changeSet"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "changeSet": {
+      "type": "object",
+      "required": ["added", "removed", "changed"],
+      "properties": {
+        "added": {"type": "array", "items": {"$ref": "#/$defs/change"}},
+        "removed": {"type": "array", "items": {"$ref": "#/$defs/change"}},
+        "changed": {"type": "array", "items": {"$ref": "#/$defs/change"}}
+      },
+      "additionalProperties": false
+    },
+    "change": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "page": {"type": "string"},
+        "id": {"type": "string"},
+        "before": {"type": "object"},
+        "after": {"type": "object"}
+      },
+      "anyOf": [
+        {"required": ["before"]},
+        {"required": ["after"]}
+      ],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

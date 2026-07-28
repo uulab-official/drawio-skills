@@ -14,3 +14,5 @@ The compiler reads local JSON, optional YAML, and `.drawio` XML. The render comm
 - keep draw.io Desktop and Python patched.
 
 No telemetry or network requests are performed by the compiler, validator, or inspector.
+
+The Kubernetes importer never copies `Secret.data` or `Secret.stringData` values into Diagram IR. It emits resource metadata and a redaction notice only. Other resource names, namespaces, image/runtime descriptions, Terraform addresses, and pipeline job names can still be sensitive; inspect generated IR before publishing it.

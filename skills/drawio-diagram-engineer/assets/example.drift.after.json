@@ -1,0 +1,16 @@
+{
+  "version": "1",
+  "diagram": {"title": "Checkout", "direction": "LR", "theme": "colorblind"},
+  "groups": [{"id": "platform", "label": "Commerce Platform"}],
+  "nodes": [
+    {"id": "client", "label": "Client", "kind": "client"},
+    {"id": "api", "label": "Checkout API v2", "kind": "service", "group": "platform"},
+    {"id": "queue", "label": "Order Queue", "kind": "queue", "group": "platform"},
+    {"id": "worker", "label": "Order Worker", "kind": "service", "group": "platform"}
+  ],
+  "edges": [
+    {"id": "client-api", "from": "client", "to": "api", "label": "HTTPS"},
+    {"id": "api-queue", "from": "api", "to": "queue", "label": "publish", "kind": "async"},
+    {"id": "queue-worker", "from": "queue", "to": "worker", "label": "consume", "kind": "async"}
+  ]
+}

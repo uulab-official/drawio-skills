@@ -1,0 +1,81 @@
+{
+  "version": "1",
+  "diagram": {
+    "title": "Commerce AWS Infrastructure",
+    "direction": "LR",
+    "theme": "colorblind"
+  },
+  "groups": [
+    {
+      "id": "terraform-example-terraform-tf",
+      "label": "example.terraform.tf"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "module-aws-eip-api",
+      "label": "aws_eip.api",
+      "kind": "service",
+      "group": "terraform-example-terraform-tf",
+      "description": "resource · example.terraform.tf · aws_eip.api"
+    },
+    {
+      "id": "module-aws-instance-api",
+      "label": "aws_instance.api",
+      "kind": "service",
+      "group": "terraform-example-terraform-tf",
+      "description": "resource · example.terraform.tf · aws_instance.api"
+    },
+    {
+      "id": "module-aws-route53-record-api",
+      "label": "aws_route53_record.api",
+      "kind": "service",
+      "group": "terraform-example-terraform-tf",
+      "description": "resource · example.terraform.tf · aws_route53_record.api"
+    },
+    {
+      "id": "module-aws-security-group-api",
+      "label": "aws_security_group.api",
+      "kind": "service",
+      "group": "terraform-example-terraform-tf",
+      "description": "resource · example.terraform.tf · aws_security_group.api"
+    },
+    {
+      "id": "module-module-network",
+      "label": "network",
+      "kind": "external",
+      "group": "terraform-example-terraform-tf",
+      "description": "module · example.terraform.tf · module.network"
+    }
+  ],
+  "edges": [
+    {
+      "id": "module-aws-eip-api-depends-module-aws-instance-api",
+      "from": "module-aws-eip-api",
+      "to": "module-aws-instance-api",
+      "label": "depends on",
+      "kind": "dependency"
+    },
+    {
+      "id": "module-aws-instance-api-depends-module-aws-security-group-api",
+      "from": "module-aws-instance-api",
+      "to": "module-aws-security-group-api",
+      "label": "depends on",
+      "kind": "dependency"
+    },
+    {
+      "id": "module-aws-route53-record-api-depends-module-aws-eip-api",
+      "from": "module-aws-route53-record-api",
+      "to": "module-aws-eip-api",
+      "label": "depends on",
+      "kind": "dependency"
+    },
+    {
+      "id": "module-aws-security-group-api-depends-module-module-network",
+      "from": "module-aws-security-group-api",
+      "to": "module-module-network",
+      "label": "depends on",
+      "kind": "dependency"
+    }
+  ]
+}

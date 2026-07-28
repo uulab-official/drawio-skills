@@ -1,0 +1,14 @@
+{
+  "version": "1",
+  "diagram": {"title": "Checkout", "direction": "LR", "theme": "colorblind"},
+  "groups": [{"id": "platform", "label": "Platform"}],
+  "nodes": [
+    {"id": "client", "label": "Client", "kind": "client"},
+    {"id": "api", "label": "Checkout API", "kind": "service", "group": "platform"},
+    {"id": "database", "label": "Orders DB", "kind": "database", "group": "platform"}
+  ],
+  "edges": [
+    {"id": "client-api", "from": "client", "to": "api", "label": "HTTPS"},
+    {"id": "api-database", "from": "api", "to": "database", "label": "SQL", "kind": "data"}
+  ]
+}

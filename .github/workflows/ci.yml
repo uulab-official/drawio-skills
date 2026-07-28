@@ -60,3 +60,31 @@ jobs:
             --preview-dir /tmp/checkout-ha-previews \
             --theme-file skills/drawio-diagram-engineer/assets/themes/corporate.json \
             --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            import skills/drawio-diagram-engineer/assets/example.terraform.tf \
+            --type terraform -o /tmp/terraform.diagram.json
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            compile /tmp/terraform.diagram.json -o /tmp/terraform.drawio
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            validate /tmp/terraform.drawio --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            import skills/drawio-diagram-engineer/assets/example.kubernetes.json \
+            --type kubernetes -o /tmp/kubernetes.diagram.json
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            compile /tmp/kubernetes.diagram.json -o /tmp/kubernetes.drawio
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            validate /tmp/kubernetes.drawio --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            import skills/drawio-diagram-engineer/assets/example.github-actions.json \
+            --type github-actions -o /tmp/github-actions.diagram.json
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            import skills/drawio-diagram-engineer/assets/example.gitlab-ci.json \
+            --type gitlab-ci -o /tmp/gitlab-ci.diagram.json
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            diff skills/drawio-diagram-engineer/assets/example.drift.before.json \
+            skills/drawio-diagram-engineer/assets/example.drift.after.json \
+            -o /tmp/drift.report.json \
+            --diagram-output /tmp/drift.drawio \
+            --preview-dir /tmp/drift-previews
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            validate /tmp/drift.drawio --strict

@@ -1,6 +1,6 @@
 ---
 name: drawio-diagram-engineer
-description: Create, edit, import, compile, inspect, audit, preview, and export editable draw.io diagrams from natural-language requirements, structured JSON/YAML, Python or TypeScript source trees, OpenAPI, SQL DDL, or Docker Compose. Generate coordinated architecture blueprints, field-level Crow's Foot ERDs, and high-availability topology/failover packs with failure domains, replication, health checks, RTO, and RPO. Apply reusable organization themes, verified shapes, contrast checks, and structured repairs. Use for architecture diagrams, database schemas, HA/DR designs, codebase maps, flowcharts, data flows, UML-style diagrams, network maps, multi-page system views, and repairing or quality-checking existing .drawio files. Prefer when output must remain editable, deterministic, reviewable in source control, or exportable to PNG, SVG, or PDF.
+description: Create, edit, import, compare, compile, inspect, audit, preview, and export editable draw.io diagrams from natural-language requirements, structured JSON/YAML, source trees, OpenAPI, SQL DDL, Docker Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate coordinated architecture blueprints, field-level Crow's Foot ERDs, high-availability topology/failover packs, infrastructure maps, pipeline views, and semantic architecture-drift reports. Apply reusable organization themes, verified shapes, contrast checks, and structured repairs. Use for architecture diagrams, database schemas, HA/DR designs, codebase maps, infrastructure and deployment topology, CI/CD pipelines, flowcharts, data flows, network maps, multi-page system views, and repairing or quality-checking existing .drawio files. Prefer when output must remain editable, deterministic, reviewable in source control, or exportable to PNG, SVG, or PDF.
 ---
 
 # Draw.io Diagram Engineer
@@ -14,7 +14,7 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
    For an ERD, read [erd.md](references/erd.md), author against [erd.schema.json](references/erd.schema.json), and use `erd`. Accept SQL DDL directly when it is the source of truth.
    For high availability, read [ha.md](references/ha.md), author against [ha.schema.json](references/ha.schema.json), and use `ha`.
 2. Write a Diagram IR JSON file. Read [ir-format.md](references/ir-format.md) for the schema and [authoring.md](references/authoring.md) for diagram-specific choices. Use [diagram-ir.schema.json](references/diagram-ir.schema.json) with schema-aware tooling.
-   When starting from a Python/TypeScript tree, OpenAPI, SQL, or Compose, read [importers.md](references/importers.md) and generate the IR with `import`.
+   When starting from a Python/TypeScript tree, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI, read [importers.md](references/importers.md) and generate the IR with `import`.
    When organization styling or deeper visual QA is required, read [style-system.md](references/style-system.md) and use a validated theme pack.
 3. Compile it:
 
@@ -49,6 +49,8 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
 
 8. Inspect the preview visually. Fix hierarchy, clipped text, collisions, unclear edges, weak contrast, and excess detail. Repeat compile, validate, and preview at most twice before presenting the best result.
 9. Deliver the editable `.drawio`, the IR source, audit report, and requested exports. State clearly when Desktop export was skipped.
+
+When comparing an approved architecture with a newly generated model, read [drift.md](references/drift.md), run `diff`, and deliver both the machine-readable report and editable drift view.
 
 ## Editing existing diagrams
 
@@ -98,7 +100,8 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `blueprint`: project one architecture model into context, logical, data, deployment, security, and decision pages.
 - `erd`: validate entities, fields, keys, types, and cardinalities, then generate an editable Crow's Foot ERD from a model or SQL DDL.
 - `ha`: validate failure domains, replicas, replication, health checks, and failovers, then generate topology and failover pages.
-- `import`: convert Python/TypeScript module trees, OpenAPI, SQL DDL, or Docker Compose into Diagram IR.
+- `import`: convert Python/TypeScript module trees, OpenAPI, SQL DDL, Docker Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI into Diagram IR.
+- `diff`: compare Diagram IR semantically, emit a structured drift report, and optionally generate an editable color-and-shape-coded drift view.
 - `patch`: atomically apply semantic node, edge, group, position, and diagram changes.
 - `preview`: create a reviewable SVG without draw.io Desktop.
 - `audit`: inspect structured source and generated geometry, then group findings with repair suggestions and preview paths.
@@ -108,4 +111,4 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 
 Before first use, verify `python3 -c "import xml.etree.ElementTree"`. If a macOS Homebrew Python reports a `pyexpat`/`libexpat` symbol error, use `/usr/bin/python3` or repair that Python installation; do not attribute the ABI failure to the diagram input.
 
-Use [example.architecture.json](assets/example.architecture.json), [example.blueprint.json](assets/example.blueprint.json), [example.erd.json](assets/example.erd.json), or [example.ha.json](assets/example.ha.json) as a compact starting point, not as a fixed template. Apply [corporate.json](assets/themes/corporate.json) when a reusable custom theme example is useful.
+Use [example.architecture.json](assets/example.architecture.json), [example.blueprint.json](assets/example.blueprint.json), [example.erd.json](assets/example.erd.json), [example.ha.json](assets/example.ha.json), [example.terraform.tf](assets/example.terraform.tf), or [example.kubernetes.json](assets/example.kubernetes.json) as a compact starting point, not as a fixed template. Apply [corporate.json](assets/themes/corporate.json) when a reusable custom theme example is useful.

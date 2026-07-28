@@ -1,0 +1,141 @@
+name: Desktop Integration
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * 1"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/drawio-desktop-lock.json"
+      - ".github/workflows/desktop-integration.yml"
+      - "scripts/desktop_lock.py"
+      - "skills/drawio-diagram-engineer/scripts/drawio_tool.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop-export:
+    name: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux-x64
+          - runner: macos-latest
+            platform: macos-universal
+          - runner: windows-latest
+            platform: windows-x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Validate Desktop release lock
+        run: python scripts/desktop_lock.py validate
+      - name: Install pinned Linux Desktop
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          python scripts/desktop_lock.py download linux-x64 \
+            -o "${RUNNER_TEMP}/drawio.AppImage"
+          chmod +x "${RUNNER_TEMP}/drawio.AppImage"
+          mkdir -p "${RUNNER_TEMP}/drawio-app"
+          cd "${RUNNER_TEMP}/drawio-app"
+          "${RUNNER_TEMP}/drawio.AppImage" --appimage-extract
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          echo "DRAWIO_DESKTOP_BINARY=${RUNNER_TEMP}/drawio-app/squashfs-root/AppRun" \
+            >> "${GITHUB_ENV}"
+      - name: Install pinned macOS Desktop
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          python scripts/desktop_lock.py download macos-universal \
+            -o "${RUNNER_TEMP}/drawio.dmg"
+          mkdir -p "${RUNNER_TEMP}/drawio-mount"
+          hdiutil attach "${RUNNER_TEMP}/drawio.dmg" \
+            -nobrowse -readonly -mountpoint "${RUNNER_TEMP}/drawio-mount"
+          cp -R "${RUNNER_TEMP}/drawio-mount/draw.io.app" \
+            "${RUNNER_TEMP}/draw.io.app"
+          hdiutil detach "${RUNNER_TEMP}/drawio-mount"
+          xattr -dr com.apple.quarantine "${RUNNER_TEMP}/draw.io.app" || true
+          echo "DRAWIO_DESKTOP_BINARY=${RUNNER_TEMP}/draw.io.app/Contents/MacOS/draw.io" \
+            >> "${GITHUB_ENV}"
+      - name: Install pinned Windows Desktop
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/desktop_lock.py download windows-x64 `
+            -o "$env:RUNNER_TEMP\drawio.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\drawio.zip" `
+            -DestinationPath "$env:RUNNER_TEMP\drawio-app"
+          $binary = Get-ChildItem "$env:RUNNER_TEMP\drawio-app" `
+            -Filter "draw.io.exe" -Recurse |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $binary) {
+            throw "draw.io.exe was not found in the verified archive"
+          }
+          "DRAWIO_DESKTOP_BINARY=$binary" >> $env:GITHUB_ENV
+      - name: Export and verify on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/drawio-integration"
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            compile skills/drawio-diagram-engineer/assets/example.architecture.json \
+            -o "${RUNNER_TEMP}/drawio-integration/source.drawio"
+          for format in svg png pdf jpg; do
+            xvfb-run -a python \
+              skills/drawio-diagram-engineer/scripts/drawio_tool.py render \
+              "${RUNNER_TEMP}/drawio-integration/source.drawio" \
+              -o "${RUNNER_TEMP}/drawio-integration/export.${format}" \
+              --report "${RUNNER_TEMP}/drawio-integration/${format}.report.json"
+          done
+      - name: Export and verify on macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/drawio-integration"
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            compile skills/drawio-diagram-engineer/assets/example.architecture.json \
+            -o "${RUNNER_TEMP}/drawio-integration/source.drawio"
+          for format in svg png pdf jpg; do
+            python skills/drawio-diagram-engineer/scripts/drawio_tool.py render \
+              "${RUNNER_TEMP}/drawio-integration/source.drawio" \
+              -o "${RUNNER_TEMP}/drawio-integration/export.${format}" \
+              --report "${RUNNER_TEMP}/drawio-integration/${format}.report.json"
+          done
+      - name: Export and verify on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = "$env:RUNNER_TEMP\drawio-integration"
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py `
+            compile skills/drawio-diagram-engineer/assets/example.architecture.json `
+            -o "$output\source.drawio"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($format in @("svg", "png", "pdf", "jpg")) {
+            python skills/drawio-diagram-engineer/scripts/drawio_tool.py render `
+              "$output\source.drawio" `
+              -o "$output\export.$format" `
+              --report "$output\$format.report.json"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Upload verified exports and reports
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: drawio-desktop-${{ matrix.platform }}
+          path: ${{ runner.temp }}/drawio-integration
+          if-no-files-found: error
+          retention-days: 14

@@ -10,6 +10,7 @@ The following identifiers are independent versioned contracts:
 - Bundle manifest: `drawio-diagram-bundle/v1` and [bundle.schema.json](bundle.schema.json)
 - Security report: `drawio-security-report/v1`
 - Migration report: `drawio-migration-report/v1`
+- Export verification report: `drawio-export-report/v1`
 
 Tool releases use semantic versions. Schema versions do not advance merely because the tool gains a feature.
 

@@ -121,11 +121,22 @@ Exit criteria: a new user can install, diagnose, initialize, and produce a stric
 
 Exit criteria: legacy input migrates deterministically without losing extensions, unsafe bundles fail before publication, compressed input is bounded, every workflow dependency is pinned, and tagged release artifacts can be verified cryptographically.
 
+## v0.11 — Native export confidence
+
+- [x] SHA-256 and byte-size lock for official Linux, macOS, and Windows Desktop assets
+- [x] Real Desktop SVG, PNG, PDF, and JPEG exports on hosted runners
+- [x] Machine-readable `drawio-export-report/v1` schema
+- [x] PNG, SVG, PDF, and JPEG signature and structural verification
+- [x] Automatic post-render verification with persisted diagnostic reports
+- [x] Scheduled regression runs and retained cross-platform artifacts
+
+Exit criteria: every supported hosted operating system downloads a pinned official asset, verifies it before execution, exports all four public formats, passes the same artifact verifier exposed to users, and retains reports sufficient to diagnose a failure.
+
 ## v1.0 — Stable public contract
 
 - [x] Freeze Diagram IR v1 compatibility policy
 - [x] Publish migration and deprecation rules
-- [ ] Cross-platform draw.io Desktop integration tests
+- [x] Cross-platform draw.io Desktop integration tests
 - [x] Security and dependency audit
 - [x] Installation tests for Codex and other Agent Skills-compatible clients
 - [x] Reproducible unsigned release artifacts

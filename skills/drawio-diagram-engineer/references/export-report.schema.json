@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schema/export-report-v1.json",
+  "title": "Draw.io Export Verification Report v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "format",
+    "source",
+    "expected_format",
+    "detected_format",
+    "size_bytes",
+    "passed",
+    "findings"
+  ],
+  "properties": {
+    "format": {
+      "const": "drawio-export-report/v1"
+    },
+    "source": {
+      "type": "string"
+    },
+    "expected_format": {
+      "type": "string"
+    },
+    "detected_format": {
+      "type": ["string", "null"],
+      "enum": ["png", "svg", "pdf", "jpg", null]
+    },
+    "size_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["level", "code", "message"],
+        "properties": {
+          "level": {
+            "const": "error"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "binary": {
+      "type": "string"
+    }
+  }
+}

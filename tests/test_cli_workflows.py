@@ -50,6 +50,23 @@ class CliWorkflowTests(unittest.TestCase):
             self.assertEqual("mxfile", ET.parse(drawio).getroot().tag)
             self.assertEqual("svg", ET.parse(preview).getroot().tag.rsplit("}", 1)[-1])
 
+    def test_verify_export_cli_writes_machine_readable_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            svg = temp / "diagram.svg"
+            report = temp / "export-report.json"
+            svg.write_text(
+                '<svg width="320" height="180"><g><rect width="10" height="10"/></g></svg>',
+                encoding="utf-8",
+            )
+            run_tool("verify-export", svg, "-o", report)
+            payload = json.loads(report.read_text(encoding="utf-8"))
+            self.assertTrue(payload["passed"])
+            self.assertEqual(
+                {"width": 320.0, "height": 180.0},
+                payload["dimensions"],
+            )
+
     def test_patch_to_drawio_compile(self):
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)

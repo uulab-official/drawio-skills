@@ -47,6 +47,7 @@ def python_imports() -> tuple[list[str], list[str]]:
         ROOT / "scripts/audit_repository.py",
         ROOT / "scripts/install_skill.py",
         ROOT / "scripts/package_skill.py",
+        ROOT / "scripts/desktop_lock.py",
     ]
     required: set[str] = set()
     optional: set[str] = set()

@@ -24,7 +24,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.10.0"
+VERSION = "0.11.0"
 IR_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
 MAX_STRUCTURED_INPUT_BYTES = 50 * 1024 * 1024
@@ -4800,8 +4800,10 @@ def doctor_report() -> dict[str, Any]:
         SKILL_DIR / "references/bundle.schema.json",
         SKILL_DIR / "references/security-report.schema.json",
         SKILL_DIR / "references/migration-report.schema.json",
+        SKILL_DIR / "references/export-report.schema.json",
         SKILL_DIR / "references/compatibility.md",
         SKILL_DIR / "references/security.md",
+        SKILL_DIR / "references/desktop-export.md",
         ASSET_DIR / "shape-registry.json",
         ASSET_DIR / "example.architecture.json",
         ASSET_DIR / "example.erd.json",
@@ -5409,23 +5411,210 @@ def command_render(args: argparse.Namespace) -> int:
         print(f"unsupported export format: {fmt}", file=sys.stderr)
         return 2
     output.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output.name}.", suffix=f".{fmt}", dir=output.parent
+    )
+    os.close(descriptor)
+    temporary_output = Path(temporary_name)
+    temporary_output.unlink()
     command = drawio_export_command(
         binary,
         Path(args.input),
-        output,
+        temporary_output,
         fmt,
         args.width,
         args.embed,
     )
-    completed = subprocess.run(command, text=True, capture_output=True, timeout=90)
+    try:
+        completed = subprocess.run(command, text=True, capture_output=True, timeout=90)
+    except (OSError, subprocess.TimeoutExpired):
+        temporary_output.unlink(missing_ok=True)
+        raise
     if completed.returncode != 0:
+        temporary_output.unlink(missing_ok=True)
         print(completed.stderr or completed.stdout, file=sys.stderr)
-        return completed.returncode
-    if not output.is_file():
+        return 2
+    if not temporary_output.is_file():
         print("draw.io Desktop reported success but did not create the requested output", file=sys.stderr)
         return 2
-    print(json.dumps({"output": str(output), "format": fmt, "binary": binary}, indent=2))
-    return 0
+    report = verify_export(temporary_output, fmt)
+    report["source"] = str(output)
+    report["binary"] = binary
+    if report["passed"]:
+        temporary_output.replace(output)
+    else:
+        temporary_output.unlink(missing_ok=True)
+    if args.report:
+        report_path = Path(args.report)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["passed"] else 2
+
+
+def export_finding(code: str, message: str) -> dict[str, str]:
+    return {"level": "error", "code": code, "message": message}
+
+
+def numeric_svg_dimension(value: str | None) -> float | None:
+    if not value:
+        return None
+    match = re.fullmatch(
+        r"\s*([0-9]+(?:\.[0-9]+)?)\s*(?:px|pt|pc|mm|cm|in)?\s*",
+        value,
+        re.IGNORECASE,
+    )
+    return float(match.group(1)) if match else None
+
+
+def verify_export(path: Path, expected_format: str | None = None) -> dict[str, Any]:
+    normalized = (expected_format or path.suffix.lstrip(".")).lower()
+    if normalized == "jpeg":
+        normalized = "jpg"
+    findings: list[dict[str, str]] = []
+    report: dict[str, Any] = {
+        "format": "drawio-export-report/v1",
+        "source": str(path),
+        "expected_format": normalized,
+        "detected_format": None,
+        "size_bytes": 0,
+        "passed": False,
+        "findings": findings,
+    }
+    if normalized not in {"png", "svg", "pdf", "jpg"}:
+        findings.append(export_finding(
+            "export.format", f"unsupported expected export format: {normalized or '(empty)'}"
+        ))
+        return report
+    if not path.is_file():
+        findings.append(export_finding("export.missing", "export file does not exist"))
+        return report
+    size = path.stat().st_size
+    report["size_bytes"] = size
+    if size == 0:
+        findings.append(export_finding("export.empty", "export file is empty"))
+        return report
+
+    with path.open("rb") as stream:
+        header = stream.read(512)
+        if size > 2048:
+            stream.seek(-2048, os.SEEK_END)
+        else:
+            stream.seek(0)
+        trailer = stream.read()
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        detected = "png"
+    elif header.startswith(b"%PDF-"):
+        detected = "pdf"
+    elif header.startswith(b"\xff\xd8\xff"):
+        detected = "jpg"
+    elif (
+        b"<svg" in header.lstrip(b"\xef\xbb\xbf \t\r\n")
+        or header.lstrip(b"\xef\xbb\xbf \t\r\n").startswith(b"<?xml")
+    ):
+        detected = "svg"
+    else:
+        detected = None
+    report["detected_format"] = detected
+    if detected != normalized:
+        findings.append(export_finding(
+            "export.signature",
+            f"file signature is {detected or 'unknown'}, expected {normalized}",
+        ))
+        return report
+
+    if detected == "png":
+        if len(header) < 24 or header[12:16] != b"IHDR":
+            findings.append(export_finding("export.png.ihdr", "PNG is missing a complete IHDR chunk"))
+        else:
+            width = int.from_bytes(header[16:20], "big")
+            height = int.from_bytes(header[20:24], "big")
+            report["dimensions"] = {"width": width, "height": height}
+            if width <= 0 or height <= 0:
+                findings.append(export_finding(
+                    "export.dimensions", "PNG width and height must be positive"
+                ))
+        if not trailer.endswith(b"IEND\xaeB`\x82"):
+            findings.append(export_finding(
+                "export.png.iend", "PNG is missing its terminal IEND chunk"
+            ))
+    elif detected == "jpg":
+        if not trailer.endswith(b"\xff\xd9"):
+            findings.append(export_finding(
+                "export.jpeg.eoi", "JPEG is missing its end-of-image marker"
+            ))
+    elif detected == "pdf":
+        if b"%%EOF" not in trailer:
+            findings.append(export_finding("export.pdf.eof", "PDF is missing its EOF marker"))
+    else:
+        if size > MAX_XML_INPUT_BYTES:
+            findings.append(export_finding(
+                "export.svg.size",
+                f"SVG exceeds {MAX_XML_INPUT_BYTES // (1024 * 1024)} MiB safety limit",
+            ))
+        else:
+            raw_svg = path.read_bytes()
+            if re.search(br"<!DOCTYPE|<!ENTITY", raw_svg, re.IGNORECASE):
+                findings.append(export_finding(
+                    "export.svg.dtd", "SVG contains a prohibited DTD or entity declaration"
+                ))
+            else:
+                try:
+                    root = ET.fromstring(raw_svg)
+                except ET.ParseError as exc:
+                    findings.append(export_finding(
+                        "export.svg.xml", f"SVG XML is malformed: {exc}"
+                    ))
+                else:
+                    if root.tag.rsplit("}", 1)[-1] != "svg":
+                        findings.append(export_finding(
+                            "export.svg.root", "SVG document root must be <svg>"
+                        ))
+                    width = numeric_svg_dimension(root.get("width"))
+                    height = numeric_svg_dimension(root.get("height"))
+                    view_box = root.get("viewBox", "").replace(",", " ").split()
+                    view_box_values: list[float] = []
+                    try:
+                        view_box_values = [float(value) for value in view_box]
+                    except ValueError:
+                        pass
+                    if (width is None or height is None) and len(view_box_values) == 4:
+                        width, height = view_box_values[2], view_box_values[3]
+                    if width is not None and height is not None:
+                        report["dimensions"] = {"width": width, "height": height}
+                    if width is None or height is None or width <= 0 or height <= 0:
+                        findings.append(export_finding(
+                            "export.dimensions",
+                            "SVG requires positive width/height or a positive viewBox",
+                        ))
+                    drawable = [
+                        element for element in root.iter()
+                        if element is not root
+                        and element.tag.rsplit("}", 1)[-1]
+                        not in {"defs", "style", "title", "desc", "metadata"}
+                    ]
+                    if not drawable:
+                        findings.append(export_finding(
+                            "export.svg.content", "SVG contains no drawable content"
+                        ))
+    report["passed"] = not findings
+    return report
+
+
+def command_verify_export(args: argparse.Namespace) -> int:
+    report = verify_export(Path(args.input), args.format)
+    if args.output:
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["passed"] else 2
 
 
 def drawio_export_command(
@@ -5436,7 +5625,10 @@ def drawio_export_command(
     width: int = 2000,
     embed: bool = False,
 ) -> list[str]:
-    command = [binary, "-x", "-f", output_format, "-o", str(output_path)]
+    command = [
+        binary, "--disable-update", "-x", "-f", output_format,
+        "-o", str(output_path),
+    ]
     if output_format == "png":
         command += ["--width", str(width)]
     if embed and output_format in {"png", "svg", "pdf"}:
@@ -5610,11 +5802,20 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("-f", "--format")
     render_parser.add_argument("--width", type=int, default=2000)
     render_parser.add_argument("--embed", action="store_true")
+    render_parser.add_argument("--report", help="write the export verification report")
     render_parser.add_argument(
         "--binary",
         help="draw.io Desktop executable; overrides DRAWIO_DESKTOP_BINARY and auto-discovery",
     )
     render_parser.set_defaults(func=command_render)
+
+    verify_export_parser = subparsers.add_parser(
+        "verify-export", help="validate a rendered PNG, SVG, PDF, or JPEG artifact"
+    )
+    verify_export_parser.add_argument("input")
+    verify_export_parser.add_argument("-f", "--format", choices=["png", "svg", "pdf", "jpg", "jpeg"])
+    verify_export_parser.add_argument("-o", "--output", help="write the verification report")
+    verify_export_parser.set_defaults(func=command_verify_export)
     return parser
 
 

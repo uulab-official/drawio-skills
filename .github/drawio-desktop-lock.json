@@ -1,0 +1,30 @@
+{
+  "format": "drawio-desktop-lock/v1",
+  "repository": "jgraph/drawio-desktop",
+  "release": "v31.0.2",
+  "release_url": "https://github.com/jgraph/drawio-desktop/releases/tag/v31.0.2",
+  "published_at": "2026-07-24T10:11:14Z",
+  "platforms": {
+    "linux-x64": {
+      "packaging": "appimage",
+      "asset": "drawio-x86_64-31.0.2.AppImage",
+      "url": "https://github.com/jgraph/drawio-desktop/releases/download/v31.0.2/drawio-x86_64-31.0.2.AppImage",
+      "sha256": "925588089930bd3458fdce6debb4608a6d44a86b4bdcc000ba35bdeca66e6547",
+      "size": 168580589
+    },
+    "macos-universal": {
+      "packaging": "dmg",
+      "asset": "draw.io-universal-31.0.2.dmg",
+      "url": "https://github.com/jgraph/drawio-desktop/releases/download/v31.0.2/draw.io-universal-31.0.2.dmg",
+      "sha256": "307d2981c9a9290d2b6a0b52cc7f33825a59df5017c76444820e678ad2d9a4a2",
+      "size": 257516277
+    },
+    "windows-x64": {
+      "packaging": "zip",
+      "asset": "draw.io-31.0.2-windows.zip",
+      "url": "https://github.com/jgraph/drawio-desktop/releases/download/v31.0.2/draw.io-31.0.2-windows.zip",
+      "sha256": "c71b85e2ffe6d0563e853749c548db3732158493c0f8d7d1ae9c174055322266",
+      "size": 189768395
+    }
+  }
+}

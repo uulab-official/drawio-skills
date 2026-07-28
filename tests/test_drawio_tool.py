@@ -6,6 +6,7 @@ import unittest
 import urllib.parse
 import zlib
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -178,6 +179,93 @@ class DrawioToolTests(unittest.TestCase):
         self.assertIn("2400", command)
         self.assertIn("-e", command)
         self.assertEqual("input.drawio", command[-1])
+        self.assertIn("--disable-update", command)
+
+    def test_export_verifier_accepts_svg_png_pdf_and_jpeg(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            exports = {
+                "svg": (
+                    b'<svg xmlns="http://www.w3.org/2000/svg" '
+                    b'width="120px" height="80px"><rect width="1" height="1"/></svg>'
+                ),
+                "png": (
+                    b"\x89PNG\r\n\x1a\n"
+                    b"\x00\x00\x00\rIHDR"
+                    b"\x00\x00\x00x\x00\x00\x00P"
+                    b"\x08\x06\x00\x00\x00"
+                    b"\x00\x00\x00\x00IEND\xaeB`\x82"
+                ),
+                "pdf": b"%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n",
+                "jpg": b"\xff\xd8\xff\xe0example\xff\xd9",
+            }
+            for export_format, content in exports.items():
+                path = temp / f"diagram.{export_format}"
+                path.write_bytes(content)
+                report = TOOL.verify_export(path, export_format)
+                self.assertTrue(report["passed"], report)
+                self.assertEqual(export_format, report["detected_format"])
+            self.assertEqual(
+                {"width": 120, "height": 80},
+                TOOL.verify_export(temp / "diagram.png")["dimensions"],
+            )
+
+    def test_export_verifier_rejects_truncated_and_mismatched_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            truncated = temp / "truncated.png"
+            truncated.write_bytes(
+                b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+                b"\x00\x00\x00\x10\x00\x00\x00\x10"
+            )
+            truncated_report = TOOL.verify_export(truncated)
+            self.assertFalse(truncated_report["passed"])
+            self.assertIn(
+                "export.png.iend",
+                {item["code"] for item in truncated_report["findings"]},
+            )
+            disguised = temp / "disguised.pdf"
+            disguised.write_text(
+                '<svg width="10" height="10"><rect width="1" height="1"/></svg>',
+                encoding="utf-8",
+            )
+            mismatch_report = TOOL.verify_export(disguised)
+            self.assertFalse(mismatch_report["passed"])
+            self.assertEqual("svg", mismatch_report["detected_format"])
+
+    def test_render_writes_a_verified_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            binary = temp / "drawio"
+            binary.write_text("placeholder", encoding="utf-8")
+            binary.chmod(0o755)
+            source = temp / "source.drawio"
+            source.write_text("<mxfile />", encoding="utf-8")
+            output = temp / "export.svg"
+            report_path = temp / "report.json"
+            args = mock.Mock(
+                binary=str(binary),
+                output=str(output),
+                input=str(source),
+                format="svg",
+                width=2000,
+                embed=False,
+                report=str(report_path),
+            )
+
+            def fake_run(command, **_kwargs):
+                generated = Path(command[command.index("-o") + 1])
+                generated.write_text(
+                    '<svg width="100" height="50"><rect width="10" height="10"/></svg>',
+                    encoding="utf-8",
+                )
+                return mock.Mock(returncode=0, stdout="", stderr="")
+
+            with mock.patch.object(TOOL.subprocess, "run", side_effect=fake_run):
+                self.assertEqual(0, TOOL.command_render(args))
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertTrue(report["passed"])
+            self.assertEqual(str(binary), report["binary"])
 
     def test_ir_rejects_dangling_edge(self):
         data = sample_ir()

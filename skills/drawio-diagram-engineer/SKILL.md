@@ -28,10 +28,11 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
    ```
 
    This creates normalized IR, editable `.drawio`, all SVG previews, `audit.json`, `security.json`, and `bundle.json`. Use the lower-level `compile`, `validate`, `preview`, `security`, and `audit` commands only when the user needs individual artifacts or an incremental workflow.
-5. If draw.io Desktop is available and a Desktop export is requested, render from the bundle's `.drawio`:
+5. If draw.io Desktop is available and a Desktop export is requested, read [desktop-export.md](references/desktop-export.md), render from the bundle's `.drawio`, and retain its verification report:
 
    ```bash
-   python3 <skill-dir>/scripts/drawio_tool.py render build/diagram/diagram.drawio -o diagram.png
+   python3 <skill-dir>/scripts/drawio_tool.py render build/diagram/diagram.drawio \
+     -o diagram.png --report diagram.export.json
    ```
 
 6. Inspect every bundled preview visually. Fix hierarchy, clipped text, collisions, unclear edges, weak contrast, and excess detail. Rebuild at most twice before presenting the best result.
@@ -100,6 +101,7 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `validate`: lint IR or `.drawio`, print a 0–100 quality score, and fail under `--strict`.
 - `inspect`: summarize pages, nodes, edges, groups, and canvas bounds.
 - `render`: discover the draw.io Desktop CLI across macOS, Windows, and Linux, honor `DRAWIO_DESKTOP_BINARY` or `--binary`, and export PNG, SVG, PDF, or JPG.
+- `verify-export`: validate the format signature, structural terminator, dimensions, and safe SVG content of a native export without launching Desktop.
 
 Before first use, verify `python3 -c "import xml.etree.ElementTree"`. If a macOS Homebrew Python reports a `pyexpat`/`libexpat` symbol error, use `/usr/bin/python3` or repair that Python installation; do not attribute the ABI failure to the diagram input.
 

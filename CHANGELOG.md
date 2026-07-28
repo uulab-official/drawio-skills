@@ -2,6 +2,16 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 0.11.0 — 2026-07-28
+
+- Pin official draw.io Desktop v31.0.2 assets by URL, byte size, and GitHub-published SHA-256 for Linux x64, macOS universal, and Windows x64.
+- Add real weekly, manual, and relevant-main-change Desktop integration tests across all three hosted operating systems.
+- Export and retain SVG, PNG, PDF, and JPEG artifacts plus verification reports from each platform.
+- Add `verify-export` and the machine-readable `drawio-export-report/v1` contract.
+- Make `render` disable Desktop auto-update, validate temporary output, atomically publish passing artifacts, and optionally persist a report.
+- Add bounded safe-SVG, PNG structure/dimensions, PDF terminator, JPEG marker, and declared-format checks.
+- Complete the v1 cross-platform Desktop integration roadmap item.
+
 ## 0.10.0 — 2026-07-28
 
 - Publish Diagram IR v1 compatibility, additive-change, deprecation, and bundle-evolution policies.

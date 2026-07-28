@@ -60,9 +60,12 @@ validate <model|ir|diagram.drawio> [--strict]
 inspect <diagram.drawio>
 render <diagram.drawio> -o <output.png|svg|pdf|jpg> [-f <format>]
        [--width 2000] [--embed] [--binary <drawio-executable>]
+       [--report <export-report.json>]
+verify-export <output.png|svg|pdf|jpg> [-f <format>] [-o <export-report.json>]
 ```
 
 `render --binary` takes precedence over `DRAWIO_DESKTOP_BINARY`, which takes precedence over platform auto-discovery.
+`render` always verifies the generated artifact before succeeding. `verify-export` applies the same checks without launching Desktop. Both emit `drawio-export-report/v1`; see [desktop-export.md](desktop-export.md) and [export-report.schema.json](export-report.schema.json).
 
 ## Exit codes
 

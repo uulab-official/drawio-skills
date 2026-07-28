@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v0.10 beta**. The engine now adds a frozen Diagram IR v1 compatibility policy, deterministic legacy migration, bundle/report schemas, credential and unsafe-content scanning, bounded XML decompression, cross-platform Desktop discovery, and attested release automation to the v0.9 user workflow.
+> Status: **v0.11 beta**. The engine now exercises a SHA-256-pinned official draw.io Desktop release on hosted Linux, macOS, and Windows, verifies real SVG/PNG/PDF/JPEG exports, and publishes machine-readable export diagnostics.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -58,7 +58,15 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
   build schema.sql -o build/database --strict
 ```
 
-Desktop-quality PNG/SVG/PDF/JPG export requires [draw.io Desktop](https://github.com/jgraph/drawio-desktop). The core bundle workflow does not.
+Desktop-quality PNG/SVG/PDF/JPG export requires [draw.io Desktop](https://github.com/jgraph/drawio-desktop). The core bundle workflow does not. Native output is structurally verified before `render` succeeds:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  render build/my-system/my-system.drawio -o my-system.png \
+  --report my-system.export.json
+```
+
+Use `verify-export` to validate an artifact made on another machine. See the [Desktop export contract](skills/drawio-diagram-engineer/references/desktop-export.md).
 
 ## Architecture blueprint pack
 
@@ -289,7 +297,8 @@ drawio_tool.py preview <ir.json> -o <preview.svg> [--page <id>] [--theme-file <t
 drawio_tool.py audit <ir.json|blueprint.json|diagram.drawio> [-o <report.json>] [--preview-dir <dir>] [--strict]
 drawio_tool.py validate <ir.json|diagram.drawio> [--strict]
 drawio_tool.py inspect <diagram.drawio>
-drawio_tool.py render <diagram.drawio> -o <output.png|svg|pdf|jpg> [--embed] [--binary <path>]
+drawio_tool.py render <diagram.drawio> -o <output.png|svg|pdf|jpg> [--embed] [--binary <path>] [--report <report.json>]
+drawio_tool.py verify-export <output.png|svg|pdf|jpg> [-o <report.json>]
 ```
 
 JSON works without third-party packages. YAML input is optional and requires PyYAML.
@@ -300,7 +309,7 @@ For every command and exit code, see the [CLI reference](skills/drawio-diagram-e
 
 ## Roadmap
 
-The v0.3–v0.10 roadmap is complete. The remaining v1 work is real Desktop integration on hosted macOS/Windows/Linux runners and final release-candidate hardening. See [ROADMAP.md](ROADMAP.md).
+The v0.3–v0.11 roadmap is complete, including real Desktop integration on hosted macOS/Windows/Linux runners. The remaining v1 governance item is signed release tags; release ZIPs already carry checksums and GitHub/Sigstore provenance attestations. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

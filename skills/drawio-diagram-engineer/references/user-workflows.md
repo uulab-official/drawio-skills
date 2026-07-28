@@ -25,6 +25,8 @@ python3 <skill-dir>/scripts/drawio_tool.py doctor
 
 `FAIL` prevents core generation. `OPTIONAL` only disables the named capability. Missing PyYAML does not affect JSON, and missing draw.io Desktop does not affect editable `.drawio` or dependency-free SVG generation.
 
+When native PNG/SVG/PDF/JPEG output matters, read [desktop-export.md](desktop-export.md), run `render --report <report.json>`, and retain the verification report with the export.
+
 ## Create and build
 
 Create a starter:
@@ -98,6 +100,7 @@ Use generic `--type sql` only for a table dependency overview. Use `--type sql-e
 - Run `doctor --format json` when another agent or script needs machine-readable capability state.
 - Run `migrate --check` before editing unversioned or legacy Diagram IR.
 - Run `security <bundle> --strict` as the final publication gate.
+- Run `verify-export <artifact>` when checking a native export produced on another machine.
 - If YAML fails, use JSON or install PyYAML. No third-party package is required for JSON.
 - If Desktop export is unavailable, deliver the editable `.drawio` and bundled SVG previews.
 - If automatic source detection fails, pass `--type` explicitly.

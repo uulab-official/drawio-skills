@@ -1,5 +1,7 @@
 import json
 import re
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -43,6 +45,7 @@ class SkillContractTests(unittest.TestCase):
             "bundle.schema.json",
             "security-report.schema.json",
             "migration-report.schema.json",
+            "export-report.schema.json",
         ):
             schema = SKILL / f"references/{filename}"
             self.assertIn('"$schema"', schema.read_text(encoding="utf-8"))
@@ -86,9 +89,24 @@ class SkillContractTests(unittest.TestCase):
             "render",
             "security",
             "validate",
+            "verify-export",
         }
         for command in commands:
             self.assertRegex(reference, rf"\b{re.escape(command)}\b", command)
+
+    def test_desktop_release_lock_is_complete_and_valid(self):
+        completed = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/desktop_lock.py"), "validate"],
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        report = json.loads(completed.stdout)
+        self.assertTrue(report["valid"])
+        self.assertEqual(
+            ["linux-x64", "macos-universal", "windows-x64"],
+            report["platforms"],
+        )
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ The compiler reads local JSON, optional YAML, and `.drawio` XML. The render comm
 
 No telemetry or network requests are performed by the compiler, validator, or inspector.
 
-The `security` command scans models, `.drawio` files, and bundles for embedded credential patterns, private keys, unsafe URL schemes, prohibited XML declarations, and decompression-limit violations. Successful `build` bundles include `security.json`. Findings name locations but never echo suspected credential values.
+The `security` command scans models, `.drawio` files, and bundles for embedded credential patterns, private keys, unsafe URL schemes, prohibited XML declarations, and decompression-limit violations. For draw.io input it scans both visible values and hidden page/cell `data-*` metadata used for round-trip editing. Successful `build` bundles include `security.json`. Findings name locations but never echo suspected credential values.
 
 Structured JSON/YAML and uncompressed draw.io input are limited to 50 MiB; each compressed page is limited to 100 MiB after decompression. DTD and entity declarations are rejected before XML parsing.
 

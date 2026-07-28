@@ -1,6 +1,7 @@
 import base64
 import importlib.util
 import json
+import re
 import tempfile
 import unittest
 import urllib.parse
@@ -48,6 +49,193 @@ class DrawioToolTests(unittest.TestCase):
             self.assertEqual([], issues)
             self.assertEqual(3, summary["nodes"])
             self.assertEqual(2, summary["edges"])
+
+    def test_compiler_metadata_extracts_lossless_round_trip_ir(self):
+        source = sample_ir()
+        source["nodes"][1]["description"] = "Public application API"
+        source["nodes"][1]["style"] = {
+            "fill": "#ffffff",
+            "stroke": "#334155",
+            "font": "#0f172a",
+        }
+        source["edges"][0]["style"] = {
+            "source_port": "east",
+            "source_offset": 0.25,
+            "target_port": "west",
+            "target_offset": 0.75,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "architecture.drawio"
+            TOOL.compile_drawio(source).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            extracted, report = TOOL.extract_drawio(drawio)
+            self.assertTrue(report["passed"])
+            self.assertTrue(report["lossless"])
+            self.assertEqual(0, report["summary"]["inferred_cells"])
+            nodes = {node["id"]: node for node in extracted["nodes"]}
+            self.assertEqual("Public application API", nodes["api"]["description"])
+            self.assertEqual("core", nodes["db"]["group"])
+            self.assertIn("position", nodes["client"])
+            self.assertIn("size", nodes["client"])
+            edge = next(
+                item for item in extracted["edges"]
+                if item["id"] == "client-api"
+            )
+            self.assertEqual(source["edges"][0]["style"], edge["style"])
+            self.assertEqual([], [
+                item for item in TOOL.validate_ir(extracted)
+                if item["level"] == "error"
+            ])
+
+    def test_erd_fields_and_cardinalities_survive_drawio_extraction(self):
+        erd_source = json.loads(
+            (
+                ROOT
+                / "skills/drawio-diagram-engineer/assets/example.erd.json"
+            ).read_text(encoding="utf-8")
+        )
+        source = TOOL.erd_to_ir(erd_source)
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "database.drawio"
+            TOOL.compile_drawio(source).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            extracted, report = TOOL.extract_drawio(drawio)
+            self.assertTrue(report["lossless"])
+            original_entities = {
+                node["id"]: node["fields"] for node in source["nodes"]
+            }
+            extracted_entities = {
+                node["id"]: node["fields"] for node in extracted["nodes"]
+            }
+            self.assertEqual(original_entities, extracted_entities)
+            self.assertEqual(
+                [
+                    (
+                        edge.get("style", {}).get("start_cardinality"),
+                        edge.get("style", {}).get("end_cardinality"),
+                    )
+                    for edge in source["edges"]
+                ],
+                [
+                    (
+                        edge.get("style", {}).get("start_cardinality"),
+                        edge.get("style", {}).get("end_cardinality"),
+                    )
+                    for edge in extracted["edges"]
+                ],
+            )
+
+    def test_supported_drawio_edits_override_compiler_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "edited.drawio"
+            TOOL.compile_drawio(sample_ir()).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            root = TOOL.ET.parse(drawio).getroot()
+            api = root.find(".//mxCell[@id='node-api']")
+            self.assertIsNotNone(api)
+            api.set(
+                "value",
+                "<b>Public API</b><br><font style=\"font-size:10px\">Edited in draw.io</font>",
+            )
+            api.set(
+                "style",
+                re.sub(
+                    r"fillColor=#[0-9a-fA-F]{6}",
+                    "fillColor=#ffffff",
+                    api.get("style", ""),
+                ),
+            )
+            geometry = api.find("./mxGeometry")
+            self.assertIsNotNone(geometry)
+            geometry.set("x", "555")
+            geometry.set("y", "333")
+            edge = root.find(".//mxCell[@id='edge-client-api']")
+            self.assertIsNotNone(edge)
+            edge.set("target", "node-db")
+            edge.set("value", "direct read")
+            TOOL.ET.ElementTree(root).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+
+            extracted, report = TOOL.extract_drawio(drawio)
+            self.assertTrue(report["lossless"])
+            nodes = {node["id"]: node for node in extracted["nodes"]}
+            self.assertEqual("Public API", nodes["api"]["label"])
+            self.assertEqual("Edited in draw.io", nodes["api"]["description"])
+            self.assertEqual({"x": 555, "y": 333}, nodes["api"]["position"])
+            self.assertEqual("#ffffff", nodes["api"]["style"]["fill"])
+            edited_edge = next(
+                item for item in extracted["edges"]
+                if item["id"] == "client-api"
+            )
+            self.assertEqual("db", edited_edge["to"])
+            self.assertEqual("direct read", edited_edge["label"])
+
+    def test_manual_drawio_is_extracted_with_explicit_inference_report(self):
+        manual_xml = (
+            '<mxfile><diagram id="legacy" name="Manual">'
+            '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'
+            '<mxCell id="api" value="API" vertex="1" parent="1" '
+            'style="shape=rectangle;"><mxGeometry x="100" y="100" '
+            'width="160" height="60" as="geometry"/></mxCell>'
+            '<mxCell id="db" value="Database" vertex="1" parent="1" '
+            'style="shape=cylinder3;"><mxGeometry x="400" y="100" '
+            'width="180" height="60" as="geometry"/></mxCell>'
+            '<mxCell id="reads" value="reads" edge="1" parent="1" '
+            'source="api" target="db" style="endArrow=block;">'
+            '<mxGeometry relative="1" as="geometry"/></mxCell>'
+            '</root></mxGraphModel></diagram></mxfile>'
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "manual.drawio"
+            drawio.write_text(manual_xml, encoding="utf-8")
+            extracted, report = TOOL.extract_drawio(drawio)
+            self.assertTrue(report["passed"])
+            self.assertFalse(report["lossless"])
+            self.assertEqual(3, report["summary"]["inferred_cells"])
+            self.assertEqual(
+                {"service", "database"},
+                {node["kind"] for node in extracted["nodes"]},
+            )
+            self.assertEqual([], [
+                item for item in TOOL.validate_ir(extracted)
+                if item["level"] == "error"
+            ])
+
+    def test_compressed_drawio_preserves_compiler_metadata_during_extraction(self):
+        root = TOOL.compile_drawio(sample_ir()).getroot()
+        compressed_root = TOOL.ET.Element(
+            "mxfile",
+            {
+                "data-ir-version": TOOL.IR_METADATA_VERSION,
+                "version": TOOL.VERSION,
+            },
+        )
+        for diagram in root.findall("./diagram"):
+            compressed_diagram = TOOL.ET.SubElement(
+                compressed_root,
+                "diagram",
+                dict(diagram.attrib),
+            )
+            model = diagram.find("./mxGraphModel")
+            encoded = urllib.parse.quote(
+                TOOL.ET.tostring(model, encoding="unicode")
+            ).encode("utf-8")
+            compressor = zlib.compressobj(wbits=-15)
+            compressed_diagram.text = base64.b64encode(
+                compressor.compress(encoded) + compressor.flush()
+            ).decode("ascii")
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "compressed.drawio"
+            TOOL.ET.ElementTree(compressed_root).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            extracted, report = TOOL.extract_drawio(drawio)
+            self.assertTrue(report["lossless"])
+            self.assertEqual(3, len(extracted["nodes"]))
 
     def test_legacy_ir_migration_is_deterministic_and_preserves_extensions(self):
         legacy = {
@@ -109,6 +297,31 @@ class DrawioToolTests(unittest.TestCase):
         )
         self.assertTrue(report["passed"])
         self.assertEqual(1, len(report["external_links"]))
+
+    def test_drawio_security_scan_checks_hidden_round_trip_metadata(self):
+        source = sample_ir()
+        credential = "hidden-metadata-secret-123456"
+        source["nodes"][1]["description"] = f"token={credential}"
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "hidden.drawio"
+            TOOL.compile_drawio(source).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            root = TOOL.ET.parse(drawio).getroot()
+            node = root.find(".//mxCell[@id='node-api']")
+            self.assertIsNotNone(node)
+            node.set("value", "<b>API</b>")
+            node.set("data-ir-value", "<b>API</b>")
+            TOOL.ET.ElementTree(root).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            report = TOOL.security_report_for_drawio(drawio)
+            self.assertFalse(report["passed"])
+            self.assertIn(
+                "security.inline-secret",
+                {item["code"] for item in report["findings"]},
+            )
+            self.assertNotIn(credential, json.dumps(report))
 
     def test_drawio_loader_rejects_dtd(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1107,6 +1320,16 @@ class DrawioToolTests(unittest.TestCase):
             TOOL.ET.tostring(TOOL.compile_drawio(diagram_ir).getroot()),
             TOOL.ET.tostring(TOOL.compile_drawio(TOOL.ha_to_ir(source)).getroot()),
         )
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "ha.drawio"
+            TOOL.compile_drawio(diagram_ir).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            extracted, report = TOOL.extract_drawio(drawio)
+            self.assertTrue(report["lossless"])
+            self.assertFalse(
+                TOOL.architecture_diff(diagram_ir, extracted)["drift"]
+            )
 
     def test_ha_rejects_failover_inside_same_domain(self):
         source = json.loads(

@@ -42,11 +42,14 @@ ha <model.json> -o <ha.drawio> [--ir-output <ir.json>]
 
 ```text
 compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
+extract <diagram.drawio> -o <ir.json> [--report <report.json>] [--strict]
 import <source> -o <ir.json> [--type <type>] [--title <title>] [--max-files 500]
 patch <ir.json> <operations.json> -o <updated.json>
 diff <baseline.json> <candidate.json> -o <report.json>
      [--diagram-output <drift.drawio>] [--preview-dir <dir>] [--fail-on-drift]
 ```
+
+`extract` recovers Diagram IR v1 from compressed or uncompressed draw.io. Compiler-generated files retain page, group, node, edge, ERD, and HA semantics through versioned metadata. Legacy files use deterministic best-effort inference. `--strict` exits `3` when the report is not lossless; see [round-trip.md](round-trip.md) and [extraction-report.schema.json](extraction-report.schema.json).
 
 Importer types: `auto`, `python`, `typescript`, `openapi`, `sql`, `compose`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
 

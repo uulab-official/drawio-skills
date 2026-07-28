@@ -1,6 +1,6 @@
 ---
 name: drawio-diagram-engineer
-description: Create, edit, import, compare, compile, migrate, security-scan, audit, preview, and export editable draw.io diagrams from natural language, JSON/YAML, source trees, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate coordinated architecture blueprints, field-level Crow's Foot ERDs, HA topology/failover packs, infrastructure maps, CI/CD views, and semantic drift reports. Apply deterministic layout, explicit ports, obstacle-aware routing, themes, verified shapes, contrast and credential checks, and structured repairs. Use for architecture, database schemas, HA/DR, codebase maps, infrastructure/deployment topology, pipelines, flowcharts, data flows, network maps, multi-page system views, legacy Diagram IR migration, or repairing and quality-checking .drawio files. Prefer when output must stay editable, deterministic, secure, source-reviewable, or exportable to PNG, SVG, or PDF.
+description: Create, edit, import, extract, compare, compile, migrate, security-scan, audit, preview, and export editable draw.io diagrams from natural language, JSON/YAML, existing .drawio files, source trees, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate coordinated architecture blueprints, field-level Crow's Foot ERDs, HA topology/failover packs, infrastructure maps, CI/CD views, and semantic drift reports. Apply deterministic layout, round-trip semantic metadata, explicit ports, obstacle-aware routing, themes, verified shapes, contrast and credential checks, and structured repairs. Use for architecture, database schemas, HA/DR, codebase maps, infrastructure/deployment topology, pipelines, flowcharts, data flows, network maps, multi-page system views, legacy Diagram IR migration, or repairing and quality-checking .drawio files. Prefer when output must stay editable, deterministic, secure, source-reviewable, or exportable to PNG, SVG, or PDF.
 ---
 
 # Draw.io Diagram Engineer
@@ -49,13 +49,22 @@ python3 <skill-dir>/scripts/drawio_tool.py inspect existing.drawio
 python3 <skill-dir>/scripts/drawio_tool.py validate existing.drawio
 ```
 
+Recover reviewable Diagram IR before semantic edits:
+
+```bash
+python3 <skill-dir>/scripts/drawio_tool.py extract existing.drawio \
+  -o existing.diagram.json --report existing.extraction.json --strict
+```
+
+Read [round-trip.md](references/round-trip.md) before relying on a recovered model. `lossless: true` means all semantic cells used supported compiler metadata. A valid best-effort model may still be written when `--strict` exits `3`; review every inferred cell before replacing the original.
+
 For an IR-backed diagram, write semantic operations and apply them atomically:
 
 ```bash
 python3 <skill-dir>/scripts/drawio_tool.py patch diagram.json changes.json -o diagram.updated.json
 ```
 
-Read [patching.md](references/patching.md) before destructive or multi-page edits. For an XML-only diagram, modify matching `mxCell` values, styles, or geometry without regenerating unrelated cells. Never renumber stable IDs merely for tidiness.
+Read [patching.md](references/patching.md) before destructive or multi-page edits. If extraction reports unsupported XML-only content, modify only matching `mxCell` values, styles, or geometry and preserve the original until visual review passes. Never renumber stable IDs merely for tidiness.
 
 ## Quality contract
 
@@ -89,6 +98,7 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `build`: auto-detect a model or source and create a complete, audited `drawio-diagram-bundle/v1`.
 - `migrate`: deterministically upgrade legacy/unversioned Diagram IR and emit a machine-readable change report.
 - `compile`: validate IR, calculate deterministic layout, and emit uncompressed editable draw.io XML.
+- `extract`: recover Diagram IR from compressed or uncompressed draw.io, preserving compiler-backed semantics and reporting every inferred legacy cell.
 - `blueprint`: project one architecture model into context, logical, data, deployment, security, and decision pages.
 - `erd`: validate entities, fields, keys, types, and cardinalities, then generate an editable Crow's Foot ERD from a model or SQL DDL.
 - `ha`: validate failure domains, replicas, replication, health checks, and failovers, then generate topology and failover pages.

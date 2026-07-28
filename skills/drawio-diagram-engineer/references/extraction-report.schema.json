@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/extraction-report-v1.json",
+  "title": "Draw.io Diagram IR Extraction Report v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "format",
+    "source",
+    "passed",
+    "lossless",
+    "summary",
+    "findings"
+  ],
+  "properties": {
+    "format": {
+      "const": "drawio-extraction-report/v1"
+    },
+    "source": {
+      "type": "string"
+    },
+    "output": {
+      "type": "string"
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "lossless": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pages",
+        "groups",
+        "nodes",
+        "edges",
+        "metadata_cells",
+        "inferred_cells",
+        "inferred_pages",
+        "metadata_version"
+      ],
+      "properties": {
+        "pages": {"type": "integer", "minimum": 1},
+        "groups": {"type": "integer", "minimum": 0},
+        "nodes": {"type": "integer", "minimum": 0},
+        "edges": {"type": "integer", "minimum": 0},
+        "metadata_cells": {"type": "integer", "minimum": 0},
+        "inferred_cells": {"type": "integer", "minimum": 0},
+        "inferred_pages": {"type": "integer", "minimum": 0},
+        "metadata_version": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["level", "code", "message"],
+        "properties": {
+          "level": {
+            "enum": ["error", "warning"]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "page": {
+            "type": "string"
+          },
+          "cell": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -2,6 +2,16 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 1.1.0 — 2026-07-28
+
+- Embed versioned, deterministic Diagram IR metadata in generated draw.io pages and semantic cells.
+- Add `extract` for compressed and uncompressed `.drawio` → Diagram IR round-trip recovery.
+- Preserve multi-page links, ERD fields and cardinalities, HA semantics, positions, sizes, endpoints, and supported styles.
+- Add deterministic best-effort recovery for legacy and hand-authored diagrams with an explicit strict inference gate.
+- Publish the machine-readable `drawio-extraction-report/v1` schema and round-trip editing contract.
+- Extend credential scanning to hidden page and cell metadata so round-trip state cannot bypass security checks.
+- Regenerate all nine checked-in editable examples with v1.1 metadata and verify strict extraction.
+
 ## 1.0.0 — 2026-07-28
 
 - Declare Diagram IR v1 and all documented CLI commands stable under the published compatibility policy.

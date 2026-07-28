@@ -13,6 +13,8 @@ python3 <skill-dir>/scripts/drawio_tool.py security <model|diagram.drawio|bundle
 
 `build` runs the same scan against normalized Diagram IR and writes `security.json` into every successful bundle.
 
+For `.drawio` input, the scanner covers visible labels and links plus hidden `data-*` page and cell attributes used by [round-trip editing](round-trip.md). Moving text out of a visible label does not hide it from the gate.
+
 The scanner rejects:
 
 - scalar values under credential-like keys;

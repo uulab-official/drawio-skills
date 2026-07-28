@@ -144,3 +144,24 @@ Exit criteria: every supported hosted operating system downloads a pinned offici
 - [x] Signed release tags
 
 The v1.0 release requires zero known critical defects, deterministic output across supported Python versions, and complete documentation for every public command. Completed in v1.0.0 with signed-tag enforcement and immutable releases.
+
+## v1.1 — Round-trip editing
+
+- [x] Versioned semantic metadata for pages, groups, nodes, and edges
+- [x] `.drawio` → Diagram IR extraction for compressed and uncompressed files
+- [x] Lossless recovery of multi-page links, ERD fields/cardinalities, HA semantics, positions, sizes, and supported styles
+- [x] Deterministic best-effort recovery for legacy and hand-authored diagrams
+- [x] Machine-readable `drawio-extraction-report/v1` with a strict inference gate
+- [x] Credential scanning across visible and hidden round-trip metadata
+- [x] Public CLI, workflow, schema, and compatibility documentation
+
+Exit criteria: compiler-owned diagrams extract without semantic inference, legacy diagrams produce valid reviewable IR without claiming lossless recovery, ERD and multi-page contracts survive round trips, and hidden metadata cannot bypass the security gate.
+
+## v1.2 — Collaborative publication
+
+- [ ] Atomic multi-page HTML/SVG review sites with page navigation
+- [ ] Review annotations linked to semantic cell IDs
+- [ ] CI artifact index with extraction, audit, security, and export status
+- [ ] Optional visual regression baselines for approved diagrams
+
+Exit criteria: a reviewer can open one portable artifact, navigate every page, trace findings to semantic IDs, and compare approved visual baselines without draw.io Desktop.

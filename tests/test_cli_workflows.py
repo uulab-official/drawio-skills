@@ -87,10 +87,34 @@ class CliWorkflowTests(unittest.TestCase):
 
     def test_multi_page_example_compiles_with_two_pages(self):
         with tempfile.TemporaryDirectory() as directory:
-            drawio = Path(directory) / "multi.drawio"
+            temp = Path(directory)
+            drawio = temp / "multi.drawio"
+            extracted = temp / "multi.extracted.json"
+            report = temp / "multi.extraction.json"
             run_tool("compile", ASSETS / "example.multipage.json", "-o", drawio)
             run_tool("validate", drawio, "--strict")
+            run_tool(
+                "extract",
+                drawio,
+                "-o",
+                extracted,
+                "--report",
+                report,
+                "--strict",
+            )
             self.assertEqual(2, len(ET.parse(drawio).getroot().findall("diagram")))
+            self.assertEqual(
+                {"context", "containers"},
+                {
+                    page["id"]
+                    for page in json.loads(
+                        extracted.read_text(encoding="utf-8")
+                    )["pages"]
+                },
+            )
+            self.assertTrue(
+                json.loads(report.read_text(encoding="utf-8"))["lossless"]
+            )
 
     def test_blueprint_generates_drawio_ir_and_page_previews(self):
         with tempfile.TemporaryDirectory() as directory:

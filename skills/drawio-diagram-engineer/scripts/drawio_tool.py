@@ -24,8 +24,9 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 IR_VERSION = "1"
+IR_METADATA_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
 MAX_STRUCTURED_INPUT_BYTES = 50 * 1024 * 1024
 MAX_XML_INPUT_BYTES = 50 * 1024 * 1024
@@ -970,6 +971,10 @@ def style_string(parts: dict[str, Any]) -> str:
     return ";".join(f"{key}={str(value).lower() if isinstance(value, bool) else value}" for key, value in parts.items()) + ";"
 
 
+def encode_ir_metadata(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
 def node_style(node: dict[str, Any], theme: dict[str, Any]) -> str:
     kind = str(node.get("kind", "service"))
     fill, stroke = theme.get(kind, theme["service"])
@@ -1117,7 +1122,14 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
     layout = calculate_layout(data)
     route_plans = edge_route_plans(data, layout)
 
-    diagram = ET.SubElement(mxfile, "diagram", {"id": f"page-{page_id}", "name": title})
+    diagram = ET.SubElement(mxfile, "diagram", {
+        "id": f"page-{page_id}",
+        "name": title,
+        "data-ir-page": encode_ir_metadata({
+            "id": page_id,
+            "diagram": diagram_data,
+        }),
+    })
     model = ET.SubElement(diagram, "mxGraphModel", {
         "dx": "1200", "dy": "800", "grid": "1", "gridSize": "10", "guides": "1",
         "tooltips": "1", "connect": "1", "arrows": "1", "fold": "1", "page": "1",
@@ -1140,6 +1152,7 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
         max_y = max(box[1] + box[3] for box in member_boxes) + 30
         cell = ET.SubElement(root, "mxCell", {
             "id": f"group-{group['id']}", "value": str(group["label"]), "vertex": "1", "parent": "1",
+            "data-ir": encode_ir_metadata(group),
             "style": style_string({
                 "swimlane": 1, "horizontal": 1, "startSize": 30, "rounded": 1,
                 "fillColor": theme["group_fill"], "swimlaneFillColor": theme["group_fill"],
@@ -1155,10 +1168,15 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
     for node in data.get("nodes", []):
         nid = str(node["id"])
         x, y, width, height = layout[nid]
+        value = node_value(node, theme)
+        style = node_style(node, theme)
         cell = ET.SubElement(root, "mxCell", {
-            "id": f"node-{nid}", "value": node_value(node, theme),
+            "id": f"node-{nid}", "value": value,
             "vertex": "1", "parent": "1",
-            "style": node_style(node, theme),
+            "data-ir": encode_ir_metadata(node),
+            "data-ir-value": value,
+            "data-ir-style": style,
+            "style": style,
         })
         if node.get("link"):
             cell.set("link", f"data:page/id,page-{node['link']}")
@@ -1173,10 +1191,15 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
         base_id = str(edge.get("id", f"{source}-to-{target}"))
         edge_counts[base_id] += 1
         eid = base_id if edge_counts[base_id] == 1 else f"{base_id}-{edge_counts[base_id]}"
+        edge_metadata = copy.deepcopy(edge)
+        edge_metadata["id"] = eid
+        style = edge_style(edge, theme, direction, route_plan)
         cell = ET.SubElement(root, "mxCell", {
             "id": f"edge-{eid}", "value": str(edge.get("label", "")), "edge": "1", "parent": "1",
             "source": f"node-{source}", "target": f"node-{target}",
-            "style": edge_style(edge, theme, direction, route_plan),
+            "data-ir": encode_ir_metadata(edge_metadata),
+            "data-ir-style": style,
+            "style": style,
         })
         geometry = ET.SubElement(
             cell, "mxGeometry", {"relative": "1", "as": "geometry"},
@@ -1193,7 +1216,12 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
 def compile_drawio(data: dict[str, Any]) -> ET.ElementTree:
     mxfile = ET.Element(
         "mxfile",
-        {"host": "app.diagrams.net", "agent": "drawio-diagram-engineer", "version": VERSION},
+        {
+            "host": "app.diagrams.net",
+            "agent": "drawio-diagram-engineer",
+            "version": VERSION,
+            "data-ir-version": IR_METADATA_VERSION,
+        },
     )
     for page_id, page_data in page_documents(data):
         append_page(mxfile, page_id, page_data)
@@ -1470,6 +1498,526 @@ def load_drawio_root(path: Path) -> ET.Element:
             wrapper.append(model)
         return wrapper
     return root
+
+
+def decode_element_metadata(element: ET.Element, attribute: str) -> dict[str, Any] | None:
+    raw = element.get(attribute)
+    if not raw:
+        return None
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def drawio_page_models(path: Path) -> list[tuple[ET.Element | None, ET.Element]]:
+    loaded = load_drawio_root(path)
+    if loaded.tag == "mxGraphModel":
+        return [(None, loaded)]
+    if loaded.tag == "decodedDrawio":
+        raw_root = ET.fromstring(path.read_bytes())
+        diagrams = raw_root.findall(".//diagram")
+        models = loaded.findall("./mxGraphModel")
+        return [
+            (diagrams[index] if index < len(diagrams) else None, model)
+            for index, model in enumerate(models)
+        ]
+    pages: list[tuple[ET.Element | None, ET.Element]] = []
+    for diagram in loaded.findall(".//diagram"):
+        model = diagram.find("./mxGraphModel")
+        if model is not None:
+            pages.append((diagram, model))
+    if pages:
+        return pages
+    return [(None, model) for model in loaded.findall(".//mxGraphModel")]
+
+
+def extraction_text_lines(value: str) -> list[str]:
+    text = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
+    text = re.sub(r"</tr\s*>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</td\s*>", " | ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text).replace("\xa0", " ")
+    lines = []
+    for raw_line in text.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip(" |")
+        if line:
+            lines.append(line)
+    return lines
+
+
+def extracted_number(value: float) -> int | float:
+    return int(value) if value.is_integer() else round(value, 3)
+
+
+def unique_extracted_id(raw: str, used: set[str], prefix: str) -> str:
+    candidate = raw
+    for known_prefix in ("node-", "group-", "edge-", "page-"):
+        if candidate.startswith(known_prefix):
+            candidate = candidate[len(known_prefix):]
+            break
+    candidate = slugify(candidate or prefix)
+    if candidate in {"0", "1"}:
+        candidate = f"{prefix}-{candidate}"
+    base = candidate
+    index = 2
+    while candidate in used:
+        candidate = f"{base}-{index}"
+        index += 1
+    used.add(candidate)
+    return candidate
+
+
+def absolute_cell_box(
+    cell: ET.Element,
+    cell_map: dict[str, ET.Element],
+    cache: dict[str, tuple[float, float, float, float]],
+) -> tuple[float, float, float, float]:
+    cell_id = cell.get("id", "")
+    if cell_id in cache:
+        return cache[cell_id]
+    geometry = cell.find("./mxGeometry")
+    x = parse_number(geometry.get("x")) if geometry is not None else 0
+    y = parse_number(geometry.get("y")) if geometry is not None else 0
+    width = parse_number(geometry.get("width")) if geometry is not None else 0
+    height = parse_number(geometry.get("height")) if geometry is not None else 0
+    parent = cell_map.get(cell.get("parent", ""))
+    if parent is not None and parent.get("vertex") == "1":
+        parent_x, parent_y, _, _ = absolute_cell_box(parent, cell_map, cache)
+        x += parent_x
+        y += parent_y
+    cache[cell_id] = (x, y, width, height)
+    return cache[cell_id]
+
+
+def infer_node_kind(styles: dict[str, str]) -> str:
+    shape = styles.get("shape", "").lower()
+    if shape == "cylinder3":
+        return "database"
+    if shape == "message":
+        return "queue"
+    if shape == "rhombus":
+        return "decision"
+    if shape == "process":
+        return "process"
+    if shape == "document":
+        return "document"
+    if shape == "note":
+        return "note"
+    if styles.get("dashed") == "1":
+        return "external"
+    return "service"
+
+
+def infer_edge_kind(styles: dict[str, str]) -> str:
+    if styles.get("endArrow") == "none":
+        return "association"
+    if styles.get("endArrow") == "open" and styles.get("dashed") == "1":
+        return "async"
+    if styles.get("dashed") == "1":
+        return "dependency"
+    return "sync"
+
+
+def extracted_node_style(styles: dict[str, str]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for drawio_key, ir_key in (
+        ("fillColor", "fill"),
+        ("strokeColor", "stroke"),
+        ("fontColor", "font"),
+    ):
+        if is_hex_color(styles.get(drawio_key)):
+            result[ir_key] = styles[drawio_key]
+    if styles.get("dashed") in {"0", "1"}:
+        result["dashed"] = styles["dashed"] == "1"
+    if styles.get("rounded") in {"0", "1"}:
+        result["rounded"] = styles["rounded"] == "1"
+    return result
+
+
+def inferred_port(styles: dict[str, str], prefix: str) -> tuple[str, float] | None:
+    x_key, y_key = (
+        ("exitX", "exitY") if prefix == "source" else ("entryX", "entryY")
+    )
+    if x_key not in styles or y_key not in styles:
+        return None
+    x, y = parse_number(styles[x_key], 0.5), parse_number(styles[y_key], 0.5)
+    if x <= 0:
+        return "west", max(0.0, min(1.0, y))
+    if x >= 1:
+        return "east", max(0.0, min(1.0, y))
+    if y <= 0:
+        return "north", max(0.0, min(1.0, x))
+    if y >= 1:
+        return "south", max(0.0, min(1.0, x))
+    return None
+
+
+def extracted_edge_style(styles: dict[str, str]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    if is_hex_color(styles.get("strokeColor")):
+        result["color"] = styles["strokeColor"]
+    width = parse_number(styles.get("strokeWidth"), 0)
+    if width > 0:
+        result["width"] = extracted_number(width)
+    if styles.get("dashed") in {"0", "1"}:
+        result["dashed"] = styles["dashed"] == "1"
+    markers = {marker: cardinality for cardinality, marker in CARDINALITY_MARKERS.items()}
+    start_cardinality = markers.get(styles.get("startArrow", ""))
+    end_cardinality = markers.get(styles.get("endArrow", ""))
+    if start_cardinality and end_cardinality:
+        result["start_cardinality"] = start_cardinality
+        result["end_cardinality"] = end_cardinality
+    for prefix in ("source", "target"):
+        port = inferred_port(styles, prefix)
+        if port:
+            result[f"{prefix}_port"] = port[0]
+            result[f"{prefix}_offset"] = round(port[1], 4)
+    return result
+
+
+def group_for_box(
+    box: tuple[float, float, float, float],
+    group_boxes: dict[str, tuple[float, float, float, float]],
+) -> str | None:
+    center_x = box[0] + box[2] / 2
+    center_y = box[1] + box[3] / 2
+    candidates = [
+        (width * height, group_id)
+        for group_id, (x, y, width, height) in group_boxes.items()
+        if x <= center_x <= x + width and y <= center_y <= y + height
+    ]
+    return min(candidates)[1] if candidates else None
+
+
+def extract_drawio(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    page_models = drawio_page_models(path)
+    if not page_models:
+        raise ValueError("draw.io file contains no mxGraphModel pages")
+    raw_document = ET.fromstring(path.read_bytes())
+    metadata_version = raw_document.get("data-ir-version")
+    metadata_contract = metadata_version == IR_METADATA_VERSION
+    findings: list[dict[str, Any]] = []
+    pages: list[dict[str, Any]] = []
+    used_page_ids: set[str] = set()
+    summary = {
+        "pages": 0,
+        "groups": 0,
+        "nodes": 0,
+        "edges": 0,
+        "metadata_cells": 0,
+        "inferred_cells": 0,
+        "inferred_pages": 0,
+        "metadata_version": metadata_version,
+    }
+    if not metadata_contract:
+        findings.append({
+            "level": "warning",
+            "code": "extract.metadata-version",
+            "message": (
+                "compiler metadata version is missing or unsupported; "
+                "semantic recovery requires review"
+            ),
+        })
+
+    for page_index, (diagram_element, model) in enumerate(page_models, start=1):
+        page_metadata = (
+            decode_element_metadata(diagram_element, "data-ir-page")
+            if diagram_element is not None else None
+        )
+        raw_page_id = (
+            str(page_metadata.get("id", ""))
+            if page_metadata else str(
+                (diagram_element.get("id", "") if diagram_element is not None else "")
+                or (diagram_element.get("name", "") if diagram_element is not None else "")
+                or f"page-{page_index}"
+            )
+        )
+        page_id = unique_extracted_id(raw_page_id, used_page_ids, "page")
+        page_title = str(
+            (diagram_element.get("name", "") if diagram_element is not None else "")
+            or (
+                page_metadata.get("diagram", {}).get("title", "")
+                if page_metadata and isinstance(page_metadata.get("diagram"), dict) else ""
+            )
+            or f"Page {page_index}"
+        )
+        if not page_metadata:
+            summary["inferred_pages"] += 1
+
+        cells = model.findall(".//mxCell")
+        cell_map = {
+            str(cell.get("id")): cell for cell in cells if cell.get("id") is not None
+        }
+        box_cache: dict[str, tuple[float, float, float, float]] = {}
+        group_cells = [
+            cell for cell in cells
+            if cell.get("vertex") == "1"
+            and parse_style_values(cell.get("style", "")).get("swimlane") == "1"
+        ]
+        group_cell_ids = {cell.get("id", "") for cell in group_cells}
+        node_cells = [
+            cell for cell in cells
+            if cell.get("vertex") == "1"
+            and cell.get("id", "") not in group_cell_ids
+            and cell.get("id", "") not in {"0", "1"}
+        ]
+        edge_cells = [cell for cell in cells if cell.get("edge") == "1"]
+        used_ids: set[str] = set()
+        group_id_by_cell: dict[str, str] = {}
+        group_boxes: dict[str, tuple[float, float, float, float]] = {}
+        groups: list[dict[str, Any]] = []
+        nodes: list[dict[str, Any]] = []
+        edges: list[dict[str, Any]] = []
+
+        for cell in group_cells:
+            metadata = decode_element_metadata(cell, "data-ir")
+            if metadata and metadata.get("id") and metadata.get("label"):
+                summary["metadata_cells"] += 1
+                raw_id = str(metadata["id"])
+                group = copy.deepcopy(metadata)
+            else:
+                summary["inferred_cells"] += 1
+                raw_id = cell.get("id", "") or "group"
+                group = {}
+            group_id = unique_extracted_id(raw_id, used_ids, "group")
+            label_lines = extraction_text_lines(cell.get("value", ""))
+            group.update({
+                "id": group_id,
+                "label": label_lines[0] if label_lines else str(group.get("label", group_id)),
+            })
+            groups.append(group)
+            group_id_by_cell[cell.get("id", "")] = group_id
+            group_boxes[group_id] = absolute_cell_box(cell, cell_map, box_cache)
+
+        node_id_by_cell: dict[str, str] = {}
+        for cell in node_cells:
+            metadata = decode_element_metadata(cell, "data-ir")
+            if metadata and metadata.get("id") and metadata.get("label"):
+                summary["metadata_cells"] += 1
+                raw_id = str(metadata["id"])
+                node = copy.deepcopy(metadata)
+            else:
+                summary["inferred_cells"] += 1
+                raw_id = cell.get("id", "") or "node"
+                node = {}
+            node_id = unique_extracted_id(raw_id, used_ids, "node")
+            node_id_by_cell[cell.get("id", "")] = node_id
+            box = absolute_cell_box(cell, cell_map, box_cache)
+            styles = parse_style_values(cell.get("style", ""))
+            lines = extraction_text_lines(cell.get("value", ""))
+            kind = str(node.get("kind") or infer_node_kind(styles))
+            node.update({
+                "id": node_id,
+                "label": lines[0] if lines else str(node.get("label", node_id)),
+                "kind": kind,
+                "position": {
+                    "x": extracted_number(box[0]),
+                    "y": extracted_number(box[1]),
+                },
+            })
+            if box[2] > 0 and box[3] > 0:
+                node["size"] = {
+                    "width": extracted_number(box[2]),
+                    "height": extracted_number(box[3]),
+                }
+            if kind != "entity":
+                if len(lines) > 1:
+                    node["description"] = " ".join(lines[1:])
+                else:
+                    node.pop("description", None)
+            elif (
+                metadata
+                and cell.get("data-ir-value") is not None
+                and cell.get("value", "") != cell.get("data-ir-value")
+            ):
+                summary["inferred_cells"] += 1
+                findings.append({
+                    "level": "warning",
+                    "code": "extract.entity-visual-edit",
+                    "message": "entity table text changed; field metadata was retained and should be reviewed",
+                    "page": page_id,
+                    "cell": cell.get("id", ""),
+                })
+
+            group_id = None
+            metadata_group = node.get("group")
+            if metadata_group and any(group["id"] == metadata_group for group in groups):
+                group_id = str(metadata_group)
+            elif cell.get("parent", "") in group_id_by_cell:
+                group_id = group_id_by_cell[cell.get("parent", "")]
+            else:
+                group_id = group_for_box(box, group_boxes)
+            if group_id:
+                node["group"] = group_id
+            else:
+                node.pop("group", None)
+
+            link = cell.get("link", "")
+            page_link = re.fullmatch(r"data:page/id,page-(.+)", link)
+            if page_link:
+                node["link"] = slugify(page_link.group(1))
+            elif link:
+                node.pop("link", None)
+                summary["inferred_cells"] += 1
+                findings.append({
+                    "level": "warning",
+                    "code": "extract.unsupported-link",
+                    "message": "external cell links are not representable as Diagram IR page links",
+                    "page": page_id,
+                    "cell": cell.get("id", ""),
+                })
+            elif "link" in node:
+                node.pop("link")
+
+            baseline_style = cell.get("data-ir-style")
+            if not metadata or baseline_style != cell.get("style", ""):
+                visible_style = extracted_node_style(styles)
+                if visible_style:
+                    node["style"] = {
+                        **(
+                            node.get("style", {})
+                            if isinstance(node.get("style"), dict) else {}
+                        ),
+                        **visible_style,
+                    }
+            nodes.append(node)
+
+        for cell in edge_cells:
+            source = node_id_by_cell.get(cell.get("source", ""))
+            target = node_id_by_cell.get(cell.get("target", ""))
+            if not source or not target:
+                findings.append({
+                    "level": "error",
+                    "code": "extract.edge-endpoint",
+                    "message": "edge source and target must resolve to extracted nodes",
+                    "page": page_id,
+                    "cell": cell.get("id", ""),
+                })
+                continue
+            metadata = decode_element_metadata(cell, "data-ir")
+            if metadata and metadata.get("id"):
+                summary["metadata_cells"] += 1
+                raw_id = str(metadata["id"])
+                edge = copy.deepcopy(metadata)
+            else:
+                summary["inferred_cells"] += 1
+                raw_id = cell.get("id", "") or f"{source}-to-{target}"
+                edge = {}
+            edge_id = unique_extracted_id(raw_id, used_ids, "edge")
+            styles = parse_style_values(cell.get("style", ""))
+            label_lines = extraction_text_lines(cell.get("value", ""))
+            edge.update({
+                "id": edge_id,
+                "from": source,
+                "to": target,
+                "label": " ".join(label_lines),
+                "kind": str(edge.get("kind") or infer_edge_kind(styles)),
+            })
+            baseline_style = cell.get("data-ir-style")
+            if not metadata or baseline_style != cell.get("style", ""):
+                visible_style = extracted_edge_style(styles)
+                if visible_style:
+                    edge["style"] = {
+                        **(
+                            edge.get("style", {})
+                            if isinstance(edge.get("style"), dict) else {}
+                        ),
+                        **visible_style,
+                    }
+            edges.append(edge)
+
+        if page_metadata and isinstance(page_metadata.get("diagram"), dict):
+            diagram_data = copy.deepcopy(page_metadata["diagram"])
+        else:
+            node_boxes = [
+                absolute_cell_box(cell, cell_map, box_cache) for cell in node_cells
+            ]
+            x_span = (
+                max((box[0] + box[2] for box in node_boxes), default=0)
+                - min((box[0] for box in node_boxes), default=0)
+            )
+            y_span = (
+                max((box[1] + box[3] for box in node_boxes), default=0)
+                - min((box[1] for box in node_boxes), default=0)
+            )
+            diagram_data = {
+                "direction": "LR" if x_span >= y_span else "TB",
+                "theme": "light",
+            }
+            background = model.get("background")
+            if is_hex_color(background):
+                diagram_data["background"] = background
+        diagram_data["title"] = page_title
+        page = {
+            "id": page_id,
+            "title": page_title,
+            "diagram": diagram_data,
+            "groups": groups,
+            "nodes": nodes,
+            "edges": edges,
+        }
+        pages.append(page)
+        summary["groups"] += len(groups)
+        summary["nodes"] += len(nodes)
+        summary["edges"] += len(edges)
+
+    summary["pages"] = len(pages)
+    if len(pages) == 1:
+        only = pages[0]
+        extracted = {
+            "version": IR_VERSION,
+            "diagram": only["diagram"],
+            "groups": only["groups"],
+            "nodes": only["nodes"],
+            "edges": only["edges"],
+        }
+    else:
+        extracted = {
+            "version": IR_VERSION,
+            "diagram": {},
+            "pages": pages,
+        }
+    validation = validate_ir(extracted)
+    for validation_issue in validation:
+        if validation_issue["level"] == "error":
+            finding = dict(validation_issue)
+            finding["code"] = f"extract.{validation_issue['code']}"
+            findings.append(finding)
+    if summary["inferred_pages"]:
+        findings.append({
+            "level": "warning",
+            "code": "extract.page-metadata",
+            "message": (
+                f"{summary['inferred_pages']} page(s) had no compiler metadata; "
+                "title, direction, and theme were inferred"
+            ),
+        })
+    inferred_cell_count = summary["inferred_cells"]
+    if inferred_cell_count:
+        findings.append({
+            "level": "warning",
+            "code": "extract.cell-metadata",
+            "message": (
+                f"{inferred_cell_count} cell(s) required semantic inference; "
+                "review kinds, entity fields, styles, and links"
+            ),
+        })
+    report = {
+        "format": "drawio-extraction-report/v1",
+        "source": str(path),
+        "passed": not any(item["level"] == "error" for item in findings),
+        "lossless": (
+            metadata_contract
+            and summary["inferred_cells"] == 0
+            and summary["inferred_pages"] == 0
+            and not any(item["level"] == "error" for item in findings)
+        ),
+        "summary": summary,
+        "findings": findings,
+    }
+    return extracted, report
 
 
 def rectangles_overlap(
@@ -4552,13 +5100,35 @@ def security_report_for_data(data: dict[str, Any], source: str) -> dict[str, Any
 def security_report_for_drawio(path: Path) -> dict[str, Any]:
     root = load_drawio_root(path)
     values = []
+    pages = []
+    for diagram, _ in drawio_page_models(path):
+        if diagram is None:
+            continue
+        page: dict[str, Any] = {
+            "id": diagram.get("id", ""),
+            "name": diagram.get("name", ""),
+        }
+        for key, value in diagram.attrib.items():
+            if key.startswith("data-"):
+                try:
+                    page[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    page[key] = value
+        pages.append(page)
     for cell in root.findall(".//mxCell"):
-        values.append({
+        value: dict[str, Any] = {
             "id": cell.get("id", ""),
             "value": cell.get("value", ""),
             "link": cell.get("link", ""),
-        })
-    return security_report_for_data({"cells": values}, str(path))
+        }
+        for key, metadata in cell.attrib.items():
+            if key.startswith("data-"):
+                try:
+                    value[key] = json.loads(metadata)
+                except json.JSONDecodeError:
+                    value[key] = metadata
+        values.append(value)
+    return security_report_for_data({"pages": pages, "cells": values}, str(path))
 
 
 def security_report_for_path(path: Path) -> dict[str, Any]:
@@ -5065,6 +5635,32 @@ def command_compile(args: argparse.Namespace) -> int:
         "nodes": sum(len(page.get("nodes", [])) for _, page in documents),
         "edges": sum(len(page.get("edges", [])) for _, page in documents),
     })
+    return 0
+
+
+def command_extract(args: argparse.Namespace) -> int:
+    source = Path(args.input)
+    extracted, report = extract_drawio(source)
+    output = Path(args.output)
+    report["output"] = str(output)
+    if report["passed"]:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(extracted, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    if args.report:
+        report_path = Path(args.report)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    if not report["passed"]:
+        return 2
+    if args.strict and not report["lossless"]:
+        return 3
     return 0
 
 
@@ -5683,6 +6279,19 @@ def build_parser() -> argparse.ArgumentParser:
     compile_parser.add_argument("-o", "--output", required=True)
     compile_parser.add_argument("--theme-file")
     compile_parser.set_defaults(func=command_compile)
+
+    extract_parser = subparsers.add_parser(
+        "extract", help="recover Diagram IR from an editable .drawio file"
+    )
+    extract_parser.add_argument("input")
+    extract_parser.add_argument("-o", "--output", required=True)
+    extract_parser.add_argument("--report", help="write the extraction report")
+    extract_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="fail when any page or cell required semantic inference",
+    )
+    extract_parser.set_defaults(func=command_extract)
 
     import_parser = subparsers.add_parser(
         "import",

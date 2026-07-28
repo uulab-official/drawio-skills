@@ -46,6 +46,7 @@ class SkillContractTests(unittest.TestCase):
             "security-report.schema.json",
             "migration-report.schema.json",
             "export-report.schema.json",
+            "extraction-report.schema.json",
         ):
             schema = SKILL / f"references/{filename}"
             self.assertIn('"$schema"', schema.read_text(encoding="utf-8"))
@@ -79,6 +80,7 @@ class SkillContractTests(unittest.TestCase):
             "diff",
             "doctor",
             "erd",
+            "extract",
             "ha",
             "import",
             "init",

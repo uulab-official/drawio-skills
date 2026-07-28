@@ -11,6 +11,7 @@ The following identifiers are independent versioned contracts:
 - Security report: `drawio-security-report/v1`
 - Migration report: `drawio-migration-report/v1`
 - Export verification report: `drawio-export-report/v1`
+- Extraction report: `drawio-extraction-report/v1`
 
 Tool releases use semantic versions. Schema versions do not advance merely because the tool gains a feature.
 
@@ -27,6 +28,8 @@ Within Diagram IR v1:
 A breaking schema change requires Diagram IR v2, a documented migration, and at least one final v1-capable release.
 
 Generated `.drawio` XML is an artifact contract, not an API for positional assumptions. Semantic cell IDs and editability are stable; internal style ordering and calculated coordinates may improve between tool releases.
+
+Starting in tool v1.1, generated files include `data-ir-version`, `data-ir-page`, and semantic `data-ir` cell attributes. These attributes are additive draw.io metadata and power [round-trip extraction](round-trip.md). Consumers must preserve unknown `data-*` attributes when modifying compiler-owned XML. Removing them does not make the file unreadable, but `extract --strict` will correctly classify the affected content as inferred rather than lossless.
 
 ## Deprecation policy
 

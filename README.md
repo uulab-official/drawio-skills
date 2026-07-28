@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v1.0 stable**. Diagram IR v1, every documented command, native Desktop export verification, security gates, and release verification are now covered by the stable compatibility policy.
+> Status: **v1.1**. The stable Diagram IR v1 contract now includes compiler-backed `.drawio` round-trip extraction, while retaining native export verification, security gates, and signed-release controls.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -67,6 +67,20 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
 ```
 
 Use `verify-export` to validate an artifact made on another machine. See the [Desktop export contract](skills/drawio-diagram-engineer/references/desktop-export.md).
+
+## Round-trip draw.io editing
+
+Generated `.drawio` files carry versioned semantic metadata for pages, groups, nodes, edges, ERD fields, cardinalities, HA relationships, and cross-page links. Move, rename, reconnect, or restyle supported elements in draw.io, then recover reviewable Diagram IR:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  extract architecture.drawio \
+  -o architecture.diagram.json \
+  --report architecture.extraction.json \
+  --strict
+```
+
+`lossless: true` means every semantic page and cell was recovered from supported compiler metadata. Older or hand-authored files are still converted using deterministic shape, style, geometry, and containment inference; strict mode exits `3` so those assumptions cannot silently enter source control. See the [round-trip editing contract](skills/drawio-diagram-engineer/references/round-trip.md).
 
 ## Architecture blueprint pack
 
@@ -296,6 +310,7 @@ drawio_tool.py build <model|source> [-o <bundle-dir>] [--type auto|...] [--stric
 drawio_tool.py migrate <legacy-ir.json> [-o <v1-ir.json>] [--report <report.json>] [--check]
 drawio_tool.py security <model|diagram.drawio|bundle-dir> [-o <report.json>] [--strict]
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
+drawio_tool.py extract <diagram.drawio> -o <ir.json> [--report <report.json>] [--strict]
 drawio_tool.py blueprint <blueprint.json> -o <pack.drawio> [--ir-output <ir.json>] [--preview-dir <dir>] [--theme-file <theme.json>]
 drawio_tool.py erd <erd.json|schema.sql> -o <erd.drawio> [--ir-output <ir.json>] [--preview-dir <dir>]
 drawio_tool.py ha <ha.json> -o <ha.drawio> [--ir-output <ir.json>] [--preview-dir <dir>]
@@ -318,7 +333,7 @@ For every command and exit code, see the [CLI reference](skills/drawio-diagram-e
 
 ## Roadmap
 
-The v0.1–v1.0 roadmap is complete, including real Desktop integration, a stable Diagram IR contract, signed release tags, checksums, provenance attestations, and immutable releases. See [ROADMAP.md](ROADMAP.md).
+The v0.1–v1.0 roadmap is complete. v1.1 adds round-trip editing and legacy draw.io recovery while keeping the stable Diagram IR contract, signed release tags, checksums, provenance attestations, and immutable releases. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

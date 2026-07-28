@@ -1,0 +1,86 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.8.0">
+  <diagram id="page-main" name="Checkout routing">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="group-edge" value="Edge" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f7f7f7;swimlaneFillColor=#f7f7f7;strokeColor=#7a7a7a;fontColor=#111111;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="70" y="265" width="520" height="141" as="geometry" />
+        </mxCell>
+        <mxCell id="group-services" value="Services" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f7f7f7;swimlaneFillColor=#f7f7f7;strokeColor=#7a7a7a;fontColor=#111111;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="760" y="75" width="210" height="521" as="geometry" />
+        </mxCell>
+        <mxCell id="group-data" value="Data" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f7f7f7;swimlaneFillColor=#f7f7f7;strokeColor=#7a7a7a;fontColor=#111111;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="1140" y="75" width="214" height="521" as="geometry" />
+        </mxCell>
+        <mxCell id="node-client" value="&lt;b&gt;Client&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#d9f0d3;strokeColor=#009e73;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="100" y="320" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-gateway" value="&lt;b&gt;API Gateway&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#d6e5f3;strokeColor=#0072b2;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="410" y="320" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-monitor" value="&lt;b&gt;Health Monitor&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eeeeee;strokeColor=#666666;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="410" y="80" width="154" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders" value="&lt;b&gt;Orders&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#d6e5f3;strokeColor=#0072b2;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="790" y="130" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-payments" value="&lt;b&gt;Payments&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#d6e5f3;strokeColor=#0072b2;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="790" y="320" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-profile" value="&lt;b&gt;Profile&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#d6e5f3;strokeColor=#0072b2;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="790" y="510" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders-db" value="&lt;b&gt;Orders DB&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fff2cc;strokeColor=#e69f00;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="1170" y="130" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-payment-events" value="&lt;b&gt;Payment Events&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fce4d6;strokeColor=#d55e00;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=message;">
+          <mxGeometry x="1170" y="320" width="154" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-profile-cache" value="&lt;b&gt;Profile Cache&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fff2cc;strokeColor=#e69f00;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="1170" y="510" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-client-gateway" value="HTTPS" edge="1" parent="1" source="node-client" target="node-gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-monitor-gateway" value="health" edge="1" parent="1" source="node-monitor" target="node-gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.75;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="487.0" y="228.0" />
+              <mxPoint x="522.5" y="228.0" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-gateway-orders" value="/orders" edge="1" parent="1" source="node-gateway" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.18;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="675.0" y="330.08" />
+              <mxPoint x="675.0" y="158.0" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-gateway-payments" value="/payments" edge="1" parent="1" source="node-gateway" target="node-payments" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-gateway-profile" value="/profile" edge="1" parent="1" source="node-gateway" target="node-profile" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.82;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="675.0" y="365.92" />
+              <mxPoint x="675.0" y="538.0" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-orders-database" value="SQL" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-payments-events" value="publish" edge="1" parent="1" source="node-payments" target="node-payment-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-profile-cache-edge" value="cache" edge="1" parent="1" source="node-profile" target="node-profile-cache" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

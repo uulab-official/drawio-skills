@@ -1,0 +1,187 @@
+{
+  "python": [
+    {
+      "name": "absolute-import",
+      "files": {"api.py": "import orders\n", "orders.py": "VALUE = 1\n"},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "from-package-import",
+      "files": {"shop/api.py": "from shop import orders\n", "shop/orders.py": "VALUE = 1\n"},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "relative-import",
+      "files": {"shop/api.py": "from . import orders\n", "shop/orders.py": "VALUE = 1\n"},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "nested-module-import",
+      "files": {"app/api.py": "from app.services import billing\n", "app/services/billing.py": "VALUE = 1\n"},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "aliased-import",
+      "files": {"core/api.py": "import core.storage as storage\n", "core/storage.py": "VALUE = 1\n"},
+      "nodes": 2,
+      "edges": 1
+    }
+  ],
+  "typescript": [
+    {
+      "name": "static-import",
+      "files": {"src/api.ts": "import {load} from './orders';\n", "src/orders.ts": "export const load = 1;\n"},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "re-export",
+      "files": {"src/index.ts": "export {load} from './orders';\n", "src/orders.ts": "export const load = 1;\n"},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "commonjs-require",
+      "files": {"src/api.js": "const orders = require('./orders');\n", "src/orders.js": "module.exports = {};\n"},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "dynamic-import",
+      "files": {"src/api.ts": "const orders = import('./orders');\n", "src/orders.ts": "export default {};\n"},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "index-resolution",
+      "files": {"src/api.ts": "import orders from './orders';\n", "src/orders/index.ts": "export default {};\n"},
+      "nodes": 2,
+      "edges": 1
+    }
+  ],
+  "openapi": [
+    {
+      "name": "response-schema",
+      "source": {
+        "openapi": "3.1.0",
+        "info": {"title": "Orders"},
+        "paths": {"/orders": {"get": {"operationId": "listOrders", "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Order"}}}}}}}},
+        "components": {"schemas": {"Order": {"type": "object"}}}
+      },
+      "nodes": 3,
+      "edges": 2
+    },
+    {
+      "name": "request-schema",
+      "source": {
+        "openapi": "3.1.0",
+        "info": {"title": "Payments"},
+        "paths": {"/payments": {"post": {"operationId": "createPayment", "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Payment"}}}}}}},
+        "components": {"schemas": {"Payment": {"type": "object"}}}
+      },
+      "nodes": 3,
+      "edges": 2
+    },
+    {
+      "name": "swagger-definitions",
+      "source": {
+        "swagger": "2.0",
+        "info": {"title": "Users"},
+        "paths": {"/users": {"get": {"operationId": "listUsers", "responses": {"200": {"schema": {"$ref": "#/definitions/User"}}}}}},
+        "definitions": {"User": {"type": "object"}}
+      },
+      "nodes": 3,
+      "edges": 2
+    },
+    {
+      "name": "path-derived-operation",
+      "source": {
+        "openapi": "3.0.3",
+        "info": {"title": "Catalog"},
+        "paths": {"/items": {"get": {"summary": "Browse items", "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Item"}}}}}}}},
+        "components": {"schemas": {"Item": {"type": "object"}}}
+      },
+      "nodes": 3,
+      "edges": 2
+    },
+    {
+      "name": "nested-array-reference",
+      "source": {
+        "openapi": "3.1.0",
+        "info": {"title": "Events"},
+        "paths": {"/events": {"get": {"operationId": "events", "responses": {"200": {"content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Event"}}}}}}}}},
+        "components": {"schemas": {"Event": {"type": "object"}}}
+      },
+      "nodes": 3,
+      "edges": 2
+    }
+  ],
+  "sql": [
+    {
+      "name": "inline-reference",
+      "source": "CREATE TABLE users (id INTEGER PRIMARY KEY);\nCREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id));\n",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "table-foreign-key",
+      "source": "CREATE TABLE teams (id INTEGER PRIMARY KEY);\nCREATE TABLE members (id INTEGER PRIMARY KEY, team_id INTEGER, FOREIGN KEY (team_id) REFERENCES teams(id));\n",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "named-constraint",
+      "source": "CREATE TABLE accounts (id UUID PRIMARY KEY);\nCREATE TABLE sessions (id UUID PRIMARY KEY, account_id UUID, CONSTRAINT fk_account FOREIGN KEY (account_id) REFERENCES accounts(id));\n",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "quoted-identifiers",
+      "source": "CREATE TABLE \"customers\" (\"id\" INTEGER PRIMARY KEY);\nCREATE TABLE \"invoices\" (\"id\" INTEGER PRIMARY KEY, \"customer_id\" INTEGER REFERENCES \"customers\"(\"id\"));\n",
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "external-reference",
+      "source": "CREATE TABLE audit_log (id INTEGER PRIMARY KEY, actor_id INTEGER REFERENCES identity_users(id));\n",
+      "nodes": 2,
+      "edges": 1
+    }
+  ],
+  "compose": [
+    {
+      "name": "list-depends-on",
+      "source": {"services": {"api": {"image": "example/api", "depends_on": ["db"]}, "db": {"image": "postgres:17"}}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "map-depends-on",
+      "source": {"services": {"worker": {"image": "example/worker", "depends_on": {"queue": {"condition": "service_started"}}}, "queue": {"image": "redis:7"}}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "named-volume-short-syntax",
+      "source": {"services": {"database": {"image": "postgres:17", "volumes": ["data:/var/lib/postgresql/data"]}}, "volumes": {"data": {}}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "named-volume-long-syntax",
+      "source": {"services": {"search": {"image": "opensearch:2", "volumes": [{"type": "volume", "source": "index", "target": "/data"}]}}, "volumes": {"index": {}}},
+      "nodes": 2,
+      "edges": 1
+    },
+    {
+      "name": "service-chain",
+      "source": {"services": {"frontend": {"build": ".", "depends_on": ["api"]}, "api": {"image": "example/api"}}},
+      "nodes": 2,
+      "edges": 1
+    }
+  ]
+}

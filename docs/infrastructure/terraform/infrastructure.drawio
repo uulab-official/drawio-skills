@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.7.0">
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.8.0">
   <diagram id="page-main" name="Commerce AWS Infrastructure">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
       <root>
@@ -23,16 +23,16 @@
         <mxCell id="node-module-module-network" value="&lt;b&gt;network&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;module · example.terraform.tf · module.network&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eeeeee;strokeColor=#666666;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
           <mxGeometry x="1804" y="100" width="266" height="72" as="geometry" />
         </mxCell>
-        <mxCell id="edge-module-aws-eip-api-depends-module-aws-instance-api" value="depends on" edge="1" parent="1" source="node-module-aws-eip-api" target="node-module-aws-instance-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
+        <mxCell id="edge-module-aws-eip-api-depends-module-aws-instance-api" value="depends on" edge="1" parent="1" source="node-module-aws-eip-api" target="node-module-aws-instance-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-module-aws-instance-api-depends-module-aws-security-group-api" value="depends on" edge="1" parent="1" source="node-module-aws-instance-api" target="node-module-aws-security-group-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
+        <mxCell id="edge-module-aws-instance-api-depends-module-aws-security-group-api" value="depends on" edge="1" parent="1" source="node-module-aws-instance-api" target="node-module-aws-security-group-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-module-aws-route53-record-api-depends-module-aws-eip-api" value="depends on" edge="1" parent="1" source="node-module-aws-route53-record-api" target="node-module-aws-eip-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
+        <mxCell id="edge-module-aws-route53-record-api-depends-module-aws-eip-api" value="depends on" edge="1" parent="1" source="node-module-aws-route53-record-api" target="node-module-aws-eip-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-module-aws-security-group-api-depends-module-module-network" value="depends on" edge="1" parent="1" source="node-module-aws-security-group-api" target="node-module-module-network" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
+        <mxCell id="edge-module-aws-security-group-api-depends-module-module-network" value="depends on" edge="1" parent="1" source="node-module-aws-security-group-api" target="node-module-module-network" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>

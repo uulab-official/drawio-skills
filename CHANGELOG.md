@@ -2,6 +2,16 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 0.8.0 — 2026-07-28
+
+- Add explicit north/east/south/west edge ports and optional normalized endpoint offsets.
+- Add deterministic fan-out/fan-in port distribution.
+- Add obstacle-aware orthogonal route selection with editable draw.io waypoints.
+- Make SVG previews and draw.io validation consume the same planned routes.
+- Upgrade routing checks from center-line risk estimates to actual waypoint segment analysis.
+- Add five deterministic strict-valid fixtures for every Python, TypeScript, OpenAPI, SQL, and Compose importer, bringing the importer corpus to 45 cases.
+- Publish a 100-point editable routing example and complete the v0.3 repository/infrastructure milestone.
+
 ## 0.7.0 — 2026-07-28
 
 - Add bounded, deterministic Terraform resource/data/module importing with direct-reference dependency edges.

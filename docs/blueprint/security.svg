@@ -2,7 +2,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1618" height="932" viewBox="0 0 1618 932" role="img" aria-label="Commerce Platform — Network &amp; Security Zones">
   <rect width="100%" height="100%" fill="#ffffff" />
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="arrow-334155" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
     </marker>
   </defs>
@@ -14,17 +14,17 @@
   <text x="706" y="497" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Private</text>
   <rect x="380" y="695" width="210" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
   <text x="396" y="719" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Public</text>
-  <polyline points="250,350.0 330.0,350.0 330.0,786.0 410,786.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <polyline points="250,350.0 330.0,350.0 330.0,786.0 410,786.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
   <text x="330.0" y="560.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">HTTPS</text>
-  <polyline points="560,786.0 640.0,786.0 640.0,564.0 720,564.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <polyline points="560,786.0 640.0,786.0 640.0,564.0 720,564.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
   <text x="640.0" y="667.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">JSON/HTTPS</text>
-  <polyline points="870,564.0 950.0,564.0 950.0,564.0 1030,564.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <polyline points="870,564.0 1030,564.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
   <text x="950.0" y="556.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">commands</text>
-  <polyline points="1180,564.0 1260.0,564.0 1260.0,136.0 1340,136.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
-  <text x="1260.0" y="342.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">reads/writes</text>
-  <polyline points="1180,564.0 1260.0,564.0 1260.0,564.0 1340,564.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="7 5" />
-  <text x="1260.0" y="556.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">OrderCreated</text>
-  <polyline points="1180,564.0 1260.0,564.0 1260.0,350.0 1340,350.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <polyline points="1180,587.04 1260.0,587.04 1260.0,136.0 1340,136.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
+  <text x="1260.0" y="353.52" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">reads/writes</text>
+  <polyline points="1180,540.96 1260.0,540.96 1260.0,564.0 1340,564.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" stroke-dasharray="7 5" />
+  <text x="1220.0" y="532.96" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">OrderCreated</text>
+  <polyline points="1180,564.0 1260.0,564.0 1260.0,350.0 1340,350.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
   <text x="1260.0" y="449.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">charges</text>
   <rect x="100" y="322" width="150" height="56" rx="12" fill="#ecfeff" stroke="#0e7490" stroke-width="2" />
   <text x="175.0" y="350.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Customer</text>

@@ -23,7 +23,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.7.0"
+VERSION = "0.8.0"
 ALLOWED_DIRECTIONS = {"LR", "TB"}
 ALLOWED_THEMES = {"light", "dark", "colorblind"}
 ALLOWED_KINDS = {
@@ -31,6 +31,7 @@ ALLOWED_KINDS = {
     "process", "document", "note", "entity",
 }
 ALLOWED_EDGE_KINDS = {"sync", "async", "data", "dependency", "association"}
+ALLOWED_PORTS = {"auto", "north", "east", "south", "west"}
 ALLOWED_BLUEPRINT_SCOPES = {
     "actor", "external", "system", "container", "component", "data", "infrastructure",
 }
@@ -66,6 +67,10 @@ NODE_FIELDS = {
     "style", "link", "fields",
 }
 EDGE_FIELDS = {"id", "from", "to", "label", "kind", "style"}
+EDGE_STYLE_FIELDS = {
+    "color", "dashed", "width", "start_cardinality", "end_cardinality",
+    "source_port", "target_port", "source_offset", "target_offset",
+}
 
 THEMES = {
     "light": {
@@ -438,6 +443,11 @@ def validate_ir(data: dict[str, Any], allow_page_links: bool = False) -> list[di
         if custom_edge_style is not None and not isinstance(custom_edge_style, dict):
             issues.append(issue("error", "edge.style", "edge style must be an object", eid))
         elif isinstance(custom_edge_style, dict):
+            for field in sorted(set(custom_edge_style) - EDGE_STYLE_FIELDS):
+                issues.append(issue(
+                    "warning", "edge.style.unknown-field",
+                    f"unknown edge style field: {field}", eid,
+                ))
             cardinalities = [
                 custom_edge_style.get("start_cardinality"),
                 custom_edge_style.get("end_cardinality"),
@@ -455,6 +465,24 @@ def validate_ir(data: dict[str, Any], allow_page_links: bool = False) -> list[di
                     "error", "edge.cardinality",
                     "ER relationships require both endpoint cardinalities", eid,
                 ))
+            for field in ("source_port", "target_port"):
+                port = custom_edge_style.get(field)
+                if port is not None and port not in ALLOWED_PORTS:
+                    issues.append(issue(
+                        "error", "edge.port",
+                        f"{field} must be auto, north, east, south, or west", eid,
+                    ))
+            for field in ("source_offset", "target_offset"):
+                offset = custom_edge_style.get(field)
+                if offset is not None and (
+                    not isinstance(offset, (int, float))
+                    or isinstance(offset, bool)
+                    or not 0 <= offset <= 1
+                ):
+                    issues.append(issue(
+                        "error", "edge.port-offset",
+                        f"{field} must be a number from 0 to 1", eid,
+                    ))
         degrees[source] += 1
         degrees[target] += 1
 
@@ -598,6 +626,335 @@ def calculate_layout(data: dict[str, Any]) -> dict[str, tuple[int, int, int, int
     return layout
 
 
+def edge_semantic_key(edge: dict[str, Any], index: int) -> str:
+    return str(edge.get("id") or f"{edge.get('from', '')}-to-{edge.get('to', '')}-{index + 1}")
+
+
+def default_port_sides(
+    source: tuple[int, int, int, int],
+    target: tuple[int, int, int, int],
+    direction: str,
+) -> tuple[str, str]:
+    source_center = (source[0] + source[2] / 2, source[1] + source[3] / 2)
+    target_center = (target[0] + target[2] / 2, target[1] + target[3] / 2)
+    delta_x = target_center[0] - source_center[0]
+    delta_y = target_center[1] - source_center[1]
+    if direction == "LR" and abs(delta_x) >= abs(delta_y) * 0.35:
+        return ("east", "west") if delta_x >= 0 else ("west", "east")
+    if direction == "TB" and abs(delta_y) >= abs(delta_x) * 0.35:
+        return ("south", "north") if delta_y >= 0 else ("north", "south")
+    if abs(delta_x) >= abs(delta_y):
+        return ("east", "west") if delta_x >= 0 else ("west", "east")
+    return ("south", "north") if delta_y >= 0 else ("north", "south")
+
+
+def port_coordinates(side: str, offset: float) -> tuple[float, float]:
+    if side == "north":
+        return offset, 0
+    if side == "east":
+        return 1, offset
+    if side == "south":
+        return offset, 1
+    return 0, offset
+
+
+def port_point(
+    box: tuple[int, int, int, int], side: str, offset: float,
+) -> tuple[float, float]:
+    x, y, width, height = box
+    relative_x, relative_y = port_coordinates(side, offset)
+    return x + width * relative_x, y + height * relative_y
+
+
+def offset_point(point: tuple[float, float], side: str, distance: float) -> tuple[float, float]:
+    delta = {
+        "north": (0, -distance),
+        "east": (distance, 0),
+        "south": (0, distance),
+        "west": (-distance, 0),
+    }[side]
+    return point[0] + delta[0], point[1] + delta[1]
+
+
+def simplify_route(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    result: list[tuple[float, float]] = []
+    for point in points:
+        if result and point == result[-1]:
+            continue
+        if len(result) >= 2:
+            first, second = result[-2], result[-1]
+            if (
+                (first[0] == second[0] == point[0])
+                or (first[1] == second[1] == point[1])
+            ):
+                result[-1] = point
+                continue
+        result.append(point)
+    return result
+
+
+def route_segments(
+    points: list[tuple[float, float]],
+) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    return [
+        (points[index], points[index + 1])
+        for index in range(len(points) - 1)
+        if points[index] != points[index + 1]
+    ]
+
+
+def segment_bounds(
+    start: tuple[float, float], end: tuple[float, float],
+) -> tuple[float, float, float, float]:
+    return (
+        min(start[0], end[0]), min(start[1], end[1]),
+        max(start[0], end[0]), max(start[1], end[1]),
+    )
+
+
+def bounds_intersect(
+    left: tuple[float, float, float, float],
+    right: tuple[float, float, float, float],
+) -> bool:
+    return not (
+        left[2] < right[0] or right[2] < left[0]
+        or left[3] < right[1] or right[3] < left[1]
+    )
+
+
+def route_bounds(
+    segments: list[tuple[tuple[float, float], tuple[float, float]]],
+) -> tuple[float, float, float, float]:
+    if not segments:
+        return 0, 0, 0, 0
+    bounds = [segment_bounds(start, end) for start, end in segments]
+    return (
+        min(item[0] for item in bounds),
+        min(item[1] for item in bounds),
+        max(item[2] for item in bounds),
+        max(item[3] for item in bounds),
+    )
+
+
+def orthogonal_candidates(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    source_side: str,
+    target_side: str,
+    obstacles: list[tuple[str, float, float, float, float]] | None = None,
+) -> list[list[tuple[float, float]]]:
+    source_stub = offset_point(start, source_side, 28)
+    target_stub = offset_point(end, target_side, 28)
+    min_x, max_x = sorted((source_stub[0], target_stub[0]))
+    min_y, max_y = sorted((source_stub[1], target_stub[1]))
+    x_mid = (source_stub[0] + target_stub[0]) / 2
+    y_mid = (source_stub[1] + target_stub[1]) / 2
+    x_corridors = [x_mid, x_mid - 36, x_mid + 36, min_x - 48, max_x + 48]
+    y_corridors = [y_mid, y_mid - 36, y_mid + 36, min_y - 48, max_y + 48]
+    nearby_obstacles = sorted(
+        obstacles or [],
+        key=lambda box: (
+            abs((box[1] + box[3] / 2) - x_mid)
+            + abs((box[2] + box[4] / 2) - y_mid),
+            box[0],
+        ),
+    )[:12]
+    for _, x, y, width, height in nearby_obstacles:
+        x_corridors.extend((x - 36, x + width + 36))
+        y_corridors.extend((y - 36, y + height + 36))
+    candidates: list[list[tuple[float, float]]] = []
+    if source_stub[0] == target_stub[0] or source_stub[1] == target_stub[1]:
+        candidates.append([start, source_stub, target_stub, end])
+    for corridor in x_corridors:
+        candidates.append([
+            start, source_stub, (corridor, source_stub[1]),
+            (corridor, target_stub[1]), target_stub, end,
+        ])
+    for corridor in y_corridors:
+        candidates.append([
+            start, source_stub, (source_stub[0], corridor),
+            (target_stub[0], corridor), target_stub, end,
+        ])
+    unique: list[list[tuple[float, float]]] = []
+    seen: set[tuple[tuple[float, float], ...]] = set()
+    for candidate in candidates:
+        simplified = simplify_route(candidate)
+        key = tuple(simplified)
+        if key not in seen:
+            seen.add(key)
+            unique.append(simplified)
+    return unique
+
+
+def route_score(
+    points: list[tuple[float, float]],
+    boxes: list[tuple[str, float, float, float, float]],
+    excluded_nodes: set[str],
+    previous: list[dict[str, Any]],
+    endpoint_nodes: set[str],
+    preference: int,
+) -> tuple[int, int, int, float, int]:
+    segments = route_segments(points)
+    segment_boxes = [
+        (start, end, segment_bounds(start, end)) for start, end in segments
+    ]
+    node_hits = sum(
+        1
+        for start, end, bounds in segment_boxes
+        for box in boxes
+        if (
+            box[0] not in excluded_nodes
+            and bounds_intersect(
+                bounds, (box[1], box[2], box[1] + box[3], box[2] + box[4])
+            )
+            and segment_crosses_rectangle(start, end, box)
+        )
+    )
+    crossings = 0
+    candidate_bounds = route_bounds(segments)
+    for prior in previous:
+        if (
+            endpoint_nodes & prior["nodes"]
+            or not bounds_intersect(candidate_bounds, prior["bounds"])
+        ):
+            continue
+        crossings += sum(
+            1
+            for start, end, bounds in segment_boxes
+            for other_start, other_end, other_bounds in prior["segment_boxes"]
+            if (
+                bounds_intersect(bounds, other_bounds)
+                and segments_cross(start, end, other_start, other_end)
+            )
+        )
+    length = sum(
+        abs(end[0] - start[0]) + abs(end[1] - start[1])
+        for start, end in segments
+    )
+    return node_hits, crossings, max(0, len(segments) - 1), length, preference
+
+
+def edge_route_plans(
+    data: dict[str, Any],
+    layout: dict[str, tuple[int, int, int, int]] | None = None,
+) -> list[dict[str, Any]]:
+    layout = layout or calculate_layout(data)
+    edges = data.get("edges", [])
+    direction = str(data.get("diagram", {}).get("direction", "LR"))
+    endpoint_specs: dict[tuple[int, str], tuple[str, float | None]] = {}
+    assignments: dict[tuple[str, str], list[tuple[str, int, str]]] = defaultdict(list)
+    for index, edge in enumerate(edges):
+        source_id, target_id = str(edge["from"]), str(edge["to"])
+        custom = edge.get("style", {}) if isinstance(edge.get("style"), dict) else {}
+        if source_id == target_id:
+            defaults = ("east", "north")
+        else:
+            defaults = default_port_sides(layout[source_id], layout[target_id], direction)
+        source_side = str(custom.get("source_port", "auto"))
+        target_side = str(custom.get("target_port", "auto"))
+        source_side = defaults[0] if source_side == "auto" else source_side
+        target_side = defaults[1] if target_side == "auto" else target_side
+        source_offset = custom.get("source_offset")
+        target_offset = custom.get("target_offset")
+        endpoint_specs[(index, "source")] = (
+            source_side, float(source_offset) if source_offset is not None else None,
+        )
+        endpoint_specs[(index, "target")] = (
+            target_side, float(target_offset) if target_offset is not None else None,
+        )
+        key = edge_semantic_key(edge, index)
+        assignments[(source_id, source_side)].append((key, index, "source"))
+        assignments[(target_id, target_side)].append((key, index, "target"))
+    endpoint_offsets: dict[tuple[int, str], float] = {}
+    for endpoints in assignments.values():
+        ordered = sorted(endpoints)
+        count = len(ordered)
+        for position, (_, index, role) in enumerate(ordered):
+            _, explicit = endpoint_specs[(index, role)]
+            endpoint_offsets[(index, role)] = (
+                explicit if explicit is not None
+                else 0.5 if count == 1
+                else 0.18 + 0.64 * position / (count - 1)
+            )
+
+    boxes = [
+        (node_id, float(box[0]), float(box[1]), float(box[2]), float(box[3]))
+        for node_id, box in layout.items()
+    ]
+    plans: list[dict[str, Any] | None] = [None] * len(edges)
+    previous: list[dict[str, Any]] = []
+    ordered_edges = sorted(
+        enumerate(edges), key=lambda item: edge_semantic_key(item[1], item[0]),
+    )
+    for index, edge in ordered_edges:
+        source_id, target_id = str(edge["from"]), str(edge["to"])
+        source_side = endpoint_specs[(index, "source")][0]
+        target_side = endpoint_specs[(index, "target")][0]
+        source_offset = endpoint_offsets[(index, "source")]
+        target_offset = endpoint_offsets[(index, "target")]
+        start = port_point(layout[source_id], source_side, source_offset)
+        end = port_point(layout[target_id], target_side, target_offset)
+        if source_id == target_id:
+            x, y, width, _ = layout[source_id]
+            points = simplify_route([
+                start, (x + width + 70, start[1]), (x + width + 70, y - 50),
+                (end[0], y - 50), end,
+            ])
+        else:
+            candidates = orthogonal_candidates(
+                start, end, source_side, target_side,
+                [box for box in boxes if box[0] not in {source_id, target_id}],
+            )
+            scored = [
+                (
+                    route_score(
+                        candidate, boxes, {source_id, target_id}, previous,
+                        {source_id, target_id}, preference,
+                    ),
+                    candidate,
+                )
+                for preference, candidate in enumerate(candidates)
+            ]
+            points = min(scored, key=lambda item: item[0])[1]
+        source_xy = port_coordinates(source_side, source_offset)
+        target_xy = port_coordinates(target_side, target_offset)
+        plan = {
+            "source_port": source_side,
+            "target_port": target_side,
+            "source_offset": source_offset,
+            "target_offset": target_offset,
+            "source_xy": source_xy,
+            "target_xy": target_xy,
+            "points": points,
+        }
+        plans[index] = plan
+        segments = route_segments(points)
+        previous.append({
+            "nodes": {source_id, target_id},
+            "segments": segments,
+            "segment_boxes": [
+                (start, end, segment_bounds(start, end))
+                for start, end in segments
+            ],
+            "bounds": route_bounds(segments),
+        })
+    return [plan for plan in plans if plan is not None]
+
+
+def route_label_position(points: list[tuple[float, float]]) -> tuple[float, float]:
+    segments = route_segments(points)
+    if not segments:
+        return points[0]
+    start, end = max(
+        segments,
+        key=lambda segment: (
+            abs(segment[1][0] - segment[0][0])
+            + abs(segment[1][1] - segment[0][1])
+        ),
+    )
+    return (start[0] + end[0]) / 2, (start[1] + end[1]) / 2 - 8
+
+
 def style_string(parts: dict[str, Any]) -> str:
     return ";".join(f"{key}={str(value).lower() if isinstance(value, bool) else value}" for key, value in parts.items()) + ";"
 
@@ -628,7 +985,12 @@ def node_style(node: dict[str, Any], theme: dict[str, Any]) -> str:
     return style_string(parts)
 
 
-def edge_style(edge: dict[str, Any], theme: dict[str, Any], direction: str) -> str:
+def edge_style(
+    edge: dict[str, Any],
+    theme: dict[str, Any],
+    direction: str,
+    route_plan: dict[str, Any] | None = None,
+) -> str:
     kind = edge.get("kind", "sync")
     custom = edge.get("style", {}) if isinstance(edge.get("style"), dict) else {}
     parts: dict[str, Any] = {
@@ -637,7 +999,16 @@ def edge_style(edge: dict[str, Any], theme: dict[str, Any], direction: str) -> s
         "strokeWidth": custom.get("width", 2), "endArrow": "block", "endFill": 1,
         "fontColor": theme["font"], "fontSize": 11, "labelBackgroundColor": theme["background"],
     }
-    if direction == "LR":
+    if route_plan:
+        source_x, source_y = route_plan["source_xy"]
+        target_x, target_y = route_plan["target_xy"]
+        parts.update({
+            "exitX": round(source_x, 4), "exitY": round(source_y, 4),
+            "entryX": round(target_x, 4), "entryY": round(target_y, 4),
+            "exitDx": 0, "exitDy": 0, "entryDx": 0, "entryDy": 0,
+            "exitPerimeter": 0, "entryPerimeter": 0,
+        })
+    elif direction == "LR":
         parts.update({"exitX": 1, "exitY": 0.5, "entryX": 0, "entryY": 0.5})
     else:
         parts.update({"exitX": 0.5, "exitY": 1, "entryX": 0.5, "entryY": 0})
@@ -733,6 +1104,7 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
     direction = str(diagram_data.get("direction", "LR"))
     theme = resolve_theme(diagram_data)
     layout = calculate_layout(data)
+    route_plans = edge_route_plans(data, layout)
 
     diagram = ET.SubElement(mxfile, "diagram", {"id": f"page-{page_id}", "name": title})
     model = ET.SubElement(diagram, "mxGraphModel", {
@@ -785,6 +1157,7 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
 
     edge_counts: dict[str, int] = defaultdict(int)
     for index, edge in enumerate(data.get("edges", []), start=1):
+        route_plan = route_plans[index - 1]
         source, target = str(edge["from"]), str(edge["to"])
         base_id = str(edge.get("id", f"{source}-to-{target}"))
         edge_counts[base_id] += 1
@@ -792,9 +1165,18 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
         cell = ET.SubElement(root, "mxCell", {
             "id": f"edge-{eid}", "value": str(edge.get("label", "")), "edge": "1", "parent": "1",
             "source": f"node-{source}", "target": f"node-{target}",
-            "style": edge_style(edge, theme, direction),
+            "style": edge_style(edge, theme, direction, route_plan),
         })
-        ET.SubElement(cell, "mxGeometry", {"relative": "1", "as": "geometry"})
+        geometry = ET.SubElement(
+            cell, "mxGeometry", {"relative": "1", "as": "geometry"},
+        )
+        internal_points = route_plan["points"][1:-1]
+        if internal_points:
+            point_array = ET.SubElement(geometry, "Array", {"as": "points"})
+            for x, y in internal_points:
+                ET.SubElement(point_array, "mxPoint", {
+                    "x": str(round(x, 3)), "y": str(round(y, 3)),
+                })
 
 
 def compile_drawio(data: dict[str, Any]) -> ET.ElementTree:
@@ -826,6 +1208,7 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
     direction = str(diagram.get("direction", "LR"))
     theme = resolve_theme(diagram)
     layout = calculate_layout(data)
+    route_plans = edge_route_plans(data, layout)
     group_boxes: list[tuple[dict[str, Any], int, int, int, int]] = []
     for group in data.get("groups", []):
         members = [layout[str(node["id"])] for node in data.get("nodes", []) if node.get("group") == group["id"]]
@@ -889,29 +1272,11 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
         label.text = str(group["label"])
 
     node_map = {str(node["id"]): node for node in data.get("nodes", [])}
-    for edge in data.get("edges", []):
+    for edge_index, edge in enumerate(data.get("edges", [])):
         source_id, target_id = str(edge["from"]), str(edge["to"])
-        source, target = layout[source_id], layout[target_id]
-        if source_id == target_id:
-            start = (source[0] + source[2], source[1] + source[3] * 0.65)
-            end = (source[0] + source[2] * 0.65, source[1])
-            points = [
-                start,
-                (source[0] + source[2] + 80, start[1]),
-                (source[0] + source[2] + 80, source[1] - 55),
-                (end[0], source[1] - 55),
-                end,
-            ]
-        elif direction == "LR":
-            start = (source[0] + source[2], source[1] + source[3] / 2)
-            end = (target[0], target[1] + target[3] / 2)
-            midpoint = (start[0] + end[0]) / 2
-            points = [start, (midpoint, start[1]), (midpoint, end[1]), end]
-        else:
-            start = (source[0] + source[2] / 2, source[1] + source[3])
-            end = (target[0] + target[2] / 2, target[1])
-            midpoint = (start[1] + end[1]) / 2
-            points = [start, (start[0], midpoint), (end[0], midpoint), end]
+        route_plan = route_plans[edge_index]
+        points = route_plan["points"]
+        start, end = points[0], points[-1]
         edge_kind = str(edge.get("kind", "sync"))
         edge_custom = edge.get("style", {}) if isinstance(edge.get("style"), dict) else {}
         edge_color = str(edge_custom.get("color", theme["edge"]))
@@ -933,16 +1298,7 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
         ET.SubElement(svg, "polyline", attrs)
         edge_label = str(edge.get("label", "")).strip()
         if edge_label:
-            label_x = (
-                source[0] + source[2] + 40
-                if source_id == target_id
-                else (start[0] + end[0]) / 2
-            )
-            label_y = (
-                source[1] - 65
-                if source_id == target_id
-                else (start[1] + end[1]) / 2 - 8
-            )
+            label_x, label_y = route_label_position(points)
             label = ET.SubElement(svg, "text", {
                 "x": str(label_x), "y": str(label_y),
                 "fill": theme["font"], "font-family": "Inter, Arial, sans-serif",
@@ -1247,7 +1603,7 @@ def validate_drawio(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
                     issues.append(item)
 
         boxes = {box[0]: box for box in vertices}
-        route_segments: list[tuple[str, str, str, tuple[float, float], tuple[float, float]]] = []
+        routed_edges: list[dict[str, Any]] = []
         for cell in cells:
             if cell.get("edge") != "1":
                 continue
@@ -1255,28 +1611,61 @@ def validate_drawio(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
             if source not in boxes or target not in boxes:
                 continue
             source_box, target_box = boxes[source], boxes[target]
-            start = (source_box[1] + source_box[3] / 2, source_box[2] + source_box[4] / 2)
-            end = (target_box[1] + target_box[3] / 2, target_box[2] + target_box[4] / 2)
-            route_segments.append((cell.get("id", ""), source, target, start, end))
-            for other in vertices:
-                if other[0] in {source, target}:
+            styles = parse_style_values(cell.get("style", ""))
+            exit_x = parse_number(styles.get("exitX"), 0.5)
+            exit_y = parse_number(styles.get("exitY"), 0.5)
+            entry_x = parse_number(styles.get("entryX"), 0.5)
+            entry_y = parse_number(styles.get("entryY"), 0.5)
+            start = (
+                source_box[1] + source_box[3] * exit_x,
+                source_box[2] + source_box[4] * exit_y,
+            )
+            end = (
+                target_box[1] + target_box[3] * entry_x,
+                target_box[2] + target_box[4] * entry_y,
+            )
+            geometry = cell.find("mxGeometry")
+            waypoints = [
+                (parse_number(point.get("x")), parse_number(point.get("y")))
+                for point in (
+                    geometry.findall("./Array[@as='points']/mxPoint")
+                    if geometry is not None else []
+                )
+            ]
+            points = simplify_route([start, *waypoints, end])
+            segments = route_segments(points)
+            routed_edges.append({
+                "id": cell.get("id", ""),
+                "nodes": {source, target},
+                "segments": segments,
+            })
+            reported_nodes: set[str] = set()
+            for segment_start, segment_end in segments:
+                for other in vertices:
+                    if other[0] in {source, target} or other[0] in reported_nodes:
+                        continue
+                    if segment_crosses_rectangle(segment_start, segment_end, other):
+                        reported_nodes.add(other[0])
+                        item = issue(
+                            "warning", "routing.node-risk",
+                            f"orthogonal route crosses {other[0]}",
+                            cell.get("id", ""),
+                        )
+                        item["page"] = page_name
+                        issues.append(item)
+        for index, left in enumerate(routed_edges):
+            for right in routed_edges[index + 1:]:
+                if left["nodes"] & right["nodes"]:
                     continue
-                if segment_crosses_rectangle(start, end, other):
-                    item = issue(
-                        "warning", "routing.node-risk",
-                        f"direct route may cross {other[0]}; inspect rendered orthogonal route",
-                        cell.get("id", ""),
-                    )
-                    item["page"] = page_name
-                    issues.append(item)
-        for index, left in enumerate(route_segments):
-            for right in route_segments[index + 1:]:
-                if {left[1], left[2]} & {right[1], right[2]}:
-                    continue
-                if segments_cross(left[3], left[4], right[3], right[4]):
+                crossing = any(
+                    segments_cross(left_start, left_end, right_start, right_end)
+                    for left_start, left_end in left["segments"]
+                    for right_start, right_end in right["segments"]
+                )
+                if crossing:
                     item = issue(
                         "warning", "routing.crossing-risk",
-                        f"route may cross {right[0]}; inspect rendered orthogonal routes", left[0],
+                        f"route crosses {right['id']}", left["id"],
                     )
                     item["page"] = page_name
                     issues.append(item)
@@ -1328,8 +1717,8 @@ REPAIR_SUGGESTIONS = {
     "label.density": "Reduce text or enlarge the node; keep one primary idea per node.",
     "node.contrast": "Choose text and fill colors with at least 4.5:1 contrast.",
     "theme.contrast": "Adjust the theme font or fill token to at least 4.5:1 contrast.",
-    "routing.node-risk": "Add spacing or explicit waypoints so the connector avoids the reported node.",
-    "routing.crossing-risk": "Reorder nodes, change direction, or add a routing corridor.",
+    "routing.node-risk": "Add spacing, move the blocking node, or assign edge ports on a clearer side.",
+    "routing.crossing-risk": "Reorder nodes, change direction, or assign ports that separate the routes.",
     "node.isolated": "Connect the node, explain why it is intentionally isolated, or remove it from the view.",
     "layout.canvas": "Split the diagram into linked pages or reduce its scope.",
     "erd.primary-key": "Declare a primary key or document why the entity is intentionally keyless.",

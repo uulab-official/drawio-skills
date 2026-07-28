@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.5.0">
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.8.0">
   <diagram id="page-context" name="Commerce Platform — System Context">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
       <root>
@@ -14,11 +14,21 @@
         <mxCell id="node-payment" value="&lt;b&gt;Payment Provider&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
           <mxGeometry x="773" y="100" width="168" height="56" as="geometry" />
         </mxCell>
-        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-commerce" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-commerce" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330.0" y="128.0" />
+              <mxPoint x="330.0" y="136.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-commerce" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-commerce" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="693.0" y="136.0" />
+              <mxPoint x="693.0" y="128.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
@@ -61,23 +71,53 @@
         <mxCell id="node-payment" value="&lt;b&gt;Payment Provider&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
           <mxGeometry x="1340" y="100" width="168" height="56" as="geometry" />
         </mxCell>
-        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330.0" y="128.0" />
+              <mxPoint x="330.0" y="564.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-web-api" value="JSON/HTTPS" edge="1" parent="1" source="node-web" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-web-api" value="JSON/HTTPS" edge="1" parent="1" source="node-web" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640.0" y="564.0" />
+              <mxPoint x="640.0" y="1008.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-api-orders" value="commands" edge="1" parent="1" source="node-api" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-api-orders" value="commands" edge="1" parent="1" source="node-api" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950.0" y="1008.0" />
+              <mxPoint x="950.0" y="786.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.82;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260.0" y="809.04" />
+              <mxPoint x="1260.0" y="342.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.18;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260.0" y="762.96" />
+              <mxPoint x="1260.0" y="1008.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260.0" y="786.0" />
+              <mxPoint x="1260.0" y="128.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
@@ -108,14 +148,29 @@
         <mxCell id="node-payment" value="&lt;b&gt;Payment Provider&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
           <mxGeometry x="410" y="100" width="168" height="56" as="geometry" />
         </mxCell>
-        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.82;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330.0" y="587.04" />
+              <mxPoint x="330.0" y="342.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.18;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330.0" y="540.96" />
+              <mxPoint x="330.0" y="786.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330.0" y="564.0" />
+              <mxPoint x="330.0" y="128.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
@@ -158,20 +213,45 @@
         <mxCell id="node-data-cluster" value="&lt;b&gt;Data Cluster&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Managed database network&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
           <mxGeometry x="100" y="100" width="224" height="72" as="geometry" />
         </mxCell>
-        <mxCell id="edge-deploy-web-to-web-cluster" value="hosts" edge="1" parent="1" source="node-web-cluster" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-deploy-web-to-web-cluster" value="hosts" edge="1" parent="1" source="node-web-cluster" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1372.0" y="252.0" />
+              <mxPoint x="1349.0" y="252.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-deploy-api-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-deploy-api-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.18;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="508.02" y="252.0" />
+              <mxPoint x="549.0" y="252.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-deploy-orders-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-deploy-orders-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.82;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="628.98" y="252.0" />
+              <mxPoint x="1049.0" y="252.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-deploy-events-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-deploy-events-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="568.5" y="252.0" />
+              <mxPoint x="799.0" y="252.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-deploy-orders-db-to-data-cluster" value="hosts" edge="1" parent="1" source="node-data-cluster" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-deploy-orders-db-to-data-cluster" value="hosts" edge="1" parent="1" source="node-data-cluster" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="212.0" y="252.0" />
+              <mxPoint x="175.0" y="252.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
@@ -214,23 +294,48 @@
         <mxCell id="node-payment" value="&lt;b&gt;Payment Provider&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
           <mxGeometry x="1340" y="322" width="168" height="56" as="geometry" />
         </mxCell>
-        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330.0" y="350.0" />
+              <mxPoint x="330.0" y="786.0" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-web-api" value="JSON/HTTPS" edge="1" parent="1" source="node-web" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640.0" y="786.0" />
+              <mxPoint x="640.0" y="564.0" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-api-orders" value="commands" edge="1" parent="1" source="node-api" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-web-api" value="JSON/HTTPS" edge="1" parent="1" source="node-web" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.82;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260.0" y="587.04" />
+              <mxPoint x="1260.0" y="136.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-api-orders" value="commands" edge="1" parent="1" source="node-api" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.18;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260.0" y="540.96" />
+              <mxPoint x="1260.0" y="564.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1260.0" y="564.0" />
+              <mxPoint x="1260.0" y="350.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
@@ -258,17 +363,37 @@
         <mxCell id="node-data-cluster" value="&lt;b&gt;Data Cluster&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Managed database network&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
           <mxGeometry x="980" y="360" width="224" height="72" as="geometry" />
         </mxCell>
-        <mxCell id="edge-decision-event-driven-orders-affects-orders" value="affects" edge="1" parent="1" source="node-decision-event-driven-orders" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-decision-event-driven-orders-affects-orders" value="affects" edge="1" parent="1" source="node-decision-event-driven-orders" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.82;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="449.6" y="280.0" />
+              <mxPoint x="175.0" y="280.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-decision-event-driven-orders-affects-events" value="affects" edge="1" parent="1" source="node-decision-event-driven-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-decision-event-driven-orders-affects-events" value="affects" edge="1" parent="1" source="node-decision-event-driven-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.18;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="270.4" y="280.0" />
+              <mxPoint x="435.0" y="280.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-decision-isolated-data-zone-affects-orders-db" value="affects" edge="1" parent="1" source="node-decision-isolated-data-zone" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-decision-isolated-data-zone-affects-orders-db" value="affects" edge="1" parent="1" source="node-decision-isolated-data-zone" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.82;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1069.6" y="280.0" />
+              <mxPoint x="795.0" y="280.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-decision-isolated-data-zone-affects-data-cluster" value="affects" edge="1" parent="1" source="node-decision-isolated-data-zone" target="node-data-cluster" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-decision-isolated-data-zone-affects-data-cluster" value="affects" edge="1" parent="1" source="node-decision-isolated-data-zone" target="node-data-cluster" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.18;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="890.4" y="280.0" />
+              <mxPoint x="1092.0" y="280.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

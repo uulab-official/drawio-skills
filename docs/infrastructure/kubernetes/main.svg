@@ -8,13 +8,13 @@
   </defs>
   <rect x="70" y="45" width="1590" height="329" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
   <text x="86" y="69" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">namespace/commerce</text>
-  <polyline points="1204,136.0 1284.0,136.0 1284.0,136.0 1364,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" />
-  <text x="1284.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">uses</text>
-  <polyline points="1204,136.0 1284.0,136.0 1284.0,308.0 1364,308.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" />
-  <text x="1284.0" y="214.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">uses</text>
-  <polyline points="352,136.0 432.0,136.0 432.0,136.0 512,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" />
+  <polyline points="1204,112.96 1284.0,112.96 1284.0,136.0 1364,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" />
+  <text x="1244.0" y="104.96" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">uses</text>
+  <polyline points="1204,159.04000000000002 1284.0,159.04000000000002 1284.0,308.0 1364,308.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" />
+  <text x="1284.0" y="225.52" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">uses</text>
+  <polyline points="352,136.0 512,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" />
   <text x="432.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">routes</text>
-  <polyline points="778,136.0 858.0,136.0 858.0,136.0 938,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" />
+  <polyline points="778,136.0 938,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" />
   <text x="858.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">selects</text>
   <rect x="1364" y="100" width="266" height="72" rx="12" fill="#eadcf8" stroke="#8b5cf6" stroke-width="2" />
   <text x="1497.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">checkout-config</text>

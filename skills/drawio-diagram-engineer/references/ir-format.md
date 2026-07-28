@@ -108,8 +108,12 @@ Required fields are `from` and `to`.
 - `kind`: `sync`, `async`, `data`, `dependency`, or `association`.
 - `style`: optional safe overrides: `color`, `dashed`, `width`.
 - `style.start_cardinality` / `style.end_cardinality`: ER endpoint cardinalities emitted by the `erd` command.
+- `style.source_port` / `style.target_port`: `auto`, `north`, `east`, `south`, or `west`.
+- `style.source_offset` / `style.target_offset`: optional `0`–`1` position along the selected side.
 
 Every endpoint must reference a declared node. Self-loops are rejected.
+
+The compiler distributes automatic fan-out/fan-in ports and selects deterministic orthogonal corridors that minimize node intersections and unrelated edge crossings. Read [routing.md](routing.md) before fixing ports manually.
 
 ## Compatibility
 

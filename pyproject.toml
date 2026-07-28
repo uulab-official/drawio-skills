@@ -1,6 +1,6 @@
 [project]
 name = "drawio-skills"
-version = "0.7.0"
+version = "0.8.0"
 description = "Deterministic Diagram IR compiler and agent skill for draw.io"
 requires-python = ">=3.9"
 license = {text = "Apache-2.0"}

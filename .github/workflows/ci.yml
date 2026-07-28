@@ -88,3 +88,11 @@ jobs:
             --preview-dir /tmp/drift-previews
           python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
             validate /tmp/drift.drawio --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            compile skills/drawio-diagram-engineer/assets/example.routing.json \
+            -o /tmp/routing.drawio
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            audit skills/drawio-diagram-engineer/assets/example.routing.json \
+            -o /tmp/routing.audit.json \
+            --preview-dir /tmp/routing-previews \
+            --strict

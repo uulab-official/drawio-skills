@@ -28,11 +28,11 @@ The project advances through measurable quality gates, not feature-count alone. 
 - [x] Terraform and Kubernetes resource importers
 - [x] GitHub Actions and GitLab CI pipeline importers
 - [x] Diagram diff and architecture-drift view
-- [ ] Explicit port assignment and stronger orthogonal routing
+- [x] Explicit port assignment and stronger orthogonal routing
 - [x] Five-case deterministic fixture corpus for each Terraform, Kubernetes, GitHub Actions, and GitLab CI importer
-- [ ] Expand the five-case fixture corpus to every legacy importer
+- [x] Expand the five-case fixture corpus to every legacy importer
 
-Exit criteria: at least five fixture projects per importer, deterministic snapshots, no strict validation failures, bounded output for repositories above 500 source files, and explicit routing controls. The infrastructure/CI importer cohort meets its fixture and strict-validation gates; legacy importer expansion and routing remain.
+Exit criteria: at least five fixture projects per importer, deterministic snapshots, no strict validation failures, bounded output for repositories above 500 source files, and explicit routing controls. Completed in v0.8.
 
 ## v0.4 — Architecture blueprints
 
@@ -78,6 +78,19 @@ Exit criteria: ERD and HA examples score 100 without warnings, regenerate byte-i
 - [x] Editable Terraform, Kubernetes, GitHub Actions, GitLab CI, and drift examples
 
 Exit criteria: all four importers remain deterministic and bounded, every new importer has at least five strict-valid fixtures, Secret values are absent from generated IR, drift has a CI failure mode, public examples score 100 without warnings, and all supported Python versions pass.
+
+## v0.8 — Deterministic routing and importer hardening
+
+- [x] Explicit source/target side ports with normalized offsets
+- [x] Automatic fan-out and fan-in endpoint distribution
+- [x] Obstacle-aware orthogonal corridor selection
+- [x] Editable draw.io waypoint emission
+- [x] Shared route plans across draw.io, SVG, and validation
+- [x] Actual waypoint segment intersection checks
+- [x] Five strict-valid fixtures for all nine importers
+- [x] Editable routing example with a 100-point audit
+
+Exit criteria: explicit ports validate against the IR schema, automatic fan-out endpoints are distinct, planned routes avoid blocking nodes in regression tests, all 45 importer fixtures regenerate deterministically without warnings, and the routing example scores 100.
 
 ## v1.0 — Stable public contract
 

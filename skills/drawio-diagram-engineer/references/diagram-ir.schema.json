@@ -154,6 +154,22 @@
         },
         "end_cardinality": {
           "enum": ["one", "zero-or-one", "one-or-many", "zero-or-many"]
+        },
+        "source_port": {
+          "enum": ["auto", "north", "east", "south", "west"]
+        },
+        "target_port": {
+          "enum": ["auto", "north", "east", "south", "west"]
+        },
+        "source_offset": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "target_offset": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       },
       "additionalProperties": false

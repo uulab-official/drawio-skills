@@ -304,6 +304,40 @@ class CliWorkflowTests(unittest.TestCase):
             )
             self.assertEqual(5, completed.returncode)
 
+    def test_routing_example_compiles_with_ports_and_editable_waypoints(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            drawio = temp / "routing.drawio"
+            report = temp / "routing.audit.json"
+            previews = temp / "previews"
+            run_tool(
+                "compile", ASSETS / "example.routing.json", "-o", drawio
+            )
+            run_tool("validate", drawio, "--strict")
+            run_tool(
+                "audit", ASSETS / "example.routing.json",
+                "-o", report, "--preview-dir", previews, "--strict",
+            )
+            root = ET.parse(drawio).getroot()
+            gateway_edges = [
+                edge for edge in root.findall(".//mxCell[@edge='1']")
+                if edge.get("source") == "node-gateway"
+            ]
+            offsets = {
+                token.split("=", 1)[1]
+                for edge in gateway_edges
+                for token in edge.get("style", "").split(";")
+                if token.startswith("exitY=")
+            }
+            self.assertEqual(3, len(offsets))
+            self.assertTrue(any(
+                edge.findall("./mxGeometry/Array/mxPoint")
+                for edge in gateway_edges
+            ))
+            self.assertEqual(
+                100, json.loads(report.read_text(encoding="utf-8"))["score"]
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

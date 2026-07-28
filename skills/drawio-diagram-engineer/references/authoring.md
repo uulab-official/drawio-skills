@@ -18,7 +18,7 @@ Represent deployable or independently owned components as nodes. Use `dependency
 
 ## ERD
 
-For the first release, model each table as a `database` node and put key fields in `description`. Use edge labels for cardinality and foreign-key names. Prefer a dedicated ERD importer when column-level compartments become necessary.
+Use the dedicated `erd` command for field-level entities, keys, types, and Crow's Foot cardinalities. Use plain `database` nodes only in higher-level architecture or data-flow views where table detail would distract from the primary question.
 
 ## Scope control
 

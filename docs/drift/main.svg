@@ -17,10 +17,10 @@
   </defs>
   <rect x="400" y="271" width="881" height="349" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
   <text x="416" y="295" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Commerce Platform [CHANGED]</text>
-  <polyline points="591,362.0 681.0,362.0 681.0,362.0 771,362.0" fill="none" stroke="#d55e00" stroke-width="3" marker-end="url(#arrow-d55e00)" stroke-dasharray="7 5" />
-  <text x="681.0" y="354.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">REMOVED · SQL</text>
-  <polyline points="591,362.0 681.0,362.0 681.0,554.0 771,554.0" fill="none" stroke="#009e73" stroke-width="3" marker-end="url(#arrow-009e73)" stroke-dasharray="7 5" />
-  <text x="681.0" y="450.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">ADDED · publish</text>
+  <polyline points="591,338.96 681.0,338.96 681.0,362.0 771,362.0" fill="none" stroke="#d55e00" stroke-width="3" marker-end="url(#arrow-d55e00)" stroke-dasharray="7 5" />
+  <text x="636.0" y="330.96" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">REMOVED · SQL</text>
+  <polyline points="591,385.04 681.0,385.04 681.0,554.0 771,554.0" fill="none" stroke="#009e73" stroke-width="3" marker-end="url(#arrow-009e73)" stroke-dasharray="7 5" />
+  <text x="681.0" y="461.52" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">ADDED · publish</text>
   <polyline points="250,128.0 340.0,128.0 340.0,362.0 430,362.0" fill="none" stroke="#7a7a7a" stroke-width="2" marker-end="url(#arrow-7a7a7a)" />
   <text x="340.0" y="237.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">HTTPS</text>
   <polyline points="921,554.0 1011.0,554.0 1011.0,362.0 1101,362.0" fill="none" stroke="#009e73" stroke-width="3" marker-end="url(#arrow-009e73)" stroke-dasharray="7 5" />

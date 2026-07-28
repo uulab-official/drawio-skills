@@ -1,0 +1,138 @@
+{
+  "version": "1",
+  "diagram": {
+    "title": "Checkout routing",
+    "direction": "LR",
+    "theme": "colorblind",
+    "gap": 110
+  },
+  "groups": [
+    {"id": "edge", "label": "Edge"},
+    {"id": "services", "label": "Services"},
+    {"id": "data", "label": "Data"}
+  ],
+  "nodes": [
+    {
+      "id": "client",
+      "label": "Client",
+      "kind": "client",
+      "group": "edge",
+      "position": {"x": 100, "y": 320}
+    },
+    {
+      "id": "gateway",
+      "label": "API Gateway",
+      "kind": "service",
+      "group": "edge",
+      "position": {"x": 410, "y": 320}
+    },
+    {
+      "id": "monitor",
+      "label": "Health Monitor",
+      "kind": "external",
+      "position": {"x": 410, "y": 80}
+    },
+    {
+      "id": "orders",
+      "label": "Orders",
+      "kind": "service",
+      "group": "services",
+      "position": {"x": 790, "y": 130}
+    },
+    {
+      "id": "payments",
+      "label": "Payments",
+      "kind": "service",
+      "group": "services",
+      "position": {"x": 790, "y": 320}
+    },
+    {
+      "id": "profile",
+      "label": "Profile",
+      "kind": "service",
+      "group": "services",
+      "position": {"x": 790, "y": 510}
+    },
+    {
+      "id": "orders-db",
+      "label": "Orders DB",
+      "kind": "database",
+      "group": "data",
+      "position": {"x": 1170, "y": 130}
+    },
+    {
+      "id": "payment-events",
+      "label": "Payment Events",
+      "kind": "queue",
+      "group": "data",
+      "position": {"x": 1170, "y": 320}
+    },
+    {
+      "id": "profile-cache",
+      "label": "Profile Cache",
+      "kind": "database",
+      "group": "data",
+      "position": {"x": 1170, "y": 510}
+    }
+  ],
+  "edges": [
+    {
+      "id": "client-gateway",
+      "from": "client",
+      "to": "gateway",
+      "label": "HTTPS"
+    },
+    {
+      "id": "monitor-gateway",
+      "from": "monitor",
+      "to": "gateway",
+      "label": "health",
+      "kind": "association",
+      "style": {
+        "source_port": "south",
+        "source_offset": 0.5,
+        "target_port": "north",
+        "target_offset": 0.75
+      }
+    },
+    {
+      "id": "gateway-orders",
+      "from": "gateway",
+      "to": "orders",
+      "label": "/orders"
+    },
+    {
+      "id": "gateway-payments",
+      "from": "gateway",
+      "to": "payments",
+      "label": "/payments"
+    },
+    {
+      "id": "gateway-profile",
+      "from": "gateway",
+      "to": "profile",
+      "label": "/profile"
+    },
+    {
+      "id": "orders-database",
+      "from": "orders",
+      "to": "orders-db",
+      "label": "SQL",
+      "kind": "data"
+    },
+    {
+      "id": "payments-events",
+      "from": "payments",
+      "to": "payment-events",
+      "label": "publish",
+      "kind": "async"
+    },
+    {
+      "id": "profile-cache-edge",
+      "from": "profile",
+      "to": "profile-cache",
+      "label": "cache",
+      "kind": "data"
+    }
+  ]
+}

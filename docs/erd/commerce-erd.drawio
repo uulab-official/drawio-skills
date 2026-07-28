@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.6.0">
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.8.0">
   <diagram id="page-main" name="Commerce Database">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
       <root>
@@ -23,17 +23,37 @@
         <mxCell id="node-payments" value="&lt;table style=&quot;width:100%;height:100%;border-collapse:collapse;&quot;&gt;&lt;tr&gt;&lt;td colspan=&quot;3&quot; style=&quot;padding:9px;background:#f8fafc;font-weight:bold;font-size:14px;&quot;&gt;payments&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px 7px;color:#334155;font-size:10px;&quot;&gt;PK&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;&quot;&gt;&lt;b&gt;id&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;text-align:right;color:#334155;&quot;&gt;uuid NOT NULL&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px 7px;color:#334155;font-size:10px;&quot;&gt;FK UK&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;&quot;&gt;&lt;b&gt;order_id&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;text-align:right;color:#334155;&quot;&gt;uuid NOT NULL&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px 7px;color:#334155;font-size:10px;&quot;&gt;UK&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;&quot;&gt;&lt;b&gt;provider_ref&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;text-align:right;color:#334155;&quot;&gt;varchar(120) NOT NULL&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px 7px;color:#334155;font-size:10px;&quot;&gt;·&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;&quot;&gt;&lt;b&gt;amount&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;text-align:right;color:#334155;&quot;&gt;numeric(12,2) NOT NULL&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px 7px;color:#334155;font-size:10px;&quot;&gt;·&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;&quot;&gt;&lt;b&gt;status&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;text-align:right;color:#334155;&quot;&gt;varchar(32) NOT NULL&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;padding:5px 7px;color:#334155;font-size:10px;&quot;&gt;·&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;&quot;&gt;&lt;b&gt;created_at&lt;/b&gt;&lt;/td&gt;&lt;td style=&quot;padding:5px 7px;text-align:right;color:#334155;&quot;&gt;timestamptz NOT NULL&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=0;arcSize=12;fillColor=#f8fafc;strokeColor=#334155;strokeWidth=2;fontColor=#111827;fontSize=13;align=left;verticalAlign=top;spacing=0;shape=rectangle;overflow=fill;">
           <mxGeometry x="1250" y="100" width="381" height="216" as="geometry" />
         </mxCell>
-        <mxCell id="edge-customer-orders" value="places" edge="1" parent="1" source="node-customers" target="node-orders" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=ERzeroToMany;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;startArrow=ERmandOne;startFill=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-customer-orders" value="places" edge="1" parent="1" source="node-customers" target="node-orders" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=ERzeroToMany;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;startArrow=ERmandOne;startFill=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="565.5" y="180.0" />
+              <mxPoint x="565.5" y="208.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-order-items-order" value="contains" edge="1" parent="1" source="node-orders" target="node-order-items" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=ERoneToMany;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;startArrow=ERmandOne;startFill=0;dashed=0;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-order-items-order" value="contains" edge="1" parent="1" source="node-orders" target="node-order-items" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=ERoneToMany;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.18;entryX=0;entryY=0.18;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;startArrow=ERmandOne;startFill=0;dashed=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1130.0" y="138.88" />
+              <mxPoint x="1130.0" y="553.84" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-order-items-product" value="references" edge="1" parent="1" source="node-products" target="node-order-items" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=ERzeroToMany;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;startArrow=ERmandOne;startFill=0;dashed=0;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-order-items-product" value="references" edge="1" parent="1" source="node-products" target="node-order-items" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=ERzeroToMany;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.82;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;startArrow=ERmandOne;startFill=0;dashed=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="872.5" y="614.0" />
+              <mxPoint x="872.5" y="674.16" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-order-payment" value="settled by" edge="1" parent="1" source="node-orders" target="node-payments" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=ERzeroToOne;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;startArrow=ERmandOne;startFill=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-order-payment" value="settled by" edge="1" parent="1" source="node-orders" target="node-payments" style="edgeStyle=entityRelationEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=ERzeroToOne;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.82;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;startArrow=ERmandOne;startFill=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1130.0" y="277.12" />
+              <mxPoint x="1130.0" y="208.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

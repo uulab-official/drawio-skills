@@ -22,7 +22,7 @@ The validator starts at 100 and deducts points for deterministic defects.
 - isolated nodes
 - text density above 5.5 characters per 1000 px²
 - text/fill contrast below 4.5:1
-- potential connector crossings and node-route intersections
+- actual orthogonal connector crossings and node-route intersections
 
 Run `audit` to group these findings by code, attach source-level repair suggestions, and generate an SVG visual-review manifest. See [style-system.md](style-system.md).
 
@@ -30,7 +30,7 @@ Run `audit` to group these findings by code, attach source-level repair suggesti
 
 Static geometry cannot fully evaluate:
 
-- edge crossings or visual tangles
+- whether a technically non-crossing route still feels visually tangled
 - semantic hierarchy
 - color perception under every display condition
 - whether labels are concise and meaningful

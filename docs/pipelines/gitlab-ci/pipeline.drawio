@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.7.0">
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.8.0">
   <diagram id="page-main" name="GitLab Delivery Pipeline">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
       <root>
@@ -26,14 +26,29 @@
         <mxCell id="node-gitlab-job-test" value="&lt;b&gt;test&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;1 script step(s)&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#cfe2f3;strokeColor=#56b4e9;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=process;">
           <mxGeometry x="368" y="100" width="168" height="72" as="geometry" />
         </mxCell>
-        <mxCell id="edge-gitlab-job-build-before-gitlab-job-deploy" value="needs" edge="1" parent="1" source="node-gitlab-job-build" target="node-gitlab-job-deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-gitlab-job-build-before-gitlab-job-deploy" value="needs" edge="1" parent="1" source="node-gitlab-job-build" target="node-gitlab-job-deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="770.0" y="484.0" />
+              <mxPoint x="1088.0" y="484.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-gitlab-job-lint-before-gitlab-job-build" value="needs" edge="1" parent="1" source="node-gitlab-job-lint" target="node-gitlab-job-build" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-gitlab-job-lint-before-gitlab-job-build" value="needs" edge="1" parent="1" source="node-gitlab-job-lint" target="node-gitlab-job-build" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.18;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="184.0" y="252.0" />
+              <mxPoint x="716.24" y="252.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-gitlab-job-test-before-gitlab-job-build" value="needs" edge="1" parent="1" source="node-gitlab-job-test" target="node-gitlab-job-build" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-gitlab-job-test-before-gitlab-job-build" value="needs" edge="1" parent="1" source="node-gitlab-job-test" target="node-gitlab-job-build" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4d4d4d;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.82;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="452.0" y="252.0" />
+              <mxPoint x="823.76" y="252.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

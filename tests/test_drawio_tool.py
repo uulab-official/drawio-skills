@@ -60,6 +60,94 @@ class DrawioToolTests(unittest.TestCase):
         layout = TOOL.calculate_layout(data)
         self.assertEqual((321, 654), layout["client"][:2])
 
+    def test_explicit_edge_ports_are_compiled_to_drawio_anchors(self):
+        data = sample_ir()
+        data["edges"][0]["style"] = {
+            "source_port": "north",
+            "source_offset": 0.25,
+            "target_port": "south",
+            "target_offset": 0.75,
+        }
+        tree = TOOL.compile_drawio(data)
+        edge = tree.getroot().find(".//mxCell[@id='edge-client-api']")
+        self.assertIsNotNone(edge)
+        style = TOOL.parse_style_values(edge.get("style", ""))
+        self.assertEqual(("0.25", "0", "0.75", "1"), (
+            style["exitX"], style["exitY"], style["entryX"], style["entryY"],
+        ))
+        self.assertTrue(edge.findall("./mxGeometry/Array[@as='points']/mxPoint"))
+
+    def test_automatic_fanout_uses_distinct_source_ports(self):
+        data = {
+            "version": "1",
+            "diagram": {"title": "Fanout", "direction": "LR", "theme": "colorblind"},
+            "groups": [],
+            "nodes": [
+                {"id": "gateway", "label": "Gateway"},
+                {"id": "orders", "label": "Orders"},
+                {"id": "payments", "label": "Payments"},
+                {"id": "profile", "label": "Profile"},
+            ],
+            "edges": [
+                {"id": "gateway-orders", "from": "gateway", "to": "orders"},
+                {"id": "gateway-payments", "from": "gateway", "to": "payments"},
+                {"id": "gateway-profile", "from": "gateway", "to": "profile"},
+            ],
+        }
+        tree = TOOL.compile_drawio(data)
+        exit_offsets = {
+            TOOL.parse_style_values(edge.get("style", ""))["exitY"]
+            for edge in tree.getroot().findall(".//mxCell[@edge='1']")
+        }
+        self.assertEqual(3, len(exit_offsets))
+        self.assertEqual({"0.18", "0.5", "0.82"}, exit_offsets)
+
+    def test_orthogonal_router_avoids_blocking_node(self):
+        data = {
+            "version": "1",
+            "diagram": {"title": "Obstacle", "direction": "LR", "theme": "colorblind"},
+            "groups": [],
+            "nodes": [
+                {
+                    "id": "source", "label": "Source",
+                    "position": {"x": 100, "y": 220},
+                },
+                {
+                    "id": "blocker", "label": "Blocker",
+                    "position": {"x": 430, "y": 220},
+                },
+                {
+                    "id": "target", "label": "Target",
+                    "position": {"x": 760, "y": 220},
+                },
+            ],
+            "edges": [{"id": "source-target", "from": "source", "to": "target"}],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "routed.drawio"
+            TOOL.compile_drawio(data).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            issues, _ = TOOL.validate_drawio(drawio)
+            self.assertNotIn(
+                "routing.node-risk", {item["code"] for item in issues}
+            )
+            edge = TOOL.ET.parse(drawio).getroot().find(
+                ".//mxCell[@id='edge-source-target']"
+            )
+            points = edge.findall("./mxGeometry/Array/mxPoint")
+            self.assertGreaterEqual(len(points), 3)
+            self.assertTrue(any(float(point.get("y")) < 220 for point in points))
+
+    def test_invalid_edge_port_and_offset_are_errors(self):
+        data = sample_ir()
+        data["edges"][0]["style"] = {
+            "source_port": "center",
+            "target_offset": 1.5,
+        }
+        codes = {item["code"] for item in TOOL.validate_ir(data)}
+        self.assertTrue({"edge.port", "edge.port-offset"} <= codes)
+
     def test_compressed_drawio_is_inspected(self):
         tree = TOOL.compile_drawio(sample_ir())
         model = tree.getroot().find(".//mxGraphModel")
@@ -442,6 +530,43 @@ class DrawioToolTests(unittest.TestCase):
                                 json.dumps(case["source"]), encoding="utf-8"
                             )
                         data = TOOL.import_source(root, source_type)
+                        self.assertEqual(case["nodes"], len(data["nodes"]))
+                        self.assertEqual(case["edges"], len(data["edges"]))
+                        self.assertEqual([], TOOL.validate_ir(data))
+                        first = TOOL.ET.tostring(TOOL.compile_drawio(data).getroot())
+                        second = TOOL.ET.tostring(TOOL.compile_drawio(data).getroot())
+                        self.assertEqual(first, second)
+
+    def test_legacy_importer_fixture_corpus_is_deterministic_and_strict(self):
+        corpus = json.loads(
+            (ROOT / "tests/fixtures/importers/legacy-corpus.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            {"python", "typescript", "openapi", "sql", "compose"}, set(corpus)
+        )
+        self.assertTrue(all(len(cases) >= 5 for cases in corpus.values()))
+        for source_type, cases in corpus.items():
+            for case in cases:
+                with self.subTest(source_type=source_type, case=case["name"]):
+                    with tempfile.TemporaryDirectory() as directory:
+                        root = Path(directory)
+                        if source_type in {"python", "typescript"}:
+                            for relative, content in case["files"].items():
+                                path = root / relative
+                                path.parent.mkdir(parents=True, exist_ok=True)
+                                path.write_text(content, encoding="utf-8")
+                            source_path = root
+                        elif source_type == "sql":
+                            source_path = root / "schema.sql"
+                            source_path.write_text(case["source"], encoding="utf-8")
+                        else:
+                            source_path = root / f"{source_type}.json"
+                            source_path.write_text(
+                                json.dumps(case["source"]), encoding="utf-8"
+                            )
+                        data = TOOL.import_source(source_path, source_type)
                         self.assertEqual(case["nodes"], len(data["nodes"]))
                         self.assertEqual(case["edges"], len(data["edges"]))
                         self.assertEqual([], TOOL.validate_ir(data))

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.7.0">
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.8.0">
   <diagram id="page-main" name="Drift · Checkout">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
       <root>
@@ -23,17 +23,37 @@
         <mxCell id="node-worker" value="&lt;b&gt;Order Worker&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;ADDED&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#d9f0d3;strokeColor=#009e73;strokeWidth=2;fontColor=#111111;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
           <mxGeometry x="1101" y="326" width="150" height="72" as="geometry" />
         </mxCell>
-        <mxCell id="edge-api-database" value="REMOVED · SQL" edge="1" parent="1" source="node-api" target="node-database" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d55e00;strokeWidth=3;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-api-database" value="REMOVED · SQL" edge="1" parent="1" source="node-api" target="node-database" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d55e00;strokeWidth=3;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.18;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="681.0" y="338.96" />
+              <mxPoint x="681.0" y="362.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-api-queue" value="ADDED · publish" edge="1" parent="1" source="node-api" target="node-queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#009e73;strokeWidth=3;endArrow=open;endFill=0;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-api-queue" value="ADDED · publish" edge="1" parent="1" source="node-api" target="node-queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#009e73;strokeWidth=3;endArrow=open;endFill=0;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.82;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="681.0" y="385.04" />
+              <mxPoint x="681.0" y="554.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-client-api" value="HTTPS" edge="1" parent="1" source="node-client" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7a7a7a;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-client-api" value="HTTPS" edge="1" parent="1" source="node-client" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7a7a7a;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340.0" y="128.0" />
+              <mxPoint x="340.0" y="362.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-queue-worker" value="ADDED · consume" edge="1" parent="1" source="node-queue" target="node-worker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#009e73;strokeWidth=3;endArrow=open;endFill=0;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-queue-worker" value="ADDED · consume" edge="1" parent="1" source="node-queue" target="node-worker" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#009e73;strokeWidth=3;endArrow=open;endFill=0;fontColor=#111111;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1011.0" y="554.0" />
+              <mxPoint x="1011.0" y="362.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>

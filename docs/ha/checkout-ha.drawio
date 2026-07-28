@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.6.0">
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.8.0">
   <diagram id="page-topology" name="Checkout Service — HA Topology">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
       <root>
@@ -35,25 +35,50 @@
         <mxCell id="node-availability-objectives" value="&lt;b&gt;Availability objectives&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Availability 99.99% · RTO 60s · RPO 5s&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fefce8;strokeColor=#a16207;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=note;size=20;">
           <mxGeometry x="400" y="480" width="280" height="72" as="geometry" />
         </mxCell>
-        <mxCell id="edge-customers-lb" value="HTTPS" edge="1" parent="1" source="node-customers" target="node-global-lb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+        <mxCell id="edge-customers-lb" value="HTTPS" edge="1" parent="1" source="node-customers" target="node-global-lb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="325.0" y="136.0" />
+              <mxPoint x="325.0" y="336.0" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-lb-app-a" value="weighted 50%" edge="1" parent="1" source="node-global-lb" target="node-app-a" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.18;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="713.0" y="312.96" />
+              <mxPoint x="713.0" y="136.0" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-lb-app-b" value="weighted 50%" edge="1" parent="1" source="node-global-lb" target="node-app-b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.82;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="713.0" y="359.04" />
+              <mxPoint x="713.0" y="636.0" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-app-a-db" value="SQL" edge="1" parent="1" source="node-app-a" target="node-db-primary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.18;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1073.0" y="136.0" />
+              <mxPoint x="1073.0" y="112.96" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-app-b-db" value="SQL" edge="1" parent="1" source="node-app-b" target="node-db-primary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.82;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1073.0" y="636.0" />
+              <mxPoint x="1073.0" y="159.04" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-db-replication" value="synchronous WAL" edge="1" parent="1" source="node-db-primary" target="node-db-standby" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-lb-app-a" value="weighted 50%" edge="1" parent="1" source="node-global-lb" target="node-app-a" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge-lb-app-b" value="weighted 50%" edge="1" parent="1" source="node-global-lb" target="node-app-b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge-app-a-db" value="SQL" edge="1" parent="1" source="node-app-a" target="node-db-primary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge-app-b-db" value="SQL" edge="1" parent="1" source="node-app-b" target="node-db-primary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge-db-replication" value="synchronous WAL" edge="1" parent="1" source="node-db-primary" target="node-db-standby" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="edge-app-heartbeat" value="readiness" edge="1" parent="1" source="node-app-a" target="node-app-b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+        <mxCell id="edge-app-heartbeat" value="readiness" edge="1" parent="1" source="node-app-a" target="node-app-b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>
@@ -76,13 +101,23 @@
         <mxCell id="node-fo-database-az-failure-target" value="&lt;b&gt;Orders DB Standby&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;standby · PostgreSQL · SQL replica probe&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
           <mxGeometry x="480" y="360" width="266" height="72" as="geometry" />
         </mxCell>
-        <mxCell id="edge-database-az-failure-detect" value="detect outage" edge="1" parent="1" source="node-fo-database-az-failure-detector" target="node-fo-database-az-failure-source" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-database-az-failure-detect" value="detect outage" edge="1" parent="1" source="node-fo-database-az-failure-detector" target="node-fo-database-az-failure-source" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.18;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="301.5" y="275.0" />
+              <mxPoint x="233.0" y="275.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-database-az-failure-promote" value="promote RTO 60s · RPO 0s" edge="1" parent="1" source="node-fo-database-az-failure-detector" target="node-fo-database-az-failure-target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="edge-database-az-failure-promote" value="promote RTO 60s · RPO 0s" edge="1" parent="1" source="node-fo-database-az-failure-detector" target="node-fo-database-az-failure-target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.82;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="413.5" y="275.0" />
+              <mxPoint x="613.0" y="275.0" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="edge-database-az-failure-replication" value="synchronous WAL" edge="1" parent="1" source="node-fo-database-az-failure-source" target="node-fo-database-az-failure-target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+        <mxCell id="edge-database-az-failure-replication" value="synchronous WAL" edge="1" parent="1" source="node-fo-database-az-failure-source" target="node-fo-database-az-failure-target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitPerimeter=0;entryPerimeter=0;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
       </root>

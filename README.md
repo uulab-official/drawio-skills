@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v0.7 alpha**. Deterministic compilation, architecture blueprint packs, field-level Crow's Foot ERDs, HA topology/failover packs, Terraform/Kubernetes and CI pipeline importers, semantic architecture drift, reusable themes, structured visual audits, and dependency-free previews are usable.
+> Status: **v0.8 alpha**. Deterministic compilation, explicit ports and obstacle-aware orthogonal routing, architecture blueprint packs, field-level Crow's Foot ERDs, HA topology/failover packs, Terraform/Kubernetes and CI pipeline importers, semantic architecture drift, reusable themes, structured visual audits, and dependency-free previews are usable.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -111,7 +111,7 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
 
 Terraform references become dependency edges. Kubernetes namespaces become groups, with Ingress → Service → workload and workload → configuration/storage relations derived from declared selectors and references. Secret values are redacted. CI jobs are grouped by workflow or stage and ordered from prerequisite to dependent job.
 
-See the complete [importer contract](skills/drawio-diagram-engineer/references/importers.md) and the deterministic 20-case fixture corpus in [tests/fixtures/importers/corpus.json](tests/fixtures/importers/corpus.json).
+See the complete [importer contract](skills/drawio-diagram-engineer/references/importers.md), the 20-case [infrastructure/CI corpus](tests/fixtures/importers/corpus.json), and the 25-case [legacy importer corpus](tests/fixtures/importers/legacy-corpus.json). Every importer now has at least five deterministic strict-valid fixtures.
 
 Open the editable and audited examples:
 
@@ -137,6 +137,28 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
 The report classifies page, group, node, and edge changes by stable semantic ID. The editable view uses green for additions, red dashed shapes for removals, and amber for changes, with text status markers for non-color-only review. See the [drift contract](skills/drawio-diagram-engineer/references/drift.md), [example report](docs/drift/report.json), [editable view](docs/drift/architecture-drift.drawio), [SVG preview](docs/drift/main.svg), and [100-point audit](docs/drift/audit.json).
 
 ![Semantic architecture drift view](docs/drift/main.svg)
+
+## Deterministic ports and routing
+
+Automatic edges select the side facing their target, distribute fan-out/fan-in attachment points, and choose an orthogonal corridor by node intersections, unrelated edge crossings, bend count, and length. Assign a fixed interface only when the topology requires it:
+
+```json
+{
+  "id": "monitor-api",
+  "from": "monitor",
+  "to": "api",
+  "style": {
+    "source_port": "south",
+    "source_offset": 0.5,
+    "target_port": "north",
+    "target_offset": 0.75
+  }
+}
+```
+
+The generated draw.io file contains editable waypoints, while the SVG preview and validator consume the same route plan. See the [routing contract](skills/drawio-diagram-engineer/references/routing.md), [source IR](skills/drawio-diagram-engineer/assets/example.routing.json), [editable example](docs/routing/checkout-routing.drawio), [SVG preview](docs/routing/main.svg), and [100-point audit](docs/routing/audit.json).
+
+![Explicit ports and automatic fan-out routing](docs/routing/main.svg)
 
 ## Organization themes and visual audit
 
@@ -205,7 +227,7 @@ JSON works without third-party packages. YAML input is optional and requires PyY
 
 ## Roadmap
 
-The next milestone focuses on explicit ports, stronger orthogonal routing, broader legacy-importer fixtures, and the v1 compatibility contract. See the measurable release criteria in [ROADMAP.md](ROADMAP.md).
+The v0.3–v0.8 feature roadmap is complete. The next milestone focuses on the v1 compatibility policy, migration rules, cross-platform Desktop integration, security auditing, installation tests, and reproducible signed releases. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

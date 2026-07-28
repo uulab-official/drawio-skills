@@ -1,0 +1,31 @@
+{
+  "version": "1",
+  "score": 100,
+  "errors": 0,
+  "warnings": 0,
+  "summary": {
+    "pages": 1,
+    "nodes": 9,
+    "edges": 8,
+    "groups": 3,
+    "bounds": {
+      "width": 1324,
+      "height": 566
+    }
+  },
+  "issues": [],
+  "repairs": [],
+  "visual_review": {
+    "status": "required",
+    "previews": [
+      "docs/routing/main.svg"
+    ],
+    "checklist": [
+      "Verify the primary reading path and hierarchy.",
+      "Inspect actual orthogonal edge crossings and stacked connectors.",
+      "Confirm labels remain legible at normal zoom.",
+      "Confirm color meaning is consistent and not the only differentiator.",
+      "Confirm every page answers one architecture question."
+    ]
+  }
+}

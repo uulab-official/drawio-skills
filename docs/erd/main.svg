@@ -2,27 +2,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1741" height="818" viewBox="0 0 1741 818" role="img" aria-label="Commerce Database">
   <rect width="100%" height="100%" fill="#ffffff" />
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="arrow-334155" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
     </marker>
   </defs>
   <rect x="70" y="45" width="1591" height="693" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
   <text x="86" y="69" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">commerce</text>
-  <polyline points="481,180.0 565.5,180.0 565.5,208.0 650,208.0" fill="none" stroke="#334155" stroke-width="2" />
-  <text x="565.5" y="186.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">places</text>
+  <polyline points="481,180.0 565.5,180.0 565.5,208.0 650,208.0" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="7 5" />
+  <text x="523.25" y="172.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">places</text>
   <text x="499" y="172.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
   <text x="616" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">0..*</text>
-  <polyline points="1010,208.0 1130.0,208.0 1130.0,614.0 1250,614.0" fill="none" stroke="#334155" stroke-width="2" />
-  <text x="1130.0" y="403.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">contains</text>
-  <text x="1028" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
-  <text x="1216" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1..*</text>
-  <polyline points="495,614.0 872.5,614.0 872.5,614.0 1250,614.0" fill="none" stroke="#334155" stroke-width="2" />
-  <text x="872.5" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">references</text>
+  <polyline points="1010,138.88 1130.0,138.88 1130.0,553.84 1250,553.84" fill="none" stroke="#334155" stroke-width="2" />
+  <text x="1130.0" y="338.36" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">contains</text>
+  <text x="1028" y="130.88" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
+  <text x="1216" y="545.84" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1..*</text>
+  <polyline points="495,614.0 872.5,614.0 872.5,674.1600000000001 1250,674.1600000000001" fill="none" stroke="#334155" stroke-width="2" />
+  <text x="683.75" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">references</text>
   <text x="513" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
-  <text x="1216" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">0..*</text>
-  <polyline points="1010,208.0 1130.0,208.0 1130.0,208.0 1250,208.0" fill="none" stroke="#334155" stroke-width="2" />
-  <text x="1130.0" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">settled by</text>
-  <text x="1028" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
+  <text x="1216" y="666.1600000000001" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">0..*</text>
+  <polyline points="1010,277.12 1130.0,277.12 1130.0,208.0 1250,208.0" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="7 5" />
+  <text x="1070.0" y="269.12" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">settled by</text>
+  <text x="1028" y="269.12" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
   <text x="1216" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">0..1</text>
   <rect x="100" y="100" width="381" height="160" rx="0" fill="#f8fafc" stroke="#334155" stroke-width="2" />
   <rect x="100" y="100" width="381" height="48" fill="#f8fafc" stroke="#334155" stroke-width="2" />

@@ -1,0 +1,121 @@
+{
+  "version": "1",
+  "erd": {
+    "title": "Commerce Database",
+    "direction": "LR",
+    "theme": "colorblind",
+    "gap": 140
+  },
+  "entities": [
+    {
+      "id": "customers",
+      "label": "customers",
+      "schema": "commerce",
+      "position": {"x": 100, "y": 100},
+      "fields": [
+        {"name": "id", "type": "uuid", "primary_key": true, "nullable": false},
+        {"name": "email", "type": "varchar(255)", "unique": true, "nullable": false},
+        {"name": "display_name", "type": "varchar(120)", "nullable": false},
+        {"name": "created_at", "type": "timestamptz", "nullable": false}
+      ]
+    },
+    {
+      "id": "products",
+      "label": "products",
+      "schema": "commerce",
+      "position": {"x": 100, "y": 520},
+      "fields": [
+        {"name": "id", "type": "uuid", "primary_key": true, "nullable": false},
+        {"name": "sku", "type": "varchar(64)", "unique": true, "nullable": false},
+        {"name": "name", "type": "varchar(200)", "nullable": false},
+        {"name": "price", "type": "numeric(12,2)", "nullable": false},
+        {"name": "active", "type": "boolean", "nullable": false, "default": true}
+      ]
+    },
+    {
+      "id": "orders",
+      "label": "orders",
+      "schema": "commerce",
+      "position": {"x": 650, "y": 100},
+      "fields": [
+        {"name": "id", "type": "uuid", "primary_key": true, "nullable": false},
+        {"name": "customer_id", "type": "uuid", "foreign_key": true, "nullable": false},
+        {"name": "status", "type": "varchar(32)", "nullable": false},
+        {"name": "total", "type": "numeric(12,2)", "nullable": false},
+        {"name": "created_at", "type": "timestamptz", "nullable": false},
+        {"name": "updated_at", "type": "timestamptz", "nullable": false}
+      ]
+    },
+    {
+      "id": "order-items",
+      "label": "order_items",
+      "schema": "commerce",
+      "position": {"x": 1250, "y": 520},
+      "fields": [
+        {"name": "order_id", "type": "uuid", "primary_key": true, "foreign_key": true, "nullable": false},
+        {"name": "product_id", "type": "uuid", "primary_key": true, "foreign_key": true, "nullable": false},
+        {"name": "quantity", "type": "integer", "nullable": false},
+        {"name": "unit_price", "type": "numeric(12,2)", "nullable": false},
+        {"name": "created_at", "type": "timestamptz", "nullable": false}
+      ]
+    },
+    {
+      "id": "payments",
+      "label": "payments",
+      "schema": "commerce",
+      "position": {"x": 1250, "y": 100},
+      "fields": [
+        {"name": "id", "type": "uuid", "primary_key": true, "nullable": false},
+        {"name": "order_id", "type": "uuid", "foreign_key": true, "unique": true, "nullable": false},
+        {"name": "provider_ref", "type": "varchar(120)", "unique": true, "nullable": false},
+        {"name": "amount", "type": "numeric(12,2)", "nullable": false},
+        {"name": "status", "type": "varchar(32)", "nullable": false},
+        {"name": "created_at", "type": "timestamptz", "nullable": false}
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "customer-orders",
+      "from": "customers",
+      "to": "orders",
+      "from_fields": ["id"],
+      "to_fields": ["customer_id"],
+      "from_cardinality": "one",
+      "to_cardinality": "zero-or-many",
+      "label": "places"
+    },
+    {
+      "id": "order-items-order",
+      "from": "orders",
+      "to": "order-items",
+      "from_fields": ["id"],
+      "to_fields": ["order_id"],
+      "from_cardinality": "one",
+      "to_cardinality": "one-or-many",
+      "identifying": true,
+      "label": "contains"
+    },
+    {
+      "id": "order-items-product",
+      "from": "products",
+      "to": "order-items",
+      "from_fields": ["id"],
+      "to_fields": ["product_id"],
+      "from_cardinality": "one",
+      "to_cardinality": "zero-or-many",
+      "identifying": true,
+      "label": "references"
+    },
+    {
+      "id": "order-payment",
+      "from": "orders",
+      "to": "payments",
+      "from_fields": ["id"],
+      "to_fields": ["order_id"],
+      "from_cardinality": "one",
+      "to_cardinality": "zero-or-one",
+      "label": "settled by"
+    }
+  ]
+}

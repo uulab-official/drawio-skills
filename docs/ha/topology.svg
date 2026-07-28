@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1496" height="782" viewBox="0 0 1496 782" role="img" aria-label="Checkout Service — HA Topology">
+  <rect width="100%" height="100%" fill="#ffffff" />
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
+    </marker>
+  </defs>
+  <rect x="70" y="45" width="626" height="357" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+  <text x="86" y="69" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Global Edge</text>
+  <rect x="730" y="45" width="686" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+  <text x="746" y="69" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Region KR · AZ-A</text>
+  <rect x="730" y="545" width="686" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+  <text x="746" y="569" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Region KR · AZ-B</text>
+  <polyline points="250,136.0 325.0,136.0 325.0,336.0 400,336.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="325.0" y="228.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">HTTPS</text>
+  <polyline points="666,336.0 713.0,336.0 713.0,136.0 760,136.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="713.0" y="228.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">weighted 50%</text>
+  <polyline points="666,336.0 713.0,336.0 713.0,636.0 760,636.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="713.0" y="478.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">weighted 50%</text>
+  <polyline points="1026,136.0 1073.0,136.0 1073.0,136.0 1120,136.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="1073.0" y="128.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">SQL</text>
+  <polyline points="1026,636.0 1073.0,636.0 1073.0,136.0 1120,136.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="1073.0" y="378.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">SQL</text>
+  <polyline points="1386,136.0 1253.0,136.0 1253.0,636.0 1120,636.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="1253.0" y="378.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">synchronous WAL</text>
+  <polyline points="1026,136.0 893.0,136.0 893.0,636.0 760,636.0" fill="none" stroke="#334155" stroke-width="2" />
+  <text x="893.0" y="378.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">readiness</text>
+  <rect x="100" y="100" width="150" height="72" rx="12" fill="#ecfeff" stroke="#0e7490" stroke-width="2" />
+  <text x="175.0" y="129.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Customers</text>
+  <text x="175.0" y="149.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">client</text>
+  <rect x="400" y="300" width="266" height="72" rx="12" fill="#eef2ff" stroke="#4338ca" stroke-width="2" />
+  <text x="533.0" y="329.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Global Load Balancer</text>
+  <text x="533.0" y="349.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">load-balancer · 2 replicas · HTTPS /ready</text>
+  <rect x="760" y="100" width="266" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
+  <text x="893.0" y="129.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Checkout API A</text>
+  <text x="893.0" y="149.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">active-active · 3 replicas · Kubernetes…</text>
+  <rect x="1120" y="100" width="266" height="72" rx="12" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
+  <ellipse cx="1253.0" cy="110" rx="133.0" ry="10" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
+  <text x="1253.0" y="129.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Orders DB Primary</text>
+  <text x="1253.0" y="149.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">active · PostgreSQL · SQL primary probe</text>
+  <rect x="760" y="600" width="266" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
+  <text x="893.0" y="629.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Checkout API B</text>
+  <text x="893.0" y="649.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">active-active · 3 replicas · Kubernetes…</text>
+  <rect x="1120" y="600" width="266" height="72" rx="12" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
+  <ellipse cx="1253.0" cy="610" rx="133.0" ry="10" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
+  <text x="1253.0" y="629.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Orders DB Standby</text>
+  <text x="1253.0" y="649.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">standby · PostgreSQL · SQL replica probe</text>
+  <rect x="400" y="480" width="280" height="72" rx="12" fill="#fefce8" stroke="#a16207" stroke-width="2" />
+  <text x="540.0" y="509.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Availability objectives</text>
+  <text x="540.0" y="529.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Availability 99.99% · RTO 60s · RPO 5s</text>
+</svg>

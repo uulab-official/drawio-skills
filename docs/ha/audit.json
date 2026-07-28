@@ -1,0 +1,32 @@
+{
+  "version": "1",
+  "score": 100,
+  "errors": 0,
+  "warnings": 0,
+  "summary": {
+    "pages": 2,
+    "nodes": 10,
+    "edges": 10,
+    "groups": 4,
+    "bounds": {
+      "width": 1386,
+      "height": 672
+    }
+  },
+  "issues": [],
+  "repairs": [],
+  "visual_review": {
+    "status": "required",
+    "previews": [
+      "docs/ha/topology.svg",
+      "docs/ha/failover.svg"
+    ],
+    "checklist": [
+      "Verify the primary reading path and hierarchy.",
+      "Inspect actual orthogonal edge crossings and stacked connectors.",
+      "Confirm labels remain legible at normal zoom.",
+      "Confirm color meaning is consistent and not the only differentiator.",
+      "Confirm every page answers one architecture question."
+    ]
+  }
+}

@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v0.5 alpha**. Deterministic compilation, six-view architecture blueprint packs, reusable theme tokens, verified shape mappings, structured visual audits, semantic patches, source importers, and dependency-free previews are usable.
+> Status: **v0.6 alpha**. Deterministic compilation, architecture blueprint packs, field-level Crow's Foot ERDs, HA topology/failover packs, reusable themes, verified shapes, structured visual audits, semantic patches, source importers, and dependency-free previews are usable.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -55,6 +55,44 @@ The model uses hierarchy, bounded domains, deployment mappings, and security zon
 Preview the generated pages: [Context](docs/blueprint/context.svg), [Logical](docs/blueprint/logical.svg), [Data](docs/blueprint/data.svg), [Deployment](docs/blueprint/deployment.svg), [Network & Security](docs/blueprint/security.svg), and [Architecture Decisions](docs/blueprint/decisions.svg).
 
 The complete example pack is available as an [editable draw.io file](docs/blueprint/commerce-platform.drawio), [generated Diagram IR](docs/blueprint/commerce-platform.diagram.json), and [100-point audit report](docs/blueprint/audit.json).
+
+## Crow's Foot ERD
+
+Generate a field-level ERD from the structured model or directly from SQL DDL:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  erd skills/drawio-diagram-engineer/assets/example.erd.json \
+  -o commerce-erd.drawio \
+  --ir-output commerce-erd.diagram.json \
+  --preview-dir commerce-erd-previews \
+  --strict
+```
+
+The ERD profile validates primary and foreign keys, composite-key field order, data-type compatibility, nullable/unique flags, and endpoint cardinalities. The editable output uses official draw.io Crow's Foot markers. See the [ERD reference](skills/drawio-diagram-engineer/references/erd.md).
+
+Open the [editable ERD](docs/erd/commerce-erd.drawio), [generated IR](docs/erd/commerce-erd.diagram.json), [SVG preview](docs/erd/main.svg), or [100-point audit](docs/erd/audit.json).
+
+![Commerce database ERD](docs/erd/main.svg)
+
+## High-availability architecture
+
+Generate separate HA topology and failover views:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  ha skills/drawio-diagram-engineer/assets/example.ha.json \
+  -o checkout-ha.drawio \
+  --ir-output checkout-ha.diagram.json \
+  --preview-dir checkout-ha-previews \
+  --strict
+```
+
+The HA profile validates independent failure domains, replica counts, quorum shape, stateful replication, automatic-failover health checks, cross-domain promotion, RTO, and RPO. See the [HA reference](skills/drawio-diagram-engineer/references/ha.md).
+
+Open the [editable HA pack](docs/ha/checkout-ha.drawio), [generated IR](docs/ha/checkout-ha.diagram.json), [topology](docs/ha/topology.svg), [failover flow](docs/ha/failover.svg), or [100-point audit](docs/ha/audit.json).
+
+![Checkout high-availability topology](docs/ha/topology.svg)
 
 ## Organization themes and visual audit
 
@@ -107,6 +145,8 @@ See [the IR reference](skills/drawio-diagram-engineer/references/ir-format.md) f
 ```text
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
 drawio_tool.py blueprint <blueprint.json> -o <pack.drawio> [--ir-output <ir.json>] [--preview-dir <dir>] [--theme-file <theme.json>]
+drawio_tool.py erd <erd.json|schema.sql> -o <erd.drawio> [--ir-output <ir.json>] [--preview-dir <dir>]
+drawio_tool.py ha <ha.json> -o <ha.drawio> [--ir-output <ir.json>] [--preview-dir <dir>]
 drawio_tool.py import <source-tree|openapi|schema.sql|compose> --type <type> -o <ir.json>
 drawio_tool.py patch <ir.json> <operations.json> -o <updated.json>
 drawio_tool.py preview <ir.json> -o <preview.svg> [--page <id>] [--theme-file <theme.json>]
@@ -120,7 +160,7 @@ JSON works without third-party packages. YAML input is optional and requires PyY
 
 ## Roadmap
 
-The next milestone returns to infrastructure intelligence: Terraform, Kubernetes, CI pipelines, diagram diffing, and stronger routing. See the measurable milestone and release criteria in [ROADMAP.md](ROADMAP.md).
+The next milestone expands infrastructure intelligence with Terraform, Kubernetes, CI pipelines, architecture drift, and stronger routing. See the measurable milestone and release criteria in [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

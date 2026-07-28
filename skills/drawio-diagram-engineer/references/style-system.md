@@ -14,6 +14,8 @@ Author packs against [theme-pack.schema.json](theme-pack.schema.json). The built
 
 [shape-registry.json](../assets/shape-registry.json) maps semantic kinds to a conservative allowlist of core mxGraph and draw.io Shapes.js identifiers. Every entry includes source and license provenance. Extend the registry only after verifying the exact shape identifier in an official JGraph source.
 
+The same registry pins Crow's Foot endpoint markers to draw.io's official ER sidebar definitions. Do not invent marker names or silently replace cardinality with generic arrows.
+
 Do not copy third-party proprietary stencil definitions into the project. Use a neutral rectangle until a shape can be verified and licensed.
 
 ## Structured audit

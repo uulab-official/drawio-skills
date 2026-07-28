@@ -7,6 +7,7 @@ import argparse
 import ast
 import base64
 import copy
+import html
 import json
 import math
 import os
@@ -22,12 +23,12 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 ALLOWED_DIRECTIONS = {"LR", "TB"}
 ALLOWED_THEMES = {"light", "dark", "colorblind"}
 ALLOWED_KINDS = {
     "client", "service", "database", "queue", "external", "decision",
-    "process", "document", "note",
+    "process", "document", "note", "entity",
 }
 ALLOWED_EDGE_KINDS = {"sync", "async", "data", "dependency", "association"}
 ALLOWED_BLUEPRINT_SCOPES = {
@@ -35,11 +36,35 @@ ALLOWED_BLUEPRINT_SCOPES = {
 }
 ALLOWED_BLUEPRINT_VIEWS = {"context", "logical", "data", "deployment", "security", "decisions"}
 ALLOWED_DECISION_STATUS = {"proposed", "accepted", "deprecated", "superseded"}
+ALLOWED_CARDINALITIES = {"one", "zero-or-one", "one-or-many", "zero-or-many"}
+CARDINALITY_MARKERS = {
+    "one": "ERmandOne",
+    "zero-or-one": "ERzeroToOne",
+    "one-or-many": "ERoneToMany",
+    "zero-or-many": "ERzeroToMany",
+}
+CARDINALITY_LABELS = {
+    "one": "1",
+    "zero-or-one": "0..1",
+    "one-or-many": "1..*",
+    "zero-or-many": "0..*",
+}
+ALLOWED_HA_ROLES = {
+    "active", "standby", "active-active", "replica", "quorum",
+    "load-balancer", "witness", "client",
+}
+ALLOWED_HA_LINK_MODES = {
+    "traffic", "sync-replication", "async-replication", "heartbeat", "quorum",
+}
+ALLOWED_FAILURE_DOMAIN_LEVELS = {"region", "zone", "rack", "node"}
 TOP_LEVEL_FIELDS = {"version", "diagram", "groups", "nodes", "edges", "pages"}
 DIAGRAM_FIELDS = {"title", "direction", "theme", "theme_tokens", "gap", "background"}
 PAGE_FIELDS = {"id", "title", "diagram", "groups", "nodes", "edges"}
 GROUP_FIELDS = {"id", "label"}
-NODE_FIELDS = {"id", "label", "kind", "group", "description", "position", "size", "style", "link"}
+NODE_FIELDS = {
+    "id", "label", "kind", "group", "description", "position", "size",
+    "style", "link", "fields",
+}
 EDGE_FIELDS = {"id", "from", "to", "label", "kind", "style"}
 
 THEMES = {
@@ -50,7 +75,7 @@ THEMES = {
         "database": ("#dcfce7", "#16a34a"), "queue": ("#fef3c7", "#d97706"),
         "external": ("#f1f5f9", "#64748b"), "decision": ("#ffe4e6", "#e11d48"),
         "process": ("#dbeafe", "#2563eb"), "document": ("#fae8ff", "#c026d3"),
-        "note": ("#fef9c3", "#ca8a04"),
+        "note": ("#fef9c3", "#ca8a04"), "entity": ("#f8fafc", "#334155"),
     },
     "dark": {
         "background": "#0f172a", "group_fill": "#1e293b", "group_stroke": "#64748b",
@@ -59,7 +84,7 @@ THEMES = {
         "database": ("#14532d", "#4ade80"), "queue": ("#78350f", "#fbbf24"),
         "external": ("#334155", "#94a3b8"), "decision": ("#881337", "#fb7185"),
         "process": ("#1e3a8a", "#60a5fa"), "document": ("#701a75", "#e879f9"),
-        "note": ("#713f12", "#fde047"),
+        "note": ("#713f12", "#fde047"), "entity": ("#1e293b", "#94a3b8"),
     },
     "colorblind": {
         "background": "#ffffff", "group_fill": "#f7f7f7", "group_stroke": "#7a7a7a",
@@ -68,7 +93,7 @@ THEMES = {
         "database": ("#fff2cc", "#e69f00"), "queue": ("#fce4d6", "#d55e00"),
         "external": ("#eeeeee", "#666666"), "decision": ("#f4cccc", "#cc79a7"),
         "process": ("#cfe2f3", "#56b4e9"), "document": ("#eadcf8", "#8b5cf6"),
-        "note": ("#fff2cc", "#b8860b"),
+        "note": ("#fff2cc", "#b8860b"), "entity": ("#f7f7f7", "#4d4d4d"),
     },
 }
 
@@ -192,6 +217,8 @@ def load_shape_registry() -> dict[str, Any]:
             raise ValueError(f"shape registry has no verified shape for {kind}")
         if not isinstance(entry.get("style"), dict):
             raise ValueError(f"shape registry style is invalid for {kind}")
+    if registry.get("edge_markers") != CARDINALITY_MARKERS:
+        raise ValueError("shape registry ER edge markers are incomplete or unverified")
     _SHAPE_REGISTRY = registry
     return registry
 
@@ -334,6 +361,35 @@ def validate_ir(data: dict[str, Any], allow_page_links: bool = False) -> list[di
             issues.append(issue("error", "node.size", "size width and height must be positive numbers", nid))
         if node.get("link") and not allow_page_links:
             issues.append(issue("error", "node.link", "page links require multi-page IR", nid))
+        fields = node.get("fields")
+        if kind == "entity":
+            if not isinstance(fields, list) or not fields:
+                issues.append(issue("error", "entity.fields", "entity nodes require fields", nid))
+            else:
+                field_names: set[str] = set()
+                for field_index, field in enumerate(fields):
+                    if (
+                        not isinstance(field, dict)
+                        or not field.get("name")
+                        or not field.get("type")
+                    ):
+                        issues.append(issue(
+                            "error", "entity.field.required",
+                            f"field {field_index} requires name and type", nid,
+                        ))
+                        continue
+                    field_name = str(field["name"])
+                    if field_name in field_names:
+                        issues.append(issue(
+                            "error", "entity.field.duplicate",
+                            f"duplicate field: {field_name}", nid,
+                        ))
+                    field_names.add(field_name)
+        elif fields is not None:
+            issues.append(issue(
+                "warning", "entity.fields",
+                "fields are rendered only for entity nodes", nid,
+            ))
         custom_style = node.get("style")
         if isinstance(custom_style, dict):
             for field in ("fill", "stroke", "font"):
@@ -369,15 +425,45 @@ def validate_ir(data: dict[str, Any], allow_page_links: bool = False) -> list[di
             issues.append(issue("error", "edge.source", f"unknown source: {source}", eid))
         if target not in node_ids:
             issues.append(issue("error", "edge.target", f"unknown target: {target}", eid))
-        if source == target:
+        edge_style_data = edge.get("style", {}) if isinstance(edge.get("style"), dict) else {}
+        is_erd_relation = (
+            edge_style_data.get("start_cardinality") in ALLOWED_CARDINALITIES
+            or edge_style_data.get("end_cardinality") in ALLOWED_CARDINALITIES
+        )
+        if source == target and not is_erd_relation:
             issues.append(issue("error", "edge.self-loop", "self-loops are not supported", eid))
         if edge.get("kind", "sync") not in ALLOWED_EDGE_KINDS:
             issues.append(issue("warning", "edge.kind", f"unknown edge kind: {edge.get('kind')}", eid))
+        custom_edge_style = edge.get("style")
+        if custom_edge_style is not None and not isinstance(custom_edge_style, dict):
+            issues.append(issue("error", "edge.style", "edge style must be an object", eid))
+        elif isinstance(custom_edge_style, dict):
+            cardinalities = [
+                custom_edge_style.get("start_cardinality"),
+                custom_edge_style.get("end_cardinality"),
+            ]
+            for cardinality in cardinalities:
+                if cardinality is not None and cardinality not in ALLOWED_CARDINALITIES:
+                    issues.append(issue(
+                        "error", "edge.cardinality",
+                        f"unknown cardinality: {cardinality}", eid,
+                    ))
+            if any(cardinality is not None for cardinality in cardinalities) and not all(
+                cardinality in ALLOWED_CARDINALITIES for cardinality in cardinalities
+            ):
+                issues.append(issue(
+                    "error", "edge.cardinality",
+                    "ER relationships require both endpoint cardinalities", eid,
+                ))
         degrees[source] += 1
         degrees[target] += 1
 
+    node_kinds = {
+        str(node["id"]): str(node.get("kind", "service"))
+        for node in nodes if isinstance(node, dict) and node.get("id")
+    }
     for nid in sorted(node_ids):
-        if degrees[nid] == 0 and len(node_ids) > 1:
+        if degrees[nid] == 0 and len(node_ids) > 1 and node_kinds.get(nid) != "note":
             issues.append(issue("warning", "node.isolated", "node has no relationships", nid))
     return issues
 
@@ -409,10 +495,33 @@ def stable_ranks(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> di
     return ranks
 
 
+def entity_field_type(field: dict[str, Any]) -> str:
+    value = str(field.get("type", ""))
+    if not field.get("nullable", True):
+        value += " NOT NULL"
+    if "default" in field:
+        default = str(field["default"]).lower() if isinstance(field["default"], bool) else str(field["default"])
+        value += f" DEFAULT {default}"
+    return value
+
+
 def node_size(node: dict[str, Any]) -> tuple[int, int]:
     explicit = node.get("size", {})
     if isinstance(explicit, dict) and explicit:
         return int(explicit.get("width", 180)), int(explicit.get("height", 72))
+    if node.get("kind") == "entity":
+        fields = node.get("fields", []) if isinstance(node.get("fields"), list) else []
+        longest = max(
+            [
+                len(str(node.get("label", ""))),
+                *[
+                    len(str(field.get("name", ""))) + len(entity_field_type(field)) + 10
+                    for field in fields if isinstance(field, dict)
+                ],
+            ],
+            default=20,
+        )
+        return max(280, min(440, 80 + longest * 7)), 48 + len(fields) * 28
     label = str(node.get("label", ""))
     description = str(node.get("description", ""))
     width = max(150, min(280, 56 + max(len(label), min(len(description), 30)) * 7))
@@ -507,6 +616,11 @@ def node_style(node: dict[str, Any], theme: dict[str, Any]) -> str:
     shapes = load_shape_registry()["shapes"]
     registry_entry = shapes.get(kind, shapes["service"])
     parts.update(registry_entry["style"])
+    if kind == "entity":
+        parts.update({
+            "rounded": 0, "align": "left", "verticalAlign": "top",
+            "spacing": 0, "overflow": "fill",
+        })
     if "dashed" in custom:
         parts["dashed"] = 1 if custom["dashed"] else 0
     if "rounded" in custom:
@@ -534,9 +648,63 @@ def edge_style(edge: dict[str, Any], theme: dict[str, Any], direction: str) -> s
         parts["endFill"] = 0
     if kind == "association":
         parts["endArrow"] = "none"
+    start_cardinality = custom.get("start_cardinality")
+    end_cardinality = custom.get("end_cardinality")
+    if start_cardinality in CARDINALITY_MARKERS or end_cardinality in CARDINALITY_MARKERS:
+        parts.update({
+            "edgeStyle": "entityRelationEdgeStyle",
+            "rounded": 0,
+            "startArrow": CARDINALITY_MARKERS.get(str(start_cardinality), "none"),
+            "endArrow": CARDINALITY_MARKERS.get(str(end_cardinality), "none"),
+            "startFill": 0,
+            "endFill": 0,
+        })
     if custom.get("dashed") is not None:
         parts["dashed"] = 1 if custom["dashed"] else 0
     return style_string(parts)
+
+
+def entity_field_markers(field: dict[str, Any]) -> str:
+    markers = []
+    if field.get("primary_key"):
+        markers.append("PK")
+    if field.get("foreign_key"):
+        markers.append("FK")
+    if field.get("unique"):
+        markers.append("UK")
+    return " ".join(markers) or "·"
+
+
+def node_value(node: dict[str, Any], theme: dict[str, Any]) -> str:
+    if node.get("kind") != "entity":
+        value = f"<b>{html.escape(str(node['label']))}</b>"
+        description = str(node.get("description", "")).strip()
+        if description:
+            value += (
+                "<br><font style=\"font-size:10px\">"
+                f"{html.escape(description)}</font>"
+            )
+        return value
+    rows = []
+    for field in node.get("fields", []):
+        if not isinstance(field, dict):
+            continue
+        rows.append(
+            "<tr>"
+            f"<td style=\"padding:5px 7px;color:{theme['edge']};font-size:10px;\">"
+            f"{html.escape(entity_field_markers(field))}</td>"
+            f"<td style=\"padding:5px 7px;\"><b>{html.escape(str(field['name']))}</b></td>"
+            f"<td style=\"padding:5px 7px;text-align:right;color:{theme['edge']};\">"
+            f"{html.escape(entity_field_type(field))}</td>"
+            "</tr>"
+        )
+    return (
+        "<table style=\"width:100%;height:100%;border-collapse:collapse;\">"
+        f"<tr><td colspan=\"3\" style=\"padding:9px;background:{theme['group_fill']};"
+        f"font-weight:bold;font-size:14px;\">{html.escape(str(node['label']))}</td></tr>"
+        + "".join(rows)
+        + "</table>"
+    )
 
 
 def page_documents(data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
@@ -604,12 +772,9 @@ def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
     for node in data.get("nodes", []):
         nid = str(node["id"])
         x, y, width, height = layout[nid]
-        description = str(node.get("description", "")).strip()
-        value = f"<b>{node['label']}</b>"
-        if description:
-            value += f"<br><font style=\"font-size:10px\">{description}</font>"
         cell = ET.SubElement(root, "mxCell", {
-            "id": f"node-{nid}", "value": value, "vertex": "1", "parent": "1",
+            "id": f"node-{nid}", "value": node_value(node, theme),
+            "vertex": "1", "parent": "1",
             "style": node_style(node, theme),
         })
         if node.get("link"):
@@ -713,7 +878,17 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
     for edge in data.get("edges", []):
         source_id, target_id = str(edge["from"]), str(edge["to"])
         source, target = layout[source_id], layout[target_id]
-        if direction == "LR":
+        if source_id == target_id:
+            start = (source[0] + source[2], source[1] + source[3] * 0.65)
+            end = (source[0] + source[2] * 0.65, source[1])
+            points = [
+                start,
+                (source[0] + source[2] + 80, start[1]),
+                (source[0] + source[2] + 80, source[1] - 55),
+                (end[0], source[1] - 55),
+                end,
+            ]
+        elif direction == "LR":
             start = (source[0] + source[2], source[1] + source[3] / 2)
             end = (target[0], target[1] + target[3] / 2)
             midpoint = (start[0] + end[0]) / 2
@@ -724,6 +899,7 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
             midpoint = (start[1] + end[1]) / 2
             points = [start, (start[0], midpoint), (end[0], midpoint), end]
         edge_kind = str(edge.get("kind", "sync"))
+        edge_custom = edge.get("style", {}) if isinstance(edge.get("style"), dict) else {}
         attrs = {
             "points": " ".join(f"{x},{y}" for x, y in points), "fill": "none",
             "stroke": theme["edge"], "stroke-width": "2", "marker-end": "url(#arrow)",
@@ -732,15 +908,46 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
             attrs["stroke-dasharray"] = "7 5"
         if edge_kind == "association":
             attrs.pop("marker-end")
+        if (
+            edge_custom.get("start_cardinality") in CARDINALITY_LABELS
+            or edge_custom.get("end_cardinality") in CARDINALITY_LABELS
+        ):
+            attrs.pop("marker-end", None)
         ET.SubElement(svg, "polyline", attrs)
         edge_label = str(edge.get("label", "")).strip()
         if edge_label:
+            label_x = (
+                source[0] + source[2] + 40
+                if source_id == target_id
+                else (start[0] + end[0]) / 2
+            )
+            label_y = (
+                source[1] - 65
+                if source_id == target_id
+                else (start[1] + end[1]) / 2 - 8
+            )
             label = ET.SubElement(svg, "text", {
-                "x": str((start[0] + end[0]) / 2), "y": str((start[1] + end[1]) / 2 - 8),
+                "x": str(label_x), "y": str(label_y),
                 "fill": theme["font"], "font-family": "Inter, Arial, sans-serif",
                 "font-size": "11", "text-anchor": "middle",
             })
             label.text = edge_label
+        if edge_custom.get("start_cardinality") in CARDINALITY_LABELS:
+            cardinality = ET.SubElement(svg, "text", {
+                "x": str(start[0] + (18 if direction == "LR" else 12)),
+                "y": str(start[1] - (8 if direction == "LR" else -18)),
+                "fill": theme["font"], "font-family": "Inter, Arial, sans-serif",
+                "font-size": "11", "font-weight": "700",
+            })
+            cardinality.text = CARDINALITY_LABELS[str(edge_custom["start_cardinality"])]
+        if edge_custom.get("end_cardinality") in CARDINALITY_LABELS:
+            cardinality = ET.SubElement(svg, "text", {
+                "x": str(end[0] - (34 if direction == "LR" else -12)),
+                "y": str(end[1] - (8 if direction == "LR" else 10)),
+                "fill": theme["font"], "font-family": "Inter, Arial, sans-serif",
+                "font-size": "11", "font-weight": "700",
+            })
+            cardinality.text = CARDINALITY_LABELS[str(edge_custom["end_cardinality"])]
 
     for node_id, node in node_map.items():
         x, y, width, height = layout[node_id]
@@ -748,6 +955,50 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
         fill, stroke = theme.get(kind, theme["service"])
         custom = node.get("style", {}) if isinstance(node.get("style"), dict) else {}
         fill, stroke = custom.get("fill", fill), custom.get("stroke", stroke)
+        if kind == "entity":
+            ET.SubElement(svg, "rect", {
+                "x": str(x), "y": str(y), "width": str(width), "height": str(height),
+                "rx": "0", "fill": fill, "stroke": stroke, "stroke-width": "2",
+            })
+            ET.SubElement(svg, "rect", {
+                "x": str(x), "y": str(y), "width": str(width), "height": "48",
+                "fill": theme["group_fill"], "stroke": stroke, "stroke-width": "2",
+            })
+            header = ET.SubElement(svg, "text", {
+                "x": str(x + 12), "y": str(y + 30), "fill": theme["font"],
+                "font-family": "Inter, Arial, sans-serif", "font-size": "14",
+                "font-weight": "700",
+            })
+            header.text = str(node["label"])
+            for field_index, field in enumerate(node.get("fields", [])):
+                if not isinstance(field, dict):
+                    continue
+                row_y = y + 48 + field_index * 28
+                if field_index:
+                    ET.SubElement(svg, "line", {
+                        "x1": str(x), "x2": str(x + width), "y1": str(row_y),
+                        "y2": str(row_y), "stroke": theme["group_stroke"],
+                        "stroke-width": "1", "opacity": "0.45",
+                    })
+                marker_text = ET.SubElement(svg, "text", {
+                    "x": str(x + 8), "y": str(row_y + 19), "fill": theme["edge"],
+                    "font-family": "Inter, Arial, sans-serif", "font-size": "9",
+                    "font-weight": "700",
+                })
+                marker_text.text = entity_field_markers(field)
+                name_text = ET.SubElement(svg, "text", {
+                    "x": str(x + 52), "y": str(row_y + 19), "fill": theme["font"],
+                    "font-family": "Inter, Arial, sans-serif", "font-size": "11",
+                    "font-weight": "700" if field.get("primary_key") else "400",
+                })
+                name_text.text = str(field.get("name", ""))
+                type_text = ET.SubElement(svg, "text", {
+                    "x": str(x + width - 8), "y": str(row_y + 19),
+                    "fill": theme["edge"], "font-family": "Inter, Arial, sans-serif",
+                    "font-size": "10", "text-anchor": "end",
+                })
+                type_text.text = entity_field_type(field)
+            continue
         if kind == "decision":
             points = f"{x + width / 2},{y} {x + width},{y + height / 2} {x + width / 2},{y + height} {x},{y + height / 2}"
             ET.SubElement(svg, "polygon", {
@@ -1061,6 +1312,22 @@ REPAIR_SUGGESTIONS = {
     "routing.crossing-risk": "Reorder nodes, change direction, or add a routing corridor.",
     "node.isolated": "Connect the node, explain why it is intentionally isolated, or remove it from the view.",
     "layout.canvas": "Split the diagram into linked pages or reduce its scope.",
+    "erd.primary-key": "Declare a primary key or document why the entity is intentionally keyless.",
+    "erd.type-mismatch": "Align the foreign-key type with the referenced key, including signedness and width.",
+    "erd.reference-key": "Reference a primary-key or unique candidate-key field.",
+    "erd.foreign-key": "Mark the child relationship field as a foreign key.",
+    "erd.identifying-key": "Include the parent key in the child primary key or make the relationship non-identifying.",
+    "ha.failure-domains": "Place redundant capacity in at least two independent failure domains.",
+    "ha.replica-count": "Increase active-active or load-balancer replicas to at least two.",
+    "ha.quorum": "Use an odd quorum of at least three voting members.",
+    "ha.stateful-replication": "Add and label a synchronous or asynchronous replication path.",
+    "ha.health-check": "Define the signal used to trigger automatic failover and its timeout.",
+    "ha.cross-region-sync": "Confirm the latency budget or switch to asynchronous cross-region replication.",
+    "ha.availability": "Define a measurable availability target such as 99.99%.",
+    "ha.rto": "Define the maximum acceptable recovery time.",
+    "ha.rpo": "Define the maximum acceptable data-loss window.",
+    "ha.failover-replication": "Connect the stateful source and target with an explicit replication link.",
+    "ha.failover-target": "Choose a standby, replica, active, or active-active promotion target.",
 }
 
 
@@ -2031,6 +2298,705 @@ def blueprint_to_ir(
     }
 
 
+def normalize_data_type(value: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"\([^)]*\)", "", value).strip().lower())
+
+
+def validate_erd(data: dict[str, Any]) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    if str(data.get("version", "")) != "1":
+        issues.append(issue("error", "erd.version", "version must be \"1\""))
+    metadata = data.get("erd")
+    if not isinstance(metadata, dict) or not metadata.get("title"):
+        issues.append(issue("error", "erd.metadata", "erd requires a title"))
+        metadata = {}
+    if metadata.get("theme", "colorblind") not in ALLOWED_THEMES:
+        issues.append(issue("error", "erd.theme", f"unknown theme: {metadata.get('theme')}"))
+    if metadata.get("direction", "LR") not in ALLOWED_DIRECTIONS:
+        issues.append(issue("error", "erd.direction", "direction must be LR or TB"))
+    entities = data.get("entities")
+    relationships = data.get("relationships", [])
+    if not isinstance(entities, list) or not entities:
+        return issues + [issue("error", "erd.entities", "entities must be a non-empty array")]
+    if not isinstance(relationships, list):
+        return issues + [issue("error", "erd.relationships", "relationships must be an array")]
+
+    entity_map: dict[str, dict[str, Any]] = {}
+    field_maps: dict[str, dict[str, dict[str, Any]]] = {}
+    for index, entity in enumerate(entities):
+        if not isinstance(entity, dict) or not entity.get("id") or not entity.get("label"):
+            issues.append(issue("error", "erd.entity.required", f"entity {index} requires id and label"))
+            continue
+        entity_id = str(entity["id"])
+        if not valid_semantic_id(entity_id):
+            issues.append(issue("error", "id.format", f"invalid entity id: {entity_id}", entity_id))
+        if entity_id in entity_map:
+            issues.append(issue("error", "id.duplicate", f"duplicate entity id: {entity_id}", entity_id))
+        entity_map[entity_id] = entity
+        fields = entity.get("fields")
+        if not isinstance(fields, list) or not fields:
+            issues.append(issue("error", "erd.fields", "entity requires fields", entity_id))
+            continue
+        field_map: dict[str, dict[str, Any]] = {}
+        for field_index, field in enumerate(fields):
+            if not isinstance(field, dict) or not field.get("name") or not field.get("type"):
+                issues.append(issue(
+                    "error", "erd.field.required",
+                    f"field {field_index} requires name and type", entity_id,
+                ))
+                continue
+            field_name = str(field["name"])
+            if field_name in field_map:
+                issues.append(issue(
+                    "error", "erd.field.duplicate",
+                    f"duplicate field: {field_name}", entity_id,
+                ))
+            field_map[field_name] = field
+            for flag in ("primary_key", "foreign_key", "unique", "nullable"):
+                if flag in field and not isinstance(field[flag], bool):
+                    issues.append(issue(
+                        "error", "erd.field.flag",
+                        f"{field_name}.{flag} must be boolean", entity_id,
+                    ))
+        field_maps[entity_id] = field_map
+        if not any(field.get("primary_key") for field in field_map.values()):
+            issues.append(issue("warning", "erd.primary-key", "entity has no primary key", entity_id))
+
+    relationship_ids: set[str] = set()
+    for index, relationship in enumerate(relationships):
+        if (
+            not isinstance(relationship, dict)
+            or not relationship.get("from")
+            or not relationship.get("to")
+        ):
+            issues.append(issue(
+                "error", "erd.relationship.required",
+                f"relationship {index} requires from and to",
+            ))
+            continue
+        source, target = str(relationship["from"]), str(relationship["to"])
+        relationship_id = str(
+            relationship.get("id", f"{source}-to-{target}-{index + 1}")
+        )
+        if not valid_semantic_id(relationship_id):
+            issues.append(issue("error", "id.format", f"invalid relationship id: {relationship_id}"))
+        if relationship_id in relationship_ids or relationship_id in entity_map:
+            issues.append(issue("error", "id.duplicate", f"duplicate id: {relationship_id}"))
+        relationship_ids.add(relationship_id)
+        if source not in entity_map:
+            issues.append(issue("error", "erd.relationship.source", f"unknown entity: {source}", relationship_id))
+        if target not in entity_map:
+            issues.append(issue("error", "erd.relationship.target", f"unknown entity: {target}", relationship_id))
+        for side in ("from", "to"):
+            cardinality = relationship.get(f"{side}_cardinality", "one")
+            if cardinality not in ALLOWED_CARDINALITIES:
+                issues.append(issue(
+                    "error", "erd.cardinality",
+                    f"unknown {side} cardinality: {cardinality}", relationship_id,
+                ))
+            entity_id = source if side == "from" else target
+            fields = relationship.get(f"{side}_fields", [])
+            if not isinstance(fields, list):
+                issues.append(issue(
+                    "error", "erd.relationship.fields",
+                    f"{side}_fields must be an array", relationship_id,
+                ))
+                continue
+            for field_name in fields:
+                if entity_id in field_maps and field_name not in field_maps[entity_id]:
+                    issues.append(issue(
+                        "error", "erd.relationship.field",
+                        f"unknown field {entity_id}.{field_name}", relationship_id,
+                    ))
+        source_fields = relationship.get("from_fields", [])
+        target_fields = relationship.get("to_fields", [])
+        if len(source_fields) != len(target_fields):
+            issues.append(issue(
+                "error", "erd.relationship.arity",
+                "from_fields and to_fields must have equal length", relationship_id,
+            ))
+        if source in field_maps and target in field_maps:
+            for source_field, target_field in zip(source_fields, target_fields):
+                if source_field in field_maps[source] and target_field in field_maps[target]:
+                    source_definition = field_maps[source][source_field]
+                    target_definition = field_maps[target][target_field]
+                    left = normalize_data_type(str(source_definition["type"]))
+                    right = normalize_data_type(str(target_definition["type"]))
+                    if left != right:
+                        issues.append(issue(
+                            "warning", "erd.type-mismatch",
+                            f"relationship types differ: {left} vs {right}", relationship_id,
+                        ))
+                    if not (
+                        source_definition.get("primary_key")
+                        or source_definition.get("unique")
+                    ):
+                        issues.append(issue(
+                            "warning", "erd.reference-key",
+                            f"referenced field is not primary or unique: {source}.{source_field}",
+                            relationship_id,
+                        ))
+                    if not target_definition.get("foreign_key"):
+                        issues.append(issue(
+                            "warning", "erd.foreign-key",
+                            f"relationship field is not marked as foreign key: {target}.{target_field}",
+                            relationship_id,
+                        ))
+                    if relationship.get("identifying") and not target_definition.get("primary_key"):
+                        issues.append(issue(
+                            "warning", "erd.identifying-key",
+                            f"identifying relationship field is not part of child primary key: {target}.{target_field}",
+                            relationship_id,
+                        ))
+    return issues
+
+
+def erd_to_ir(data: dict[str, Any]) -> dict[str, Any]:
+    errors = [item for item in validate_erd(data) if item["level"] == "error"]
+    if errors:
+        raise ValueError(f"invalid erd: {errors[0]['message']}")
+    metadata = data["erd"]
+    schemas = sorted({
+        str(entity["schema"]) for entity in data["entities"] if entity.get("schema")
+    })
+    groups = [
+        {"id": f"schema-{slugify(schema)}", "label": schema}
+        for schema in schemas
+    ]
+    group_map = {schema: f"schema-{slugify(schema)}" for schema in schemas}
+    nodes = []
+    for entity in data["entities"]:
+        node: dict[str, Any] = {
+            "id": str(entity["id"]),
+            "label": str(entity["label"]),
+            "kind": "entity",
+            "fields": copy.deepcopy(entity["fields"]),
+        }
+        if entity.get("schema"):
+            node["group"] = group_map[str(entity["schema"])]
+        if entity.get("position"):
+            node["position"] = copy.deepcopy(entity["position"])
+        nodes.append(node)
+    edges = []
+    for index, relationship in enumerate(data.get("relationships", []), start=1):
+        source, target = str(relationship["from"]), str(relationship["to"])
+        edges.append({
+            "id": str(relationship.get("id", f"{source}-to-{target}-{index}")),
+            "from": source,
+            "to": target,
+            "label": str(relationship.get("label", "")),
+            "kind": "association",
+            "style": {
+                "start_cardinality": str(relationship.get("from_cardinality", "one")),
+                "end_cardinality": str(relationship.get("to_cardinality", "one")),
+                "dashed": not bool(relationship.get("identifying", False)),
+            },
+        })
+    return {
+        "version": "1",
+        "diagram": {
+            "title": str(metadata["title"]),
+            "direction": str(metadata.get("direction", "LR")),
+            "theme": str(metadata.get("theme", "colorblind")),
+            "gap": int(metadata.get("gap", 120)),
+        },
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def sql_to_erd(text: str, title: str = "Database ERD") -> dict[str, Any]:
+    text = re.sub(r"--[^\n]*", "", text)
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
+    table_pattern = re.compile(
+        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\"\[\]\w.]+)\s*\((.*?)\)\s*;",
+        re.IGNORECASE | re.DOTALL,
+    )
+    entities: dict[str, dict[str, Any]] = {}
+    pending_fks: list[dict[str, Any]] = []
+    for match in table_pattern.finditer(text):
+        raw_table = normalize_sql_name(match.group(1))
+        entity_id = slugify(raw_table)
+        fields: list[dict[str, Any]] = []
+        field_map: dict[str, dict[str, Any]] = {}
+        table_primary_keys: set[str] = set()
+        for definition in split_sql_columns(match.group(2)):
+            table_pk = re.match(
+                r"(?:CONSTRAINT\s+\S+\s+)?PRIMARY\s+KEY\s*\(([^)]+)\)",
+                definition, re.IGNORECASE,
+            )
+            table_fk = re.match(
+                r"(?:CONSTRAINT\s+\S+\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s+"
+                r"REFERENCES\s+([`\"\[\]\w.]+)(?:\s*\(([^)]+)\))?",
+                definition, re.IGNORECASE,
+            )
+            if table_pk:
+                table_primary_keys.update(
+                    normalize_sql_name(item) for item in table_pk.group(1).split(",")
+                )
+                continue
+            if table_fk:
+                local_fields = [
+                    normalize_sql_name(item) for item in table_fk.group(1).split(",")
+                ]
+                remote_fields = [
+                    normalize_sql_name(item)
+                    for item in (table_fk.group(3) or "id").split(",")
+                ]
+                pending_fks.append({
+                    "child": entity_id,
+                    "parent_label": normalize_sql_name(table_fk.group(2)),
+                    "local_fields": local_fields,
+                    "remote_fields": remote_fields,
+                })
+                continue
+            if re.match(r"(?:CONSTRAINT|UNIQUE|CHECK|EXCLUDE)\b", definition, re.I):
+                continue
+            column = re.match(r"([`\"\[\]\w]+)\s+(.+)", definition, re.IGNORECASE | re.DOTALL)
+            if not column:
+                continue
+            field_name = normalize_sql_name(column.group(1))
+            remainder = re.sub(r"\s+", " ", column.group(2).strip())
+            type_match = re.match(
+                r"(.+?)(?=\s+(?:NOT\s+NULL|NULL|PRIMARY\s+KEY|UNIQUE|DEFAULT|"
+                r"REFERENCES|CHECK|COLLATE|CONSTRAINT|GENERATED)\b|$)",
+                remainder, re.IGNORECASE,
+            )
+            data_type = (type_match.group(1) if type_match else remainder).strip()
+            field = {
+                "name": field_name,
+                "type": data_type,
+                "nullable": not bool(re.search(r"\bNOT\s+NULL\b|\bPRIMARY\s+KEY\b", remainder, re.I)),
+                "primary_key": bool(re.search(r"\bPRIMARY\s+KEY\b", remainder, re.I)),
+                "unique": bool(re.search(r"\bUNIQUE\b", remainder, re.I)),
+            }
+            default_match = re.search(
+                r"\bDEFAULT\s+(.+?)(?=\s+(?:NOT\s+NULL|NULL|PRIMARY\s+KEY|UNIQUE|"
+                r"REFERENCES|CHECK|COLLATE|CONSTRAINT|GENERATED)\b|$)",
+                remainder, re.IGNORECASE,
+            )
+            if default_match:
+                field["default"] = default_match.group(1).strip()
+            inline_fk = re.search(
+                r"\bREFERENCES\s+([`\"\[\]\w.]+)(?:\s*\(([^)]+)\))?",
+                remainder, re.IGNORECASE,
+            )
+            if inline_fk:
+                field["foreign_key"] = True
+                pending_fks.append({
+                    "child": entity_id,
+                    "parent_label": normalize_sql_name(inline_fk.group(1)),
+                    "local_fields": [field_name],
+                    "remote_fields": [
+                        normalize_sql_name(item)
+                        for item in (inline_fk.group(2) or "id").split(",")
+                    ],
+                })
+            fields.append(field)
+            field_map[field_name] = field
+        for field_name in table_primary_keys:
+            if field_name in field_map:
+                field_map[field_name]["primary_key"] = True
+                field_map[field_name]["nullable"] = False
+        entities[raw_table] = {
+            "id": entity_id,
+            "label": raw_table,
+            "fields": fields,
+        }
+    alter_fk_pattern = re.compile(
+        r"ALTER\s+TABLE\s+(?:ONLY\s+)?([`\"\[\]\w.]+)\s+ADD\s+"
+        r"(?:CONSTRAINT\s+\S+\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s+"
+        r"REFERENCES\s+([`\"\[\]\w.]+)(?:\s*\(([^)]+)\))?\s*;",
+        re.IGNORECASE | re.DOTALL,
+    )
+    for match in alter_fk_pattern.finditer(text):
+        child_label = normalize_sql_name(match.group(1))
+        pending_fks.append({
+            "child": slugify(child_label),
+            "parent_label": normalize_sql_name(match.group(3)),
+            "local_fields": [
+                normalize_sql_name(item) for item in match.group(2).split(",")
+            ],
+            "remote_fields": [
+                normalize_sql_name(item)
+                for item in (match.group(4) or "id").split(",")
+            ],
+        })
+    if not entities:
+        raise ValueError("no CREATE TABLE statements found")
+    label_to_id = {label: entity["id"] for label, entity in entities.items()}
+    entity_by_id = {entity["id"]: entity for entity in entities.values()}
+    relationships = []
+    for index, foreign_key in enumerate(pending_fks, start=1):
+        parent = label_to_id.get(str(foreign_key["parent_label"]))
+        child = str(foreign_key["child"])
+        if not parent or child not in entity_by_id:
+            continue
+        for field_name in foreign_key["local_fields"]:
+            for field in entity_by_id[child]["fields"]:
+                if field["name"] == field_name:
+                    field["foreign_key"] = True
+        relationships.append({
+            "id": f"fk-{parent}-{child}-{index}",
+            "from": parent,
+            "to": child,
+            "from_fields": foreign_key["remote_fields"],
+            "to_fields": foreign_key["local_fields"],
+            "from_cardinality": "one",
+            "to_cardinality": "zero-or-many",
+            "label": "references",
+        })
+    return {
+        "version": "1",
+        "erd": {"title": title, "direction": "LR", "theme": "colorblind"},
+        "entities": [entities[name] for name in sorted(entities)],
+        "relationships": relationships,
+    }
+
+
+def validate_ha(data: dict[str, Any]) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    if str(data.get("version", "")) != "1":
+        issues.append(issue("error", "ha.version", "version must be \"1\""))
+    metadata = data.get("ha")
+    if not isinstance(metadata, dict) or not metadata.get("title"):
+        issues.append(issue("error", "ha.metadata", "ha requires a title"))
+        metadata = {}
+    if metadata.get("theme", "colorblind") not in ALLOWED_THEMES:
+        issues.append(issue("error", "ha.theme", f"unknown theme: {metadata.get('theme')}"))
+    for objective in ("availability", "rto", "rpo"):
+        if not metadata.get(objective):
+            issues.append(issue(
+                "warning", f"ha.{objective}",
+                f"HA model should define a measurable {objective.upper()} objective",
+            ))
+    domains = data.get("domains")
+    components = data.get("components")
+    links = data.get("links", [])
+    failovers = data.get("failovers", [])
+    if not isinstance(domains, list) or not domains:
+        return issues + [issue("error", "ha.domains", "domains must be a non-empty array")]
+    if not isinstance(components, list) or not components:
+        return issues + [issue("error", "ha.components", "components must be a non-empty array")]
+    if not isinstance(links, list) or not isinstance(failovers, list):
+        return issues + [issue("error", "ha.collections", "links and failovers must be arrays")]
+
+    domain_map: dict[str, dict[str, Any]] = {}
+    for index, domain in enumerate(domains):
+        if not isinstance(domain, dict) or not domain.get("id") or not domain.get("label"):
+            issues.append(issue("error", "ha.domain.required", f"domain {index} requires id and label"))
+            continue
+        domain_id = str(domain["id"])
+        if not valid_semantic_id(domain_id):
+            issues.append(issue("error", "id.format", f"invalid domain id: {domain_id}", domain_id))
+        if domain_id in domain_map:
+            issues.append(issue("error", "id.duplicate", f"duplicate domain id: {domain_id}", domain_id))
+        domain_map[domain_id] = domain
+        if domain.get("level", "zone") not in ALLOWED_FAILURE_DOMAIN_LEVELS:
+            issues.append(issue("error", "ha.domain.level", f"unknown domain level: {domain.get('level')}", domain_id))
+    failure_domains = [
+        domain for domain in domain_map.values() if domain.get("failure_domain", True)
+    ]
+    if len(failure_domains) < 2:
+        issues.append(issue("warning", "ha.failure-domains", "HA design has fewer than two failure domains"))
+
+    component_map: dict[str, dict[str, Any]] = {}
+    for index, component in enumerate(components):
+        if not isinstance(component, dict) or not component.get("id") or not component.get("label"):
+            issues.append(issue("error", "ha.component.required", f"component {index} requires id and label"))
+            continue
+        component_id = str(component["id"])
+        if not valid_semantic_id(component_id):
+            issues.append(issue("error", "id.format", f"invalid component id: {component_id}", component_id))
+        if component_id in component_map or component_id in domain_map:
+            issues.append(issue("error", "id.duplicate", f"duplicate id: {component_id}", component_id))
+        component_map[component_id] = component
+        if component.get("domain") not in domain_map:
+            issues.append(issue("error", "ha.component.domain", f"unknown domain: {component.get('domain')}", component_id))
+        role = component.get("role", "active")
+        if role not in ALLOWED_HA_ROLES:
+            issues.append(issue("error", "ha.component.role", f"unknown role: {role}", component_id))
+        replicas = component.get("replicas", 1)
+        if not isinstance(replicas, int) or isinstance(replicas, bool) or replicas < 1:
+            issues.append(issue("error", "ha.component.replicas", "replicas must be a positive integer", component_id))
+        elif role in {"active-active", "load-balancer"} and replicas < 2:
+            issues.append(issue("warning", "ha.replica-count", f"{role} should have at least two replicas", component_id))
+        elif role == "quorum" and (replicas < 3 or replicas % 2 == 0):
+            issues.append(issue("warning", "ha.quorum", "quorum replicas should be odd and at least three", component_id))
+
+    link_ids: set[str] = set()
+    replicated_components: set[str] = set()
+    replication_pairs: set[frozenset[str]] = set()
+    for index, link in enumerate(links):
+        if not isinstance(link, dict) or not link.get("from") or not link.get("to"):
+            issues.append(issue("error", "ha.link.required", f"link {index} requires from and to"))
+            continue
+        source, target = str(link["from"]), str(link["to"])
+        link_id = str(link.get("id", f"{source}-to-{target}-{index + 1}"))
+        if not valid_semantic_id(link_id):
+            issues.append(issue("error", "id.format", f"invalid link id: {link_id}", link_id))
+        if link_id in link_ids or link_id in component_map or link_id in domain_map:
+            issues.append(issue("error", "id.duplicate", f"duplicate id: {link_id}", link_id))
+        link_ids.add(link_id)
+        if source not in component_map:
+            issues.append(issue("error", "ha.link.source", f"unknown component: {source}", link_id))
+        if target not in component_map:
+            issues.append(issue("error", "ha.link.target", f"unknown component: {target}", link_id))
+        mode = link.get("mode", "traffic")
+        if mode not in ALLOWED_HA_LINK_MODES:
+            issues.append(issue("error", "ha.link.mode", f"unknown link mode: {mode}", link_id))
+        if mode in {"sync-replication", "async-replication"}:
+            replicated_components.update((source, target))
+            replication_pairs.add(frozenset((source, target)))
+        if (
+            mode == "sync-replication"
+            and source in component_map
+            and target in component_map
+        ):
+            source_domain = domain_map.get(str(component_map[source].get("domain")), {})
+            target_domain = domain_map.get(str(component_map[target].get("domain")), {})
+            if (
+                source_domain.get("region")
+                and target_domain.get("region")
+                and source_domain["region"] != target_domain["region"]
+            ):
+                issues.append(issue(
+                    "warning", "ha.cross-region-sync",
+                    "synchronous replication spans regions; verify latency budget", link_id,
+                ))
+    for component_id, component in component_map.items():
+        if component.get("stateful") and component_id not in replicated_components:
+            issues.append(issue(
+                "warning", "ha.stateful-replication",
+                "stateful component has no replication link", component_id,
+            ))
+
+    failover_ids: set[str] = set()
+    for index, failover in enumerate(failovers):
+        if (
+            not isinstance(failover, dict)
+            or not failover.get("id")
+            or not failover.get("from")
+            or not failover.get("to")
+            or not failover.get("trigger")
+        ):
+            issues.append(issue(
+                "error", "ha.failover.required",
+                f"failover {index} requires id, from, to, and trigger",
+            ))
+            continue
+        failover_id = str(failover["id"])
+        if not valid_semantic_id(failover_id):
+            issues.append(issue("error", "id.format", f"invalid failover id: {failover_id}", failover_id))
+        if failover_id in failover_ids:
+            issues.append(issue("error", "id.duplicate", f"duplicate failover id: {failover_id}", failover_id))
+        failover_ids.add(failover_id)
+        source, target = str(failover["from"]), str(failover["to"])
+        if source not in component_map:
+            issues.append(issue("error", "ha.failover.source", f"unknown component: {source}", failover_id))
+        if target not in component_map:
+            issues.append(issue("error", "ha.failover.target", f"unknown component: {target}", failover_id))
+        if source in component_map and target in component_map:
+            source_domain = component_map[source].get("domain")
+            target_domain = component_map[target].get("domain")
+            if source_domain == target_domain:
+                issues.append(issue(
+                    "error", "ha.failover.domain",
+                    "failover target must be in a different failure domain", failover_id,
+                ))
+            if component_map[target].get("role", "active") not in {
+                "standby", "replica", "active-active", "active",
+            }:
+                issues.append(issue(
+                    "warning", "ha.failover-target",
+                    f"target role is not promotable: {component_map[target].get('role')}",
+                    target,
+                ))
+            if failover.get("automatic", True) and not component_map[source].get("health_check"):
+                issues.append(issue(
+                    "warning", "ha.health-check",
+                    "automatic failover source has no health check", source,
+                ))
+            if (
+                (component_map[source].get("stateful") or component_map[target].get("stateful"))
+                and frozenset((source, target)) not in replication_pairs
+            ):
+                issues.append(issue(
+                    "warning", "ha.failover-replication",
+                    "stateful failover pair has no direct replication link", failover_id,
+                ))
+    return issues
+
+
+def ha_component_node(component: dict[str, Any], group: str | None = None) -> dict[str, Any]:
+    role = str(component.get("role", "active"))
+    replicas = int(component.get("replicas", 1))
+    details = [role]
+    if replicas > 1:
+        details.append(f"{replicas} replicas")
+    for field in ("technology", "health_check"):
+        if component.get(field):
+            details.append(str(component[field]))
+    kind = str(component.get("kind", "service"))
+    if kind not in ALLOWED_KINDS:
+        kind = "process" if role == "load-balancer" else "service"
+    node: dict[str, Any] = {
+        "id": str(component["id"]),
+        "label": str(component["label"]),
+        "kind": kind,
+        "description": " · ".join(details),
+    }
+    if group:
+        node["group"] = group
+    if component.get("position"):
+        node["position"] = copy.deepcopy(component["position"])
+    return node
+
+
+def ha_to_ir(data: dict[str, Any]) -> dict[str, Any]:
+    errors = [item for item in validate_ha(data) if item["level"] == "error"]
+    if errors:
+        raise ValueError(f"invalid ha model: {errors[0]['message']}")
+    metadata = data["ha"]
+    domains = {str(domain["id"]): domain for domain in data["domains"]}
+    components = {str(component["id"]): component for component in data["components"]}
+    group_ids = {domain_id: f"domain-{domain_id}" for domain_id in domains}
+    topology_groups = [
+        {"id": group_ids[domain_id], "label": str(domain["label"])}
+        for domain_id, domain in domains.items()
+    ]
+    topology_nodes = [
+        ha_component_node(component, group_ids[str(component["domain"])])
+        for component in data["components"]
+    ]
+    mode_mapping = {
+        "traffic": "sync",
+        "sync-replication": "data",
+        "async-replication": "async",
+        "heartbeat": "association",
+        "quorum": "dependency",
+    }
+    topology_edges = [
+        {
+            "id": str(link.get("id", f"{link['from']}-to-{link['to']}-{index}")),
+            "from": str(link["from"]),
+            "to": str(link["to"]),
+            "label": str(link.get("label") or str(link.get("mode", "traffic")).replace("-", " ")),
+            "kind": mode_mapping[str(link.get("mode", "traffic"))],
+        }
+        for index, link in enumerate(data.get("links", []), start=1)
+    ]
+    objectives = " · ".join(
+        value for value in (
+            f"Availability {metadata.get('availability')}" if metadata.get("availability") else "",
+            f"RTO {metadata.get('rto')}" if metadata.get("rto") else "",
+            f"RPO {metadata.get('rpo')}" if metadata.get("rpo") else "",
+        ) if value
+    )
+    if objectives:
+        topology_nodes.append({
+            "id": "availability-objectives",
+            "label": "Availability objectives",
+            "kind": "note",
+            "description": objectives,
+            "position": {"x": 400, "y": 480},
+            "size": {"width": 280, "height": 72},
+        })
+
+    failover_groups = []
+    failover_nodes = []
+    failover_edges = []
+    lane_cursor = 100
+    for failover in data.get("failovers", []):
+        failover_id = str(failover["id"])
+        group_id = f"scenario-{failover_id}"
+        source = components[str(failover["from"])]
+        target = components[str(failover["to"])]
+        failover_groups.append({
+            "id": group_id,
+            "label": f"{failover['trigger']} · {'automatic' if failover.get('automatic', True) else 'manual'}",
+        })
+        detector_id = f"fo-{failover_id}-detector"
+        source_id = f"fo-{failover_id}-source"
+        target_id = f"fo-{failover_id}-target"
+        objective = " · ".join(
+            value for value in (
+                f"RTO {failover.get('rto') or metadata.get('rto')}" if failover.get("rto") or metadata.get("rto") else "",
+                f"RPO {failover.get('rpo') or metadata.get('rpo')}" if failover.get("rpo") or metadata.get("rpo") else "",
+            ) if value
+        )
+        failover_nodes.extend([
+            {
+                "id": detector_id,
+                "label": "Failure detector",
+                "kind": "decision",
+                "group": group_id,
+                "description": str(source.get("health_check", "health signal")),
+                "position": {"x": lane_cursor + 170, "y": 100},
+            },
+            {
+                **ha_component_node(source, group_id),
+                "id": source_id,
+                "position": {"x": lane_cursor, "y": 360},
+            },
+            {
+                **ha_component_node(target, group_id),
+                "id": target_id,
+                "position": {"x": lane_cursor + 380, "y": 360},
+            },
+        ])
+        failover_edges.extend([
+            {
+                "id": f"{failover_id}-detect",
+                "from": detector_id,
+                "to": source_id,
+                "label": "detect outage",
+                "kind": "association",
+            },
+            {
+                "id": f"{failover_id}-promote",
+                "from": detector_id,
+                "to": target_id,
+                "label": f"promote {objective}".strip(),
+                "kind": "async",
+            },
+            {
+                "id": f"{failover_id}-replication",
+                "from": source_id,
+                "to": target_id,
+                "label": str(failover.get("replication", "replicated state")),
+                "kind": "data",
+            },
+        ])
+        lane_cursor += 860
+    pages = [{
+        "id": "topology",
+        "title": f"{metadata['title']} — HA Topology",
+        "groups": topology_groups,
+        "nodes": topology_nodes,
+        "edges": topology_edges,
+    }]
+    if failover_nodes:
+        pages.append({
+            "id": "failover",
+            "title": f"{metadata['title']} — Failover Scenarios",
+            "diagram": {"direction": "TB"},
+            "groups": failover_groups,
+            "nodes": failover_nodes,
+            "edges": failover_edges,
+        })
+    return {
+        "version": "1",
+        "diagram": {
+            "direction": str(metadata.get("direction", "LR")),
+            "theme": str(metadata.get("theme", "colorblind")),
+            "gap": int(metadata.get("gap", 120)),
+        },
+        "pages": pages,
+    }
+
+
 def patch_target(data: dict[str, Any], page_id: str | None) -> dict[str, Any]:
     if "pages" not in data:
         if page_id:
@@ -2171,6 +3137,76 @@ def command_import(args: argparse.Namespace) -> int:
     return 0
 
 
+def write_generated_model(
+    diagram_ir: dict[str, Any],
+    source_issues: list[dict[str, Any]],
+    args: argparse.Namespace,
+    model_type: str,
+) -> int:
+    if args.theme_file:
+        diagram_ir = apply_theme_pack(diagram_ir, load_theme_pack(Path(args.theme_file)))
+    ir_issues = validate_ir(diagram_ir)
+    if any(item["level"] == "error" for item in ir_issues):
+        print_report(source_issues + ir_issues)
+        return 2
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    compile_drawio(diagram_ir).write(output, encoding="utf-8", xml_declaration=True)
+    drawio_issues, drawio_summary = validate_drawio(output)
+    if args.ir_output:
+        ir_output = Path(args.ir_output)
+        ir_output.parent.mkdir(parents=True, exist_ok=True)
+        ir_output.write_text(
+            json.dumps(diagram_ir, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    if args.preview_dir:
+        preview_dir = Path(args.preview_dir)
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        for page_id, page in page_documents(diagram_ir):
+            compile_svg(page).write(
+                preview_dir / f"{page_id}.svg",
+                encoding="utf-8",
+                xml_declaration=True,
+            )
+    all_issues = source_issues + ir_issues + drawio_issues
+    print_report(all_issues, {
+        **drawio_summary,
+        "model": model_type,
+        "output": str(output),
+        "ir_output": str(args.ir_output) if args.ir_output else None,
+        "preview_dir": str(args.preview_dir) if args.preview_dir else None,
+    })
+    if any(item["level"] == "error" for item in all_issues):
+        return 2
+    if args.strict and score_issues(all_issues) < 90:
+        return 3
+    return 0
+
+
+def command_erd(args: argparse.Namespace) -> int:
+    path = Path(args.input)
+    source = (
+        sql_to_erd(path.read_text(encoding="utf-8"), args.title or path.stem)
+        if path.suffix.lower() == ".sql"
+        else load_data(path)
+    )
+    source_issues = validate_erd(source)
+    if any(item["level"] == "error" for item in source_issues):
+        print_report(source_issues)
+        return 2
+    return write_generated_model(erd_to_ir(source), source_issues, args, "erd")
+
+
+def command_ha(args: argparse.Namespace) -> int:
+    source = load_data(Path(args.input))
+    source_issues = validate_ha(source)
+    if any(item["level"] == "error" for item in source_issues):
+        print_report(source_issues)
+        return 2
+    return write_generated_model(ha_to_ir(source), source_issues, args, "ha")
+
+
 def command_blueprint(args: argparse.Namespace) -> int:
     source = load_data(Path(args.input))
     source_issues = validate_blueprint(source)
@@ -2260,6 +3296,12 @@ def command_audit(args: argparse.Namespace) -> int:
         if "blueprint" in source:
             issues = validate_blueprint(source)
             diagram_ir = blueprint_to_ir(source) if not any(item["level"] == "error" for item in issues) else None
+        elif "erd" in source:
+            issues = validate_erd(source)
+            diagram_ir = erd_to_ir(source) if not any(item["level"] == "error" for item in issues) else None
+        elif "ha" in source:
+            issues = validate_ha(source)
+            diagram_ir = ha_to_ir(source) if not any(item["level"] == "error" for item in issues) else None
         else:
             diagram_ir = source
             issues = []
@@ -2311,13 +3353,37 @@ def command_validate(args: argparse.Namespace) -> int:
         issues, summary = validate_drawio(path)
     else:
         data = load_data(path)
-        documents = page_documents(data)
-        issues, summary = validate_ir(data), {
-            "pages": len(documents),
-            "nodes": sum(len(page.get("nodes", [])) for _, page in documents),
-            "edges": sum(len(page.get("edges", [])) for _, page in documents),
-            "groups": sum(len(page.get("groups", [])) for _, page in documents),
-        }
+        if "blueprint" in data:
+            issues = validate_blueprint(data)
+            summary = {
+                "model": "blueprint",
+                "elements": len(data.get("elements", [])),
+                "relations": len(data.get("relations", [])),
+                "decisions": len(data.get("decisions", [])),
+            }
+        elif "erd" in data:
+            issues = validate_erd(data)
+            summary = {
+                "model": "erd",
+                "entities": len(data.get("entities", [])),
+                "relationships": len(data.get("relationships", [])),
+            }
+        elif "ha" in data:
+            issues = validate_ha(data)
+            summary = {
+                "model": "ha",
+                "domains": len(data.get("domains", [])),
+                "components": len(data.get("components", [])),
+                "failovers": len(data.get("failovers", [])),
+            }
+        else:
+            documents = page_documents(data)
+            issues, summary = validate_ir(data), {
+                "pages": len(documents),
+                "nodes": sum(len(page.get("nodes", [])) for _, page in documents),
+                "edges": sum(len(page.get("edges", [])) for _, page in documents),
+                "groups": sum(len(page.get("groups", [])) for _, page in documents),
+            }
     print_report(issues, summary)
     score = score_issues(issues)
     if any(item["level"] == "error" for item in issues):
@@ -2390,6 +3456,29 @@ def build_parser() -> argparse.ArgumentParser:
     import_parser.add_argument("--title")
     import_parser.add_argument("--max-files", type=int, default=500)
     import_parser.set_defaults(func=command_import)
+
+    erd_parser = subparsers.add_parser(
+        "erd", help="generate a validated Crow's Foot ERD from JSON/YAML or SQL DDL"
+    )
+    erd_parser.add_argument("input")
+    erd_parser.add_argument("-o", "--output", required=True)
+    erd_parser.add_argument("--title")
+    erd_parser.add_argument("--ir-output")
+    erd_parser.add_argument("--preview-dir")
+    erd_parser.add_argument("--theme-file")
+    erd_parser.add_argument("--strict", action="store_true")
+    erd_parser.set_defaults(func=command_erd)
+
+    ha_parser = subparsers.add_parser(
+        "ha", help="generate HA topology and failover views"
+    )
+    ha_parser.add_argument("input")
+    ha_parser.add_argument("-o", "--output", required=True)
+    ha_parser.add_argument("--ir-output")
+    ha_parser.add_argument("--preview-dir")
+    ha_parser.add_argument("--theme-file")
+    ha_parser.add_argument("--strict", action="store_true")
+    ha_parser.set_defaults(func=command_ha)
 
     blueprint_parser = subparsers.add_parser(
         "blueprint", help="generate a multi-view architecture blueprint"

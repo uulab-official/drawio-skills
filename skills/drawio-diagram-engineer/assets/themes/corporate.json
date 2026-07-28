@@ -15,6 +15,7 @@
     "decision": ["#fff1f2", "#be123c"],
     "process": ["#eef2ff", "#4338ca"],
     "document": ["#faf5ff", "#7e22ce"],
-    "note": ["#fefce8", "#a16207"]
+    "note": ["#fefce8", "#a16207"],
+    "entity": ["#f8fafc", "#334155"]
   }
 }

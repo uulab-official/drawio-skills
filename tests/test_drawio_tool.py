@@ -321,6 +321,7 @@ class DrawioToolTests(unittest.TestCase):
                 item["shape"] for item in registry["shapes"].values()
             } <= TOOL.VERIFIED_SHAPES
         )
+        self.assertEqual(TOOL.CARDINALITY_MARKERS, registry["edge_markers"])
 
     def test_audit_report_groups_repairs(self):
         issues = [
@@ -334,6 +335,232 @@ class DrawioToolTests(unittest.TestCase):
         repairs = {item["code"]: item for item in report["repairs"]}
         self.assertEqual(2, len(repairs["node.contrast"]["targets"]))
         self.assertIn("4.5:1", repairs["node.contrast"]["suggestion"])
+
+    def test_erd_model_preserves_fields_and_cardinalities(self):
+        source = json.loads(
+            (
+                ROOT
+                / "skills/drawio-diagram-engineer/assets/example.erd.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual([], TOOL.validate_erd(source))
+        diagram_ir = TOOL.erd_to_ir(source)
+        entities = {node["id"]: node for node in diagram_ir["nodes"]}
+        self.assertEqual("entity", entities["orders"]["kind"])
+        self.assertTrue(
+            any(field.get("foreign_key") for field in entities["orders"]["fields"])
+        )
+        relationship = next(
+            edge for edge in diagram_ir["edges"] if edge["id"] == "customer-orders"
+        )
+        self.assertEqual("one", relationship["style"]["start_cardinality"])
+        self.assertEqual(
+            "zero-or-many", relationship["style"]["end_cardinality"]
+        )
+        self.assertEqual([], [
+            item for item in TOOL.validate_ir(diagram_ir)
+            if item["level"] == "error"
+        ])
+        self.assertEqual(diagram_ir, TOOL.erd_to_ir(source))
+        self.assertEqual(
+            TOOL.ET.tostring(TOOL.compile_drawio(diagram_ir).getroot()),
+            TOOL.ET.tostring(TOOL.compile_drawio(TOOL.erd_to_ir(source)).getroot()),
+        )
+
+    def test_sql_ddl_to_erd_extracts_keys_and_types(self):
+        source = TOOL.sql_to_erd(
+            """
+            CREATE TABLE customers (
+              id UUID PRIMARY KEY,
+              email VARCHAR(255) NOT NULL UNIQUE
+            );
+            CREATE TABLE orders (
+              id UUID PRIMARY KEY,
+              customer_id UUID NOT NULL REFERENCES customers(id),
+              total NUMERIC(12,2) NOT NULL
+            );
+            """,
+            "Orders",
+        )
+        self.assertEqual([], TOOL.validate_erd(source))
+        entities = {entity["id"]: entity for entity in source["entities"]}
+        customer_id = next(
+            field
+            for field in entities["orders"]["fields"]
+            if field["name"] == "customer_id"
+        )
+        self.assertTrue(customer_id["foreign_key"])
+        self.assertFalse(customer_id["nullable"])
+        self.assertEqual("customers", source["relationships"][0]["from"])
+
+    def test_sql_ddl_to_erd_supports_alter_table_foreign_keys(self):
+        source = TOOL.sql_to_erd(
+            """
+            CREATE TABLE teams (id BIGINT PRIMARY KEY);
+            CREATE TABLE members (
+              id BIGINT PRIMARY KEY,
+              team_id BIGINT NOT NULL
+            );
+            ALTER TABLE members ADD CONSTRAINT members_team_fk
+              FOREIGN KEY (team_id) REFERENCES teams(id);
+            """
+        )
+        self.assertEqual([], TOOL.validate_erd(source))
+        relationship = source["relationships"][0]
+        self.assertEqual("teams", relationship["from"])
+        self.assertEqual(["team_id"], relationship["to_fields"])
+
+    def test_erd_reports_relationship_type_mismatch(self):
+        source = {
+            "version": "1",
+            "erd": {"title": "Mismatch"},
+            "entities": [
+                {
+                    "id": "parents",
+                    "label": "parents",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type": "uuid",
+                            "primary_key": True,
+                            "nullable": False,
+                        }
+                    ],
+                },
+                {
+                    "id": "children",
+                    "label": "children",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type": "uuid",
+                            "primary_key": True,
+                            "nullable": False,
+                        },
+                        {"name": "parent_id", "type": "integer"},
+                    ],
+                },
+            ],
+            "relationships": [
+                {
+                    "id": "parent-children",
+                    "from": "parents",
+                    "to": "children",
+                    "from_fields": ["id"],
+                    "to_fields": ["parent_id"],
+                    "from_cardinality": "one",
+                    "to_cardinality": "zero-or-many",
+                }
+            ],
+        }
+        codes = {item["code"] for item in TOOL.validate_erd(source)}
+        self.assertIn("erd.type-mismatch", codes)
+
+    def test_erd_supports_self_referencing_relationships(self):
+        source = {
+            "version": "1",
+            "erd": {"title": "Hierarchy"},
+            "entities": [
+                {
+                    "id": "categories",
+                    "label": "categories",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type": "uuid",
+                            "primary_key": True,
+                            "nullable": False,
+                        },
+                        {
+                            "name": "parent_id",
+                            "type": "uuid",
+                            "foreign_key": True,
+                            "nullable": True,
+                        },
+                    ],
+                }
+            ],
+            "relationships": [
+                {
+                    "id": "category-parent",
+                    "from": "categories",
+                    "to": "categories",
+                    "from_fields": ["id"],
+                    "to_fields": ["parent_id"],
+                    "from_cardinality": "zero-or-one",
+                    "to_cardinality": "zero-or-many",
+                    "label": "parent",
+                }
+            ],
+        }
+        diagram_ir = TOOL.erd_to_ir(source)
+        self.assertEqual([], [
+            item for item in TOOL.validate_ir(diagram_ir)
+            if item["level"] == "error"
+        ])
+        polyline = TOOL.compile_svg(diagram_ir).getroot().find("polyline")
+        self.assertGreaterEqual(len(polyline.get("points", "").split()), 5)
+
+    def test_ha_model_generates_failure_domain_and_failover_views(self):
+        source = json.loads(
+            (
+                ROOT
+                / "skills/drawio-diagram-engineer/assets/example.ha.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual([], TOOL.validate_ha(source))
+        diagram_ir = TOOL.ha_to_ir(source)
+        pages = {page["id"]: page for page in diagram_ir["pages"]}
+        self.assertEqual({"topology", "failover"}, set(pages))
+        self.assertEqual(3, len(pages["topology"]["groups"]))
+        promote = next(
+            edge for edge in pages["failover"]["edges"]
+            if edge["id"] == "database-az-failure-promote"
+        )
+        self.assertIn("RTO 60s", promote["label"])
+        self.assertEqual([], [
+            item for item in TOOL.validate_ir(diagram_ir)
+            if item["level"] == "error"
+        ])
+        self.assertEqual(diagram_ir, TOOL.ha_to_ir(source))
+        self.assertEqual(
+            TOOL.ET.tostring(TOOL.compile_drawio(diagram_ir).getroot()),
+            TOOL.ET.tostring(TOOL.compile_drawio(TOOL.ha_to_ir(source)).getroot()),
+        )
+
+    def test_ha_rejects_failover_inside_same_domain(self):
+        source = json.loads(
+            (
+                ROOT
+                / "skills/drawio-diagram-engineer/assets/example.ha.json"
+            ).read_text(encoding="utf-8")
+        )
+        source["components"][-1]["domain"] = "az-a"
+        codes = {item["code"] for item in TOOL.validate_ha(source)}
+        self.assertIn("ha.failover.domain", codes)
+
+    def test_ha_warns_when_objectives_and_failover_replication_are_missing(self):
+        source = json.loads(
+            (
+                ROOT
+                / "skills/drawio-diagram-engineer/assets/example.ha.json"
+            ).read_text(encoding="utf-8")
+        )
+        for objective in ("availability", "rto", "rpo"):
+            source["ha"].pop(objective)
+        source["links"] = [
+            link for link in source["links"] if link["id"] != "db-replication"
+        ]
+        codes = {item["code"] for item in TOOL.validate_ha(source)}
+        self.assertTrue(
+            {
+                "ha.availability",
+                "ha.rto",
+                "ha.rpo",
+                "ha.stateful-replication",
+                "ha.failover-replication",
+            } <= codes
+        )
 
 
 if __name__ == "__main__":

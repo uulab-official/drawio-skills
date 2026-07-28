@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.6.0">
+  <diagram id="page-topology" name="Checkout Service — HA Topology">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="group-domain-edge" value="Global Edge" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="70" y="45" width="626" height="357" as="geometry" />
+        </mxCell>
+        <mxCell id="group-domain-az-a" value="Region KR · AZ-A" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="730" y="45" width="686" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="group-domain-az-b" value="Region KR · AZ-B" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="730" y="545" width="686" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="node-customers" value="&lt;b&gt;Customers&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;client&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfeff;strokeColor=#0e7490;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="100" y="100" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-global-lb" value="&lt;b&gt;Global Load Balancer&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;load-balancer · 2 replicas · HTTPS /ready&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eef2ff;strokeColor=#4338ca;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=process;">
+          <mxGeometry x="400" y="300" width="266" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-app-a" value="&lt;b&gt;Checkout API A&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;active-active · 3 replicas · Kubernetes · HTTP /healthz&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="760" y="100" width="266" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-db-primary" value="&lt;b&gt;Orders DB Primary&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;active · PostgreSQL · SQL primary probe&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="1120" y="100" width="266" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-app-b" value="&lt;b&gt;Checkout API B&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;active-active · 3 replicas · Kubernetes · HTTP /healthz&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="760" y="600" width="266" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-db-standby" value="&lt;b&gt;Orders DB Standby&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;standby · PostgreSQL · SQL replica probe&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="1120" y="600" width="266" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-availability-objectives" value="&lt;b&gt;Availability objectives&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Availability 99.99% · RTO 60s · RPO 5s&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fefce8;strokeColor=#a16207;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=note;size=20;">
+          <mxGeometry x="400" y="480" width="280" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-customers-lb" value="HTTPS" edge="1" parent="1" source="node-customers" target="node-global-lb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-lb-app-a" value="weighted 50%" edge="1" parent="1" source="node-global-lb" target="node-app-a" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-lb-app-b" value="weighted 50%" edge="1" parent="1" source="node-global-lb" target="node-app-b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-app-a-db" value="SQL" edge="1" parent="1" source="node-app-a" target="node-db-primary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-app-b-db" value="SQL" edge="1" parent="1" source="node-app-b" target="node-db-primary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-db-replication" value="synchronous WAL" edge="1" parent="1" source="node-db-primary" target="node-db-standby" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-app-heartbeat" value="readiness" edge="1" parent="1" source="node-app-a" target="node-app-b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-failover" name="Checkout Service — Failover Scenarios">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="group-scenario-database-az-failure" value="AZ-A database unavailable · automatic" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="70" y="45" width="706" height="417" as="geometry" />
+        </mxCell>
+        <mxCell id="node-fo-database-az-failure-detector" value="&lt;b&gt;Failure detector&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;SQL primary probe&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=0;arcSize=12;fillColor=#fff1f2;strokeColor=#be123c;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rhombus;perimeter=rhombusPerimeter;">
+          <mxGeometry x="270" y="100" width="175" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="node-fo-database-az-failure-source" value="&lt;b&gt;Orders DB Primary&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;active · PostgreSQL · SQL primary probe&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="100" y="360" width="266" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-fo-database-az-failure-target" value="&lt;b&gt;Orders DB Standby&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;standby · PostgreSQL · SQL replica probe&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="480" y="360" width="266" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-database-az-failure-detect" value="detect outage" edge="1" parent="1" source="node-fo-database-az-failure-detector" target="node-fo-database-az-failure-source" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-database-az-failure-promote" value="promote RTO 60s · RPO 0s" edge="1" parent="1" source="node-fo-database-az-failure-detector" target="node-fo-database-az-failure-target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-database-az-failure-replication" value="synchronous WAL" edge="1" parent="1" source="node-fo-database-az-failure-source" target="node-fo-database-az-failure-target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

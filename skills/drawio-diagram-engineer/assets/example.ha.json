@@ -1,0 +1,117 @@
+{
+  "version": "1",
+  "ha": {
+    "title": "Checkout Service",
+    "direction": "LR",
+    "theme": "colorblind",
+    "availability": "99.99%",
+    "rto": "60s",
+    "rpo": "5s",
+    "gap": 120
+  },
+  "domains": [
+    {
+      "id": "edge",
+      "label": "Global Edge",
+      "level": "region",
+      "failure_domain": false
+    },
+    {
+      "id": "az-a",
+      "label": "Region KR · AZ-A",
+      "level": "zone",
+      "region": "kr-central"
+    },
+    {
+      "id": "az-b",
+      "label": "Region KR · AZ-B",
+      "level": "zone",
+      "region": "kr-central"
+    }
+  ],
+  "components": [
+    {
+      "id": "customers",
+      "label": "Customers",
+      "kind": "client",
+      "domain": "edge",
+      "role": "client",
+      "position": {"x": 100, "y": 100}
+    },
+    {
+      "id": "global-lb",
+      "label": "Global Load Balancer",
+      "kind": "process",
+      "domain": "edge",
+      "role": "load-balancer",
+      "replicas": 2,
+      "health_check": "HTTPS /ready",
+      "position": {"x": 400, "y": 300}
+    },
+    {
+      "id": "app-a",
+      "label": "Checkout API A",
+      "kind": "service",
+      "domain": "az-a",
+      "role": "active-active",
+      "replicas": 3,
+      "technology": "Kubernetes",
+      "health_check": "HTTP /healthz",
+      "position": {"x": 760, "y": 100}
+    },
+    {
+      "id": "db-primary",
+      "label": "Orders DB Primary",
+      "kind": "database",
+      "domain": "az-a",
+      "role": "active",
+      "stateful": true,
+      "technology": "PostgreSQL",
+      "health_check": "SQL primary probe",
+      "position": {"x": 1120, "y": 100}
+    },
+    {
+      "id": "app-b",
+      "label": "Checkout API B",
+      "kind": "service",
+      "domain": "az-b",
+      "role": "active-active",
+      "replicas": 3,
+      "technology": "Kubernetes",
+      "health_check": "HTTP /healthz",
+      "position": {"x": 760, "y": 600}
+    },
+    {
+      "id": "db-standby",
+      "label": "Orders DB Standby",
+      "kind": "database",
+      "domain": "az-b",
+      "role": "standby",
+      "stateful": true,
+      "technology": "PostgreSQL",
+      "health_check": "SQL replica probe",
+      "position": {"x": 1120, "y": 600}
+    }
+  ],
+  "links": [
+    {"id": "customers-lb", "from": "customers", "to": "global-lb", "mode": "traffic", "label": "HTTPS"},
+    {"id": "lb-app-a", "from": "global-lb", "to": "app-a", "mode": "traffic", "label": "weighted 50%"},
+    {"id": "lb-app-b", "from": "global-lb", "to": "app-b", "mode": "traffic", "label": "weighted 50%"},
+    {"id": "app-a-db", "from": "app-a", "to": "db-primary", "mode": "traffic", "label": "SQL"},
+    {"id": "app-b-db", "from": "app-b", "to": "db-primary", "mode": "traffic", "label": "SQL"},
+    {"id": "db-replication", "from": "db-primary", "to": "db-standby", "mode": "sync-replication", "label": "synchronous WAL"},
+    {"id": "app-heartbeat", "from": "app-a", "to": "app-b", "mode": "heartbeat", "label": "readiness"}
+  ],
+  "failovers": [
+    {
+      "id": "database-az-failure",
+      "from": "db-primary",
+      "to": "db-standby",
+      "trigger": "AZ-A database unavailable",
+      "automatic": true,
+      "replication": "synchronous WAL",
+      "rto": "60s",
+      "rpo": "0s"
+    }
+  ]
+}

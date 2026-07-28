@@ -1,0 +1,319 @@
+{
+  "version": "1",
+  "diagram": {
+    "title": "Commerce Database",
+    "direction": "LR",
+    "theme": "colorblind",
+    "gap": 140,
+    "theme_tokens": {
+      "background": "#ffffff",
+      "group_fill": "#f8fafc",
+      "group_stroke": "#64748b",
+      "font": "#111827",
+      "edge": "#334155",
+      "client": [
+        "#ecfeff",
+        "#0e7490"
+      ],
+      "service": [
+        "#eff6ff",
+        "#1d4ed8"
+      ],
+      "database": [
+        "#ecfdf5",
+        "#047857"
+      ],
+      "queue": [
+        "#fffbeb",
+        "#b45309"
+      ],
+      "external": [
+        "#f8fafc",
+        "#475569"
+      ],
+      "decision": [
+        "#fff1f2",
+        "#be123c"
+      ],
+      "process": [
+        "#eef2ff",
+        "#4338ca"
+      ],
+      "document": [
+        "#faf5ff",
+        "#7e22ce"
+      ],
+      "note": [
+        "#fefce8",
+        "#a16207"
+      ],
+      "entity": [
+        "#f8fafc",
+        "#334155"
+      ]
+    }
+  },
+  "groups": [
+    {
+      "id": "schema-commerce",
+      "label": "commerce"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "customers",
+      "label": "customers",
+      "kind": "entity",
+      "fields": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primary_key": true,
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "type": "varchar(255)",
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "display_name",
+          "type": "varchar(120)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false
+        }
+      ],
+      "group": "schema-commerce",
+      "position": {
+        "x": 100,
+        "y": 100
+      }
+    },
+    {
+      "id": "products",
+      "label": "products",
+      "kind": "entity",
+      "fields": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primary_key": true,
+          "nullable": false
+        },
+        {
+          "name": "sku",
+          "type": "varchar(64)",
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(200)",
+          "nullable": false
+        },
+        {
+          "name": "price",
+          "type": "numeric(12,2)",
+          "nullable": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "nullable": false,
+          "default": true
+        }
+      ],
+      "group": "schema-commerce",
+      "position": {
+        "x": 100,
+        "y": 520
+      }
+    },
+    {
+      "id": "orders",
+      "label": "orders",
+      "kind": "entity",
+      "fields": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primary_key": true,
+          "nullable": false
+        },
+        {
+          "name": "customer_id",
+          "type": "uuid",
+          "foreign_key": true,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(32)",
+          "nullable": false
+        },
+        {
+          "name": "total",
+          "type": "numeric(12,2)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false
+        }
+      ],
+      "group": "schema-commerce",
+      "position": {
+        "x": 650,
+        "y": 100
+      }
+    },
+    {
+      "id": "order-items",
+      "label": "order_items",
+      "kind": "entity",
+      "fields": [
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "primary_key": true,
+          "foreign_key": true,
+          "nullable": false
+        },
+        {
+          "name": "product_id",
+          "type": "uuid",
+          "primary_key": true,
+          "foreign_key": true,
+          "nullable": false
+        },
+        {
+          "name": "quantity",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(12,2)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false
+        }
+      ],
+      "group": "schema-commerce",
+      "position": {
+        "x": 1250,
+        "y": 520
+      }
+    },
+    {
+      "id": "payments",
+      "label": "payments",
+      "kind": "entity",
+      "fields": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "primary_key": true,
+          "nullable": false
+        },
+        {
+          "name": "order_id",
+          "type": "uuid",
+          "foreign_key": true,
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "provider_ref",
+          "type": "varchar(120)",
+          "unique": true,
+          "nullable": false
+        },
+        {
+          "name": "amount",
+          "type": "numeric(12,2)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(32)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false
+        }
+      ],
+      "group": "schema-commerce",
+      "position": {
+        "x": 1250,
+        "y": 100
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "customer-orders",
+      "from": "customers",
+      "to": "orders",
+      "label": "places",
+      "kind": "association",
+      "style": {
+        "start_cardinality": "one",
+        "end_cardinality": "zero-or-many",
+        "dashed": true
+      }
+    },
+    {
+      "id": "order-items-order",
+      "from": "orders",
+      "to": "order-items",
+      "label": "contains",
+      "kind": "association",
+      "style": {
+        "start_cardinality": "one",
+        "end_cardinality": "one-or-many",
+        "dashed": false
+      }
+    },
+    {
+      "id": "order-items-product",
+      "from": "products",
+      "to": "order-items",
+      "label": "references",
+      "kind": "association",
+      "style": {
+        "start_cardinality": "one",
+        "end_cardinality": "zero-or-many",
+        "dashed": false
+      }
+    },
+    {
+      "id": "order-payment",
+      "from": "orders",
+      "to": "payments",
+      "label": "settled by",
+      "kind": "association",
+      "style": {
+        "start_cardinality": "one",
+        "end_cardinality": "zero-or-one",
+        "dashed": true
+      }
+    }
+  ]
+}

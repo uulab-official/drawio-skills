@@ -2,6 +2,14 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 0.6.0 — 2026-07-28
+
+- Add a field-level ERD model, schema, validator, SQL DDL importer, and Crow's Foot renderer.
+- Add entity rows for PK, FK, UK, data type, nullability, and defaults.
+- Add HA topology and failover models with explicit failure domains, replicas, replication modes, health checks, RTO, and RPO.
+- Add HA resilience checks for quorum shape, stateful replication, and cross-domain promotion.
+- Publish deterministic editable ERD and HA example packs with 100-point audits.
+
 ## 0.5.0 — 2026-07-28
 
 - Add six-page Architecture Blueprint packs with a linked Architecture Decisions view.

@@ -1,0 +1,141 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1741" height="818" viewBox="0 0 1741 818" role="img" aria-label="Commerce Database">
+  <rect width="100%" height="100%" fill="#ffffff" />
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
+    </marker>
+  </defs>
+  <rect x="70" y="45" width="1591" height="693" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+  <text x="86" y="69" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">commerce</text>
+  <polyline points="481,180.0 565.5,180.0 565.5,208.0 650,208.0" fill="none" stroke="#334155" stroke-width="2" />
+  <text x="565.5" y="186.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">places</text>
+  <text x="499" y="172.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
+  <text x="616" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">0..*</text>
+  <polyline points="1010,208.0 1130.0,208.0 1130.0,614.0 1250,614.0" fill="none" stroke="#334155" stroke-width="2" />
+  <text x="1130.0" y="403.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">contains</text>
+  <text x="1028" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
+  <text x="1216" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1..*</text>
+  <polyline points="495,614.0 872.5,614.0 872.5,614.0 1250,614.0" fill="none" stroke="#334155" stroke-width="2" />
+  <text x="872.5" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">references</text>
+  <text x="513" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
+  <text x="1216" y="606.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">0..*</text>
+  <polyline points="1010,208.0 1130.0,208.0 1130.0,208.0 1250,208.0" fill="none" stroke="#334155" stroke-width="2" />
+  <text x="1130.0" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">settled by</text>
+  <text x="1028" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">1</text>
+  <text x="1216" y="200.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">0..1</text>
+  <rect x="100" y="100" width="381" height="160" rx="0" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <rect x="100" y="100" width="381" height="48" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <text x="112" y="130" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">customers</text>
+  <text x="108" y="167" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">PK</text>
+  <text x="152" y="167" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">id</text>
+  <text x="473" y="167" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">uuid NOT NULL</text>
+  <line x1="100" x2="481" y1="176" y2="176" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="108" y="195" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">UK</text>
+  <text x="152" y="195" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">email</text>
+  <text x="473" y="195" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">varchar(255) NOT NULL</text>
+  <line x1="100" x2="481" y1="204" y2="204" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="108" y="223" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="152" y="223" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">display_name</text>
+  <text x="473" y="223" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">varchar(120) NOT NULL</text>
+  <line x1="100" x2="481" y1="232" y2="232" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="108" y="251" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="152" y="251" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">created_at</text>
+  <text x="473" y="251" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">timestamptz NOT NULL</text>
+  <rect x="100" y="520" width="395" height="188" rx="0" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <rect x="100" y="520" width="395" height="48" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <text x="112" y="550" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">products</text>
+  <text x="108" y="587" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">PK</text>
+  <text x="152" y="587" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">id</text>
+  <text x="487" y="587" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">uuid NOT NULL</text>
+  <line x1="100" x2="495" y1="596" y2="596" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="108" y="615" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">UK</text>
+  <text x="152" y="615" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">sku</text>
+  <text x="487" y="615" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">varchar(64) NOT NULL</text>
+  <line x1="100" x2="495" y1="624" y2="624" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="108" y="643" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="152" y="643" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">name</text>
+  <text x="487" y="643" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">varchar(200) NOT NULL</text>
+  <line x1="100" x2="495" y1="652" y2="652" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="108" y="671" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="152" y="671" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">price</text>
+  <text x="487" y="671" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">numeric(12,2) NOT NULL</text>
+  <line x1="100" x2="495" y1="680" y2="680" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="108" y="699" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="152" y="699" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">active</text>
+  <text x="487" y="699" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">boolean NOT NULL DEFAULT true</text>
+  <rect x="650" y="100" width="360" height="216" rx="0" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <rect x="650" y="100" width="360" height="48" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <text x="662" y="130" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">orders</text>
+  <text x="658" y="167" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">PK</text>
+  <text x="702" y="167" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">id</text>
+  <text x="1002" y="167" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">uuid NOT NULL</text>
+  <line x1="650" x2="1010" y1="176" y2="176" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="658" y="195" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">FK</text>
+  <text x="702" y="195" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">customer_id</text>
+  <text x="1002" y="195" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">uuid NOT NULL</text>
+  <line x1="650" x2="1010" y1="204" y2="204" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="658" y="223" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="702" y="223" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">status</text>
+  <text x="1002" y="223" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">varchar(32) NOT NULL</text>
+  <line x1="650" x2="1010" y1="232" y2="232" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="658" y="251" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="702" y="251" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">total</text>
+  <text x="1002" y="251" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">numeric(12,2) NOT NULL</text>
+  <line x1="650" x2="1010" y1="260" y2="260" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="658" y="279" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="702" y="279" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">created_at</text>
+  <text x="1002" y="279" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">timestamptz NOT NULL</text>
+  <line x1="650" x2="1010" y1="288" y2="288" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="658" y="307" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="702" y="307" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">updated_at</text>
+  <text x="1002" y="307" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">timestamptz NOT NULL</text>
+  <rect x="1250" y="520" width="374" height="188" rx="0" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <rect x="1250" y="520" width="374" height="48" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <text x="1262" y="550" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">order_items</text>
+  <text x="1258" y="587" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">PK FK</text>
+  <text x="1302" y="587" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">order_id</text>
+  <text x="1616" y="587" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">uuid NOT NULL</text>
+  <line x1="1250" x2="1624" y1="596" y2="596" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="615" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">PK FK</text>
+  <text x="1302" y="615" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">product_id</text>
+  <text x="1616" y="615" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">uuid NOT NULL</text>
+  <line x1="1250" x2="1624" y1="624" y2="624" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="643" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="1302" y="643" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">quantity</text>
+  <text x="1616" y="643" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">integer NOT NULL</text>
+  <line x1="1250" x2="1624" y1="652" y2="652" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="671" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="1302" y="671" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">unit_price</text>
+  <text x="1616" y="671" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">numeric(12,2) NOT NULL</text>
+  <line x1="1250" x2="1624" y1="680" y2="680" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="699" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="1302" y="699" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">created_at</text>
+  <text x="1616" y="699" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">timestamptz NOT NULL</text>
+  <rect x="1250" y="100" width="381" height="216" rx="0" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <rect x="1250" y="100" width="381" height="48" fill="#f8fafc" stroke="#334155" stroke-width="2" />
+  <text x="1262" y="130" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">payments</text>
+  <text x="1258" y="167" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">PK</text>
+  <text x="1302" y="167" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="700">id</text>
+  <text x="1623" y="167" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">uuid NOT NULL</text>
+  <line x1="1250" x2="1631" y1="176" y2="176" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="195" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">FK UK</text>
+  <text x="1302" y="195" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">order_id</text>
+  <text x="1623" y="195" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">uuid NOT NULL</text>
+  <line x1="1250" x2="1631" y1="204" y2="204" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="223" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">UK</text>
+  <text x="1302" y="223" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">provider_ref</text>
+  <text x="1623" y="223" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">varchar(120) NOT NULL</text>
+  <line x1="1250" x2="1631" y1="232" y2="232" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="251" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="1302" y="251" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">amount</text>
+  <text x="1623" y="251" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">numeric(12,2) NOT NULL</text>
+  <line x1="1250" x2="1631" y1="260" y2="260" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="279" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="1302" y="279" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">status</text>
+  <text x="1623" y="279" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">varchar(32) NOT NULL</text>
+  <line x1="1250" x2="1631" y1="288" y2="288" stroke="#64748b" stroke-width="1" opacity="0.45" />
+  <text x="1258" y="307" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="9" font-weight="700">·</text>
+  <text x="1302" y="307" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="400">created_at</text>
+  <text x="1623" y="307" fill="#334155" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="end">timestamptz NOT NULL</text>
+</svg>

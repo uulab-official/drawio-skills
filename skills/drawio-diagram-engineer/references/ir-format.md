@@ -88,13 +88,14 @@ Groups are visual regions. Each requires a unique `id` and a short `label`. Node
 
 Required fields are `id` and `label`.
 
-- `kind`: `client`, `service`, `database`, `queue`, `external`, `decision`, `process`, `document`, or `note`.
+- `kind`: `client`, `service`, `database`, `queue`, `external`, `decision`, `process`, `document`, `note`, or `entity`.
 - `group`: ID of a declared group.
 - `description`: secondary text shown below the label.
 - `position`: optional `{ "x": 100, "y": 120 }`.
 - `size`: optional `{ "width": 180, "height": 80 }`.
 - `style`: optional safe overrides: `fill`, `stroke`, `font`, `dashed`, `rounded`.
 - `link`: optional target page ID for multi-page drill-down.
+- `fields`: field rows for `entity` nodes. Use the `erd` command instead of writing entity IR directly when possible.
 
 Use lowercase kebab-case IDs. IDs become stable draw.io cell IDs with a `node-` prefix.
 
@@ -106,6 +107,7 @@ Required fields are `from` and `to`.
 - `label`: relationship verb or protocol.
 - `kind`: `sync`, `async`, `data`, `dependency`, or `association`.
 - `style`: optional safe overrides: `color`, `dashed`, `width`.
+- `style.start_cardinality` / `style.end_cardinality`: ER endpoint cardinalities emitted by the `erd` command.
 
 Every endpoint must reference a declared node. Self-loops are rejected.
 

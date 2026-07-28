@@ -2,8 +2,15 @@
   "version": "1",
   "provenance": {
     "source": "https://github.com/jgraph/drawio-mcp/blob/main/shared/style-reference.md",
+    "edge_marker_source": "https://github.com/jgraph/drawio/blob/dev/src/main/webapp/js/diagramly/sidebar/Sidebar-ER.js",
     "license": "Apache-2.0",
-    "scope": "Core mxGraph and draw.io Shapes.js identifiers only"
+    "scope": "Core mxGraph, draw.io Shapes.js, and official ER endpoint markers only"
+  },
+  "edge_markers": {
+    "one": "ERmandOne",
+    "zero-or-one": "ERzeroToOne",
+    "one-or-many": "ERoneToMany",
+    "zero-or-many": "ERzeroToMany"
   },
   "shapes": {
     "client": {
@@ -58,6 +65,11 @@
       "shape": "note",
       "family": "extended",
       "style": {"shape": "note", "size": 20}
+    },
+    "entity": {
+      "shape": "rectangle",
+      "family": "core",
+      "style": {"shape": "rectangle", "rounded": 0}
     }
   }
 }

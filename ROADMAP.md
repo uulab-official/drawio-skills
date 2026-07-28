@@ -51,6 +51,20 @@ Exit criteria: at least five fixture projects per importer, deterministic snapsh
 
 Exit criteria: WCAG-aware palettes, verified shape resolution, structured before/after repair guidance, and deterministic six-view Blueprint generation.
 
+## v0.6 — Data modeling and high availability
+
+- [x] Field-level entity nodes with PK, FK, UK, type, nullable, and default metadata
+- [x] Official draw.io Crow's Foot relationship markers
+- [x] ERD cardinality, key, field-reference, arity, and type compatibility validation
+- [x] Direct SQL DDL → editable ERD generation
+- [x] HA topology grouped by explicit failure domains
+- [x] Replication, heartbeat, traffic, and quorum edge semantics
+- [x] Deterministic failover scenario lanes with health checks, RTO, and RPO
+- [x] HA validation for cross-domain promotion, replica counts, quorum, and stateful replication
+- [x] Editable ERD/HA examples, SVG reviews, audits, schemas, and CI workflows
+
+Exit criteria: ERD and HA examples score 100 without warnings, regenerate byte-identically, preserve domain semantics in editable draw.io XML, and pass all supported Python versions.
+
 ## v1.0 — Stable public contract
 
 - [ ] Freeze Diagram IR v1 compatibility policy

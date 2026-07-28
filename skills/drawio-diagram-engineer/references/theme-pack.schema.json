@@ -26,7 +26,8 @@
         "decision",
         "process",
         "document",
-        "note"
+        "note",
+        "entity"
       ],
       "properties": {
         "background": {"$ref": "#/$defs/color"},
@@ -42,7 +43,8 @@
         "decision": {"$ref": "#/$defs/pair"},
         "process": {"$ref": "#/$defs/pair"},
         "document": {"$ref": "#/$defs/pair"},
-        "note": {"$ref": "#/$defs/pair"}
+        "note": {"$ref": "#/$defs/pair"},
+        "entity": {"$ref": "#/$defs/pair"}
       },
       "additionalProperties": false
     }

@@ -71,11 +71,17 @@
             "decision",
             "process",
             "document",
-            "note"
+            "note",
+            "entity"
           ]
         },
         "group": {"$ref": "#/$defs/id"},
         "description": {"type": "string"},
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/entityField"}
+        },
         "link": {"$ref": "#/$defs/id"},
         "position": {"$ref": "#/$defs/position"},
         "size": {"$ref": "#/$defs/size"},
@@ -142,7 +148,13 @@
       "properties": {
         "color": {"type": "string"},
         "dashed": {"type": "boolean"},
-        "width": {"type": "number", "exclusiveMinimum": 0}
+        "width": {"type": "number", "exclusiveMinimum": 0},
+        "start_cardinality": {
+          "enum": ["one", "zero-or-one", "one-or-many", "zero-or-many"]
+        },
+        "end_cardinality": {
+          "enum": ["one", "zero-or-one", "one-or-many", "zero-or-many"]
+        }
       },
       "additionalProperties": false
     },
@@ -162,7 +174,8 @@
         "decision",
         "process",
         "document",
-        "note"
+        "note",
+        "entity"
       ],
       "properties": {
         "background": {"$ref": "#/$defs/color"},
@@ -178,7 +191,8 @@
         "decision": {"$ref": "#/$defs/colorPair"},
         "process": {"$ref": "#/$defs/colorPair"},
         "document": {"$ref": "#/$defs/colorPair"},
-        "note": {"$ref": "#/$defs/colorPair"}
+        "note": {"$ref": "#/$defs/colorPair"},
+        "entity": {"$ref": "#/$defs/colorPair"}
       },
       "additionalProperties": false
     },
@@ -195,6 +209,20 @@
       "items": false,
       "minItems": 2,
       "maxItems": 2
+    },
+    "entityField": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "type": {"type": "string", "minLength": 1},
+        "nullable": {"type": "boolean"},
+        "primary_key": {"type": "boolean"},
+        "foreign_key": {"type": "boolean"},
+        "unique": {"type": "boolean"},
+        "default": {}
+      },
+      "additionalProperties": true
     },
     "id": {
       "type": "string",

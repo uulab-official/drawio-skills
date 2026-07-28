@@ -1,6 +1,6 @@
 ---
 name: drawio-diagram-engineer
-description: Create, edit, import, compile, inspect, audit, preview, and export editable draw.io diagrams from natural-language requirements, structured JSON/YAML, Python or TypeScript source trees, OpenAPI, SQL DDL, or Docker Compose. Generate coordinated architecture blueprint packs with context, logical, data, deployment, security, and decision views. Apply reusable organization theme packs, verified shape mappings, contrast checks, and structured repair suggestions. Use for architecture diagrams, codebase maps, flowcharts, data flows, ERDs, UML-style diagrams, network maps, multi-page system views, and for repairing or quality-checking existing .drawio files. Prefer this skill when output must remain editable, deterministic, reviewable in source control, or exportable to PNG, SVG, or PDF.
+description: Create, edit, import, compile, inspect, audit, preview, and export editable draw.io diagrams from natural-language requirements, structured JSON/YAML, Python or TypeScript source trees, OpenAPI, SQL DDL, or Docker Compose. Generate coordinated architecture blueprints, field-level Crow's Foot ERDs, and high-availability topology/failover packs with failure domains, replication, health checks, RTO, and RPO. Apply reusable organization themes, verified shapes, contrast checks, and structured repairs. Use for architecture diagrams, database schemas, HA/DR designs, codebase maps, flowcharts, data flows, UML-style diagrams, network maps, multi-page system views, and repairing or quality-checking existing .drawio files. Prefer when output must remain editable, deterministic, reviewable in source control, or exportable to PNG, SVG, or PDF.
 ---
 
 # Draw.io Diagram Engineer
@@ -11,6 +11,8 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
 
 1. Inspect the request and relevant source material. Infer a sensible diagram type, scope, direction, and theme when the user does not specify them.
    For a coordinated architecture diagram pack, read [blueprint.md](references/blueprint.md), author against [blueprint.schema.json](references/blueprint.schema.json), and use `blueprint`.
+   For an ERD, read [erd.md](references/erd.md), author against [erd.schema.json](references/erd.schema.json), and use `erd`. Accept SQL DDL directly when it is the source of truth.
+   For high availability, read [ha.md](references/ha.md), author against [ha.schema.json](references/ha.schema.json), and use `ha`.
 2. Write a Diagram IR JSON file. Read [ir-format.md](references/ir-format.md) for the schema and [authoring.md](references/authoring.md) for diagram-specific choices. Use [diagram-ir.schema.json](references/diagram-ir.schema.json) with schema-aware tooling.
    When starting from a Python/TypeScript tree, OpenAPI, SQL, or Compose, read [importers.md](references/importers.md) and generate the IR with `import`.
    When organization styling or deeper visual QA is required, read [style-system.md](references/style-system.md) and use a validated theme pack.
@@ -94,6 +96,8 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 
 - `compile`: validate IR, calculate deterministic layout, and emit uncompressed editable draw.io XML.
 - `blueprint`: project one architecture model into context, logical, data, deployment, security, and decision pages.
+- `erd`: validate entities, fields, keys, types, and cardinalities, then generate an editable Crow's Foot ERD from a model or SQL DDL.
+- `ha`: validate failure domains, replicas, replication, health checks, and failovers, then generate topology and failover pages.
 - `import`: convert Python/TypeScript module trees, OpenAPI, SQL DDL, or Docker Compose into Diagram IR.
 - `patch`: atomically apply semantic node, edge, group, position, and diagram changes.
 - `preview`: create a reviewable SVG without draw.io Desktop.
@@ -104,4 +108,4 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 
 Before first use, verify `python3 -c "import xml.etree.ElementTree"`. If a macOS Homebrew Python reports a `pyexpat`/`libexpat` symbol error, use `/usr/bin/python3` or repair that Python installation; do not attribute the ABI failure to the diagram input.
 
-Use [example.architecture.json](assets/example.architecture.json), [example.multipage.json](assets/example.multipage.json), or [example.blueprint.json](assets/example.blueprint.json) as a compact starting point, not as a fixed template. Apply [corporate.json](assets/themes/corporate.json) when a reusable custom theme example is useful.
+Use [example.architecture.json](assets/example.architecture.json), [example.blueprint.json](assets/example.blueprint.json), [example.erd.json](assets/example.erd.json), or [example.ha.json](assets/example.ha.json) as a compact starting point, not as a fixed template. Apply [corporate.json](assets/themes/corporate.json) when a reusable custom theme example is useful.

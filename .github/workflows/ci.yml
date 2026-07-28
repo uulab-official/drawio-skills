@@ -46,3 +46,17 @@ jobs:
             --preview-dir /tmp/blueprint-audit-previews \
             --theme-file skills/drawio-diagram-engineer/assets/themes/corporate.json \
             --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            erd skills/drawio-diagram-engineer/assets/example.erd.json \
+            -o /tmp/commerce-erd.drawio \
+            --ir-output /tmp/commerce-erd.diagram.json \
+            --preview-dir /tmp/commerce-erd-previews \
+            --theme-file skills/drawio-diagram-engineer/assets/themes/corporate.json \
+            --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            ha skills/drawio-diagram-engineer/assets/example.ha.json \
+            -o /tmp/checkout-ha.drawio \
+            --ir-output /tmp/checkout-ha.diagram.json \
+            --preview-dir /tmp/checkout-ha-previews \
+            --theme-file skills/drawio-diagram-engineer/assets/themes/corporate.json \
+            --strict

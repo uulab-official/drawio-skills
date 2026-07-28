@@ -139,6 +139,89 @@ class CliWorkflowTests(unittest.TestCase):
             self.assertEqual("required", payload["visual_review"]["status"])
             self.assertEqual(6, len(payload["visual_review"]["previews"]))
 
+    def test_erd_generates_editable_crows_foot_diagram(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            drawio = temp / "commerce-erd.drawio"
+            diagram_ir = temp / "commerce-erd.json"
+            previews = temp / "previews"
+            run_tool(
+                "erd",
+                ASSETS / "example.erd.json",
+                "-o",
+                drawio,
+                "--ir-output",
+                diagram_ir,
+                "--preview-dir",
+                previews,
+                "--theme-file",
+                ASSETS / "themes/corporate.json",
+                "--strict",
+            )
+            run_tool("validate", drawio, "--strict")
+            xml = drawio.read_text(encoding="utf-8")
+            self.assertIn("ERzeroToMany", xml)
+            self.assertIn("ERmandOne", xml)
+            self.assertIn("PK FK", xml)
+            self.assertTrue((previews / "main.svg").exists())
+
+    def test_ha_generates_topology_and_failover_pages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            drawio = temp / "checkout-ha.drawio"
+            diagram_ir = temp / "checkout-ha.json"
+            previews = temp / "previews"
+            run_tool(
+                "ha",
+                ASSETS / "example.ha.json",
+                "-o",
+                drawio,
+                "--ir-output",
+                diagram_ir,
+                "--preview-dir",
+                previews,
+                "--theme-file",
+                ASSETS / "themes/corporate.json",
+                "--strict",
+            )
+            run_tool("validate", drawio, "--strict")
+            pages = ET.parse(drawio).getroot().findall("diagram")
+            self.assertEqual(2, len(pages))
+            self.assertEqual(
+                {"topology.svg", "failover.svg"},
+                {path.name for path in previews.glob("*.svg")},
+            )
+
+    def test_sql_ddl_can_compile_directly_to_erd(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            sql = temp / "schema.sql"
+            drawio = temp / "schema.drawio"
+            sql.write_text(
+                """
+                CREATE TABLE accounts (
+                  id UUID PRIMARY KEY,
+                  email VARCHAR(255) NOT NULL UNIQUE
+                );
+                CREATE TABLE sessions (
+                  id UUID PRIMARY KEY,
+                  account_id UUID NOT NULL REFERENCES accounts(id)
+                );
+                """,
+                encoding="utf-8",
+            )
+            run_tool(
+                "erd",
+                sql,
+                "-o",
+                drawio,
+                "--title",
+                "Identity Database",
+                "--strict",
+            )
+            run_tool("validate", drawio, "--strict")
+            self.assertIn("ERzeroToMany", drawio.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

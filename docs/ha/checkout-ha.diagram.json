@@ -1,0 +1,279 @@
+{
+  "version": "1",
+  "diagram": {
+    "direction": "LR",
+    "theme": "colorblind",
+    "gap": 120,
+    "theme_tokens": {
+      "background": "#ffffff",
+      "group_fill": "#f8fafc",
+      "group_stroke": "#64748b",
+      "font": "#111827",
+      "edge": "#334155",
+      "client": [
+        "#ecfeff",
+        "#0e7490"
+      ],
+      "service": [
+        "#eff6ff",
+        "#1d4ed8"
+      ],
+      "database": [
+        "#ecfdf5",
+        "#047857"
+      ],
+      "queue": [
+        "#fffbeb",
+        "#b45309"
+      ],
+      "external": [
+        "#f8fafc",
+        "#475569"
+      ],
+      "decision": [
+        "#fff1f2",
+        "#be123c"
+      ],
+      "process": [
+        "#eef2ff",
+        "#4338ca"
+      ],
+      "document": [
+        "#faf5ff",
+        "#7e22ce"
+      ],
+      "note": [
+        "#fefce8",
+        "#a16207"
+      ],
+      "entity": [
+        "#f8fafc",
+        "#334155"
+      ]
+    }
+  },
+  "pages": [
+    {
+      "id": "topology",
+      "title": "Checkout Service — HA Topology",
+      "groups": [
+        {
+          "id": "domain-edge",
+          "label": "Global Edge"
+        },
+        {
+          "id": "domain-az-a",
+          "label": "Region KR · AZ-A"
+        },
+        {
+          "id": "domain-az-b",
+          "label": "Region KR · AZ-B"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "customers",
+          "label": "Customers",
+          "kind": "client",
+          "description": "client",
+          "group": "domain-edge",
+          "position": {
+            "x": 100,
+            "y": 100
+          }
+        },
+        {
+          "id": "global-lb",
+          "label": "Global Load Balancer",
+          "kind": "process",
+          "description": "load-balancer · 2 replicas · HTTPS /ready",
+          "group": "domain-edge",
+          "position": {
+            "x": 400,
+            "y": 300
+          }
+        },
+        {
+          "id": "app-a",
+          "label": "Checkout API A",
+          "kind": "service",
+          "description": "active-active · 3 replicas · Kubernetes · HTTP /healthz",
+          "group": "domain-az-a",
+          "position": {
+            "x": 760,
+            "y": 100
+          }
+        },
+        {
+          "id": "db-primary",
+          "label": "Orders DB Primary",
+          "kind": "database",
+          "description": "active · PostgreSQL · SQL primary probe",
+          "group": "domain-az-a",
+          "position": {
+            "x": 1120,
+            "y": 100
+          }
+        },
+        {
+          "id": "app-b",
+          "label": "Checkout API B",
+          "kind": "service",
+          "description": "active-active · 3 replicas · Kubernetes · HTTP /healthz",
+          "group": "domain-az-b",
+          "position": {
+            "x": 760,
+            "y": 600
+          }
+        },
+        {
+          "id": "db-standby",
+          "label": "Orders DB Standby",
+          "kind": "database",
+          "description": "standby · PostgreSQL · SQL replica probe",
+          "group": "domain-az-b",
+          "position": {
+            "x": 1120,
+            "y": 600
+          }
+        },
+        {
+          "id": "availability-objectives",
+          "label": "Availability objectives",
+          "kind": "note",
+          "description": "Availability 99.99% · RTO 60s · RPO 5s",
+          "position": {
+            "x": 400,
+            "y": 480
+          },
+          "size": {
+            "width": 280,
+            "height": 72
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "customers-lb",
+          "from": "customers",
+          "to": "global-lb",
+          "label": "HTTPS",
+          "kind": "sync"
+        },
+        {
+          "id": "lb-app-a",
+          "from": "global-lb",
+          "to": "app-a",
+          "label": "weighted 50%",
+          "kind": "sync"
+        },
+        {
+          "id": "lb-app-b",
+          "from": "global-lb",
+          "to": "app-b",
+          "label": "weighted 50%",
+          "kind": "sync"
+        },
+        {
+          "id": "app-a-db",
+          "from": "app-a",
+          "to": "db-primary",
+          "label": "SQL",
+          "kind": "sync"
+        },
+        {
+          "id": "app-b-db",
+          "from": "app-b",
+          "to": "db-primary",
+          "label": "SQL",
+          "kind": "sync"
+        },
+        {
+          "id": "db-replication",
+          "from": "db-primary",
+          "to": "db-standby",
+          "label": "synchronous WAL",
+          "kind": "data"
+        },
+        {
+          "id": "app-heartbeat",
+          "from": "app-a",
+          "to": "app-b",
+          "label": "readiness",
+          "kind": "association"
+        }
+      ]
+    },
+    {
+      "id": "failover",
+      "title": "Checkout Service — Failover Scenarios",
+      "diagram": {
+        "direction": "TB"
+      },
+      "groups": [
+        {
+          "id": "scenario-database-az-failure",
+          "label": "AZ-A database unavailable · automatic"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "fo-database-az-failure-detector",
+          "label": "Failure detector",
+          "kind": "decision",
+          "group": "scenario-database-az-failure",
+          "description": "SQL primary probe",
+          "position": {
+            "x": 270,
+            "y": 100
+          }
+        },
+        {
+          "id": "fo-database-az-failure-source",
+          "label": "Orders DB Primary",
+          "kind": "database",
+          "description": "active · PostgreSQL · SQL primary probe",
+          "group": "scenario-database-az-failure",
+          "position": {
+            "x": 100,
+            "y": 360
+          }
+        },
+        {
+          "id": "fo-database-az-failure-target",
+          "label": "Orders DB Standby",
+          "kind": "database",
+          "description": "standby · PostgreSQL · SQL replica probe",
+          "group": "scenario-database-az-failure",
+          "position": {
+            "x": 480,
+            "y": 360
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "database-az-failure-detect",
+          "from": "fo-database-az-failure-detector",
+          "to": "fo-database-az-failure-source",
+          "label": "detect outage",
+          "kind": "association"
+        },
+        {
+          "id": "database-az-failure-promote",
+          "from": "fo-database-az-failure-detector",
+          "to": "fo-database-az-failure-target",
+          "label": "promote RTO 60s · RPO 0s",
+          "kind": "async"
+        },
+        {
+          "id": "database-az-failure-replication",
+          "from": "fo-database-az-failure-source",
+          "to": "fo-database-az-failure-target",
+          "label": "synchronous WAL",
+          "kind": "data"
+        }
+      ]
+    }
+  ]
+}

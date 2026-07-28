@@ -36,6 +36,8 @@ class SkillContractTests(unittest.TestCase):
             "diagram-ir.schema.json",
             "blueprint.schema.json",
             "theme-pack.schema.json",
+            "erd.schema.json",
+            "ha.schema.json",
         ):
             schema = SKILL / f"references/{filename}"
             self.assertIn('"$schema"', schema.read_text(encoding="utf-8"))

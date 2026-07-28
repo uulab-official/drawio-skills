@@ -48,6 +48,7 @@ def python_imports() -> tuple[list[str], list[str]]:
         ROOT / "scripts/install_skill.py",
         ROOT / "scripts/package_skill.py",
         ROOT / "scripts/desktop_lock.py",
+        ROOT / "scripts/verify_release_tag.py",
     ]
     required: set[str] = set()
     optional: set[str] = set()
@@ -94,6 +95,7 @@ def audit() -> dict[str, object]:
         ROOT / "skills/drawio-diagram-engineer/LICENSE.txt",
         ROOT / "skills/drawio-diagram-engineer/references/security.md",
         ROOT / "skills/drawio-diagram-engineer/references/compatibility.md",
+        ROOT / ".github/release-signers",
     ]
     missing_files = [
         str(path.relative_to(ROOT))
@@ -119,6 +121,28 @@ def audit() -> dict[str, object]:
             "code": "distribution.missing-file",
             "message": f"missing required files: {', '.join(missing_files)}",
         })
+    release_workflow = (ROOT / ".github/workflows/release.yml").read_text(
+        encoding="utf-8"
+    )
+    release_contracts = {
+        "signed-tag-gate": 'python scripts/verify_release_tag.py "$RELEASE_TAG"',
+        "complete-tag-history": "fetch-depth: 0",
+        "draft-release": "--draft",
+        "explicit-publish": 'gh release edit "$RELEASE_TAG" --draft=false',
+    }
+    missing_release_contracts = [
+        name for name, token in release_contracts.items()
+        if token not in release_workflow
+    ]
+    if missing_release_contracts:
+        findings.append({
+            "level": "error",
+            "code": "release.missing-contract",
+            "message": (
+                "release workflow is missing: "
+                + ", ".join(missing_release_contracts)
+            ),
+        })
     return {
         "format": "drawio-repository-audit/v1",
         "passed": not findings,
@@ -127,6 +151,10 @@ def audit() -> dict[str, object]:
         "workflow_actions": actions,
         "unpinned_actions": unpinned_actions,
         "missing_files": missing_files,
+        "release_contracts": {
+            name: name not in missing_release_contracts
+            for name in release_contracts
+        },
         "findings": findings,
     }
 

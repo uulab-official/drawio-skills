@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v0.11 beta**. The engine now exercises a SHA-256-pinned official draw.io Desktop release on hosted Linux, macOS, and Windows, verifies real SVG/PNG/PDF/JPEG exports, and publishes machine-readable export diagnostics.
+> Status: **v1.0 stable**. Diagram IR v1, every documented command, native Desktop export verification, security gates, and release verification are now covered by the stable compatibility policy.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -238,6 +238,15 @@ gh attestation verify drawio-diagram-engineer-<version>.zip \
   --repo uulab-official/drawio-skills
 ```
 
+Verify the release tag itself from a clone:
+
+```bash
+git fetch --tags origin
+python3 scripts/verify_release_tag.py v1.0.0
+```
+
+The verifier requires an annotated SSH signature trusted by [.github/release-signers](.github/release-signers), confirms the tag subject, and matches the tag version against the tool, package metadata, and changelog. Published releases are immutable: their tag and assets cannot be changed while the release exists.
+
 ## Compatibility and security
 
 Check or migrate an older unversioned Diagram IR before editing it:
@@ -309,7 +318,7 @@ For every command and exit code, see the [CLI reference](skills/drawio-diagram-e
 
 ## Roadmap
 
-The v0.3–v0.11 roadmap is complete, including real Desktop integration on hosted macOS/Windows/Linux runners. The remaining v1 governance item is signed release tags; release ZIPs already carry checksums and GitHub/Sigstore provenance attestations. See [ROADMAP.md](ROADMAP.md).
+The v0.1–v1.0 roadmap is complete, including real Desktop integration, a stable Diagram IR contract, signed release tags, checksums, provenance attestations, and immutable releases. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

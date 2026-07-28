@@ -24,7 +24,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.11.0"
+VERSION = "1.0.0"
 IR_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
 MAX_STRUCTURED_INPUT_BYTES = 50 * 1024 * 1024

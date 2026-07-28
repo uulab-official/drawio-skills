@@ -49,3 +49,5 @@ shasum -a 256 -c drawio-diagram-engineer-<version>.zip.sha256
 gh attestation verify drawio-diagram-engineer-<version>.zip \
   --repo uulab-official/drawio-skills
 ```
+
+Maintainers also sign release tags with the SSH key trusted by the repository's `.github/release-signers`. From a repository clone, run `python3 scripts/verify_release_tag.py <tag>` before trusting the tag-to-source binding. Published GitHub releases are immutable, so their associated tag and assets cannot be replaced after publication.

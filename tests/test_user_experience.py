@@ -1,5 +1,6 @@
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ ASSETS = ROOT / "skills/drawio-diagram-engineer/assets"
 INSTALLER = ROOT / "scripts/install_skill.py"
 PACKAGER = ROOT / "scripts/package_skill.py"
 AUDITOR = ROOT / "scripts/audit_repository.py"
+TAG_VERIFIER = ROOT / "scripts/verify_release_tag.py"
 
 
 def run(*arguments, check=True):
@@ -25,6 +27,76 @@ def run(*arguments, check=True):
 
 
 class UserExperienceTests(unittest.TestCase):
+    def test_signed_release_tag_verification_contract(self):
+        if not shutil.which("ssh-keygen") or not shutil.which("git"):
+            self.skipTest("git and ssh-keygen are required")
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            repository = temp / "repository"
+            repository.mkdir()
+            key = temp / "release-signing-key"
+            subprocess.run(
+                ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)],
+                check=True,
+            )
+            public_key = key.with_suffix(".pub").read_text(encoding="utf-8").strip()
+            (repository / ".github").mkdir()
+            (repository / ".github/release-signers").write_text(
+                f"release@example.com namespaces=\"git\" {public_key}\n",
+                encoding="utf-8",
+            )
+            tool = repository / "skills/drawio-diagram-engineer/scripts"
+            tool.mkdir(parents=True)
+            (tool / "drawio_tool.py").write_text(
+                'VERSION = "1.2.3"\n', encoding="utf-8"
+            )
+            (repository / "pyproject.toml").write_text(
+                '[project]\nversion = "1.2.3"\n', encoding="utf-8"
+            )
+            (repository / "CHANGELOG.md").write_text(
+                "# Changelog\n\n## 1.2.3 — Test\n", encoding="utf-8"
+            )
+            commands = [
+                ["git", "init", "-q", str(repository)],
+                ["git", "-C", str(repository), "config", "user.name", "Release Test"],
+                ["git", "-C", str(repository), "config", "user.email", "release@example.com"],
+                ["git", "-C", str(repository), "add", "."],
+                ["git", "-C", str(repository), "commit", "-q", "-m", "release"],
+                ["git", "-C", str(repository), "config", "gpg.format", "ssh"],
+                ["git", "-C", str(repository), "config", "user.signingkey", str(key)],
+                [
+                    "git", "-C", str(repository), "tag", "-s", "v1.2.3",
+                    "-m", "v1.2.3",
+                ],
+            ]
+            for command in commands:
+                subprocess.run(command, check=True)
+            verified = run(TAG_VERIFIER, "v1.2.3", "--repo", repository)
+            report = json.loads(verified.stdout)
+            self.assertTrue(report["passed"])
+            self.assertTrue(report["signed"])
+            self.assertEqual("release@example.com", report["principal"])
+            self.assertTrue(str(report["fingerprint"]).startswith("SHA256:"))
+
+            subprocess.run(
+                [
+                    "git", "-C", str(repository), "tag", "-a", "v1.2.4",
+                    "-m", "v1.2.4",
+                ],
+                check=True,
+            )
+            unsigned = run(
+                TAG_VERIFIER, "v1.2.4", "--repo", repository, check=False
+            )
+            self.assertEqual(2, unsigned.returncode)
+            self.assertIn(
+                "tag.signature",
+                {
+                    item["code"]
+                    for item in json.loads(unsigned.stdout)["findings"]
+                },
+            )
+
     def test_repository_dependency_and_workflow_audit_passes(self):
         completed = run(AUDITOR)
         report = json.loads(completed.stdout)
@@ -32,6 +104,7 @@ class UserExperienceTests(unittest.TestCase):
         self.assertEqual([], report["runtime_dependencies"])
         self.assertEqual(["yaml"], report["optional_dependencies"])
         self.assertEqual([], report["unpinned_actions"])
+        self.assertTrue(all(report["release_contracts"].values()))
         self.assertEqual(
             {
                 "actions/attest",

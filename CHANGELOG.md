@@ -2,6 +2,15 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 1.0.0 — 2026-07-28
+
+- Declare Diagram IR v1 and all documented CLI commands stable under the published compatibility policy.
+- Add a committed SSH allowed-signers trust root and a machine-readable signed-tag verifier.
+- Reject unsigned, lightweight, untrusted, non-semantic, and version-inconsistent release tags before packaging.
+- Build release assets in draft state and publish only after tests, checksums, provenance attestations, and uploads succeed.
+- Enable immutable GitHub releases so published tags and assets cannot be moved, replaced, or deleted independently.
+- Complete the stable public-contract roadmap after cross-platform native Desktop export validation.
+
 ## 0.11.0 — 2026-07-28
 
 - Pin official draw.io Desktop v31.0.2 assets by URL, byte size, and GitHub-published SHA-256 for Linux x64, macOS universal, and Windows x64.

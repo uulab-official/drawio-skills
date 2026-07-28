@@ -141,6 +141,6 @@ Exit criteria: every supported hosted operating system downloads a pinned offici
 - [x] Installation tests for Codex and other Agent Skills-compatible clients
 - [x] Reproducible unsigned release artifacts
 - [x] Attested release artifacts and published checksums
-- [ ] Signed release tags
+- [x] Signed release tags
 
-The v1.0 release requires zero known critical defects, deterministic output across supported Python versions, and complete documentation for every public command.
+The v1.0 release requires zero known critical defects, deterministic output across supported Python versions, and complete documentation for every public command. Completed in v1.0.0 with signed-tag enforcement and immutable releases.

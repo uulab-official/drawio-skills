@@ -25,7 +25,7 @@ python3 <skill-dir>/scripts/drawio_tool.py verify-export diagram.svg \
 The `drawio-export-report/v1` contract is defined by [export-report.schema.json](export-report.schema.json). Checks include:
 
 - PNG signature, IHDR dimensions, and terminal IEND chunk.
-- SVG root, safe XML, positive dimensions or viewBox, and drawable content.
+- SVG root, no entity/internal-DTD declarations, positive dimensions or viewBox, and drawable content. A standard external SVG doctype is accepted without resolving it.
 - PDF header and terminal EOF marker.
 - JPEG start- and end-of-image markers.
 - Declared format versus detected signature for every artifact.

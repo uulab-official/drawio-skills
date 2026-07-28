@@ -5557,9 +5557,13 @@ def verify_export(path: Path, expected_format: str | None = None) -> dict[str, A
             ))
         else:
             raw_svg = path.read_bytes()
-            if re.search(br"<!DOCTYPE|<!ENTITY", raw_svg, re.IGNORECASE):
+            if (
+                re.search(br"<!ENTITY", raw_svg, re.IGNORECASE)
+                or re.search(br"<!DOCTYPE[^>]*\[", raw_svg, re.IGNORECASE | re.DOTALL)
+            ):
                 findings.append(export_finding(
-                    "export.svg.dtd", "SVG contains a prohibited DTD or entity declaration"
+                    "export.svg.dtd",
+                    "SVG contains a prohibited entity or internal DTD declaration",
                 ))
             else:
                 try:

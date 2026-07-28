@@ -186,6 +186,8 @@ class DrawioToolTests(unittest.TestCase):
             temp = Path(directory)
             exports = {
                 "svg": (
+                    b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" '
+                    b'"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">'
                     b'<svg xmlns="http://www.w3.org/2000/svg" '
                     b'width="120px" height="80px"><rect width="1" height="1"/></svg>'
                 ),
@@ -232,6 +234,18 @@ class DrawioToolTests(unittest.TestCase):
             mismatch_report = TOOL.verify_export(disguised)
             self.assertFalse(mismatch_report["passed"])
             self.assertEqual("svg", mismatch_report["detected_format"])
+            unsafe = temp / "unsafe.svg"
+            unsafe.write_text(
+                '<!DOCTYPE svg [<!ENTITY x "unsafe">]>'
+                '<svg width="10" height="10"><text>&x;</text></svg>',
+                encoding="utf-8",
+            )
+            unsafe_report = TOOL.verify_export(unsafe)
+            self.assertFalse(unsafe_report["passed"])
+            self.assertIn(
+                "export.svg.dtd",
+                {item["code"] for item in unsafe_report["findings"]},
+            )
 
     def test_render_writes_a_verified_report(self):
         with tempfile.TemporaryDirectory() as directory:

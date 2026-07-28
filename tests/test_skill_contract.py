@@ -49,6 +49,11 @@ class SkillContractTests(unittest.TestCase):
         self.assertIn('"Apache-2.0"', shape_registry.read_text(encoding="utf-8"))
         self.assertIn('"tokens"', theme.read_text(encoding="utf-8"))
 
+    def test_skill_distribution_includes_its_license(self):
+        license_text = (SKILL / "LICENSE.txt").read_text(encoding="utf-8")
+        self.assertIn("Apache License", license_text)
+        self.assertIn("Version 2.0", license_text)
+
 
 if __name__ == "__main__":
     unittest.main()

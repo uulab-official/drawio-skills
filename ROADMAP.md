@@ -92,13 +92,27 @@ Exit criteria: all four importers remain deterministic and bounded, every new im
 
 Exit criteria: explicit ports validate against the IR schema, automatic fan-out endpoints are distinct, planned routes avoid blocking nodes in regression tests, all 45 importer fixtures regenerate deterministically without warnings, and the routing example scores 100.
 
+## v0.9 — Usability and distribution
+
+- [x] Guided `doctor` capability diagnostics
+- [x] Guarded starters for architecture, Blueprint, ERD, HA, routing, infrastructure, and CI
+- [x] One-command build bundles with editable draw.io, normalized IR, all SVG pages, audit, and manifest
+- [x] Field-level ERD auto-selection for SQL DDL
+- [x] Self-checking copy and symlink installation
+- [x] Agent Skills folder and release-package contract tests
+- [x] Byte-reproducible ZIP artifacts and SHA-256 checksums
+- [x] Five-minute onboarding, failure guidance, exit codes, and safe overwrite documentation
+
+Exit criteria: a new user can install, diagnose, initialize, and produce a strict-valid architecture, ERD, or HA bundle without composing lower-level commands; installation is verified in an isolated skills directory; and release ZIPs are byte-identical across repeated builds.
+
 ## v1.0 — Stable public contract
 
 - [ ] Freeze Diagram IR v1 compatibility policy
 - [ ] Publish migration and deprecation rules
 - [ ] Cross-platform draw.io Desktop integration tests
 - [ ] Security and dependency audit
-- [ ] Installation tests for Codex and other Agent Skills-compatible clients
-- [ ] Reproducible release artifacts and signed tags
+- [x] Installation tests for Codex and other Agent Skills-compatible clients
+- [x] Reproducible unsigned release artifacts
+- [ ] Signed release tags and published checksums
 
 The v1.0 release requires zero known critical defects, deterministic output across supported Python versions, and complete documentation for every public command.

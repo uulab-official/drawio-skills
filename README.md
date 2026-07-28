@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v0.8 alpha**. Deterministic compilation, explicit ports and obstacle-aware orthogonal routing, architecture blueprint packs, field-level Crow's Foot ERDs, HA topology/failover packs, Terraform/Kubernetes and CI pipeline importers, semantic architecture drift, reusable themes, structured visual audits, and dependency-free previews are usable.
+> Status: **v0.9 beta**. The engine now includes guided setup, environment diagnostics, one-command delivery bundles, deterministic release packages, and tested local installation in addition to architecture blueprints, field-level Crow's Foot ERDs, HA topology/failover packs, infrastructure and pipeline importers, semantic drift, routing, themes, and visual audits.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -20,22 +20,44 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 This is an independent implementation. No source code from the inspiration repository is included.
 
-## Quick start
+## Five-minute quick start
+
+```bash
+git clone https://github.com/uulab-official/drawio-skills.git
+cd drawio-skills
+python3 scripts/install_skill.py
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py doctor
+```
+
+Create a starter, edit the JSON to describe your system, and build the complete deliverable:
 
 ```bash
 python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
-  compile skills/drawio-diagram-engineer/assets/example.architecture.json \
-  -o order-processing.drawio
+  init architecture -o my-system.json
 
 python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
-  validate order-processing.drawio --strict
-
-python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
-  preview skills/drawio-diagram-engineer/assets/example.architecture.json \
-  -o order-processing.preview.svg
+  build my-system.json -o build/my-system --strict
 ```
 
-Desktop-quality PNG/SVG/PDF/JPG export requires [draw.io Desktop](https://github.com/jgraph/drawio-desktop). Import, patch, compile, validate, inspect, and SVG preview do not.
+The bundle is ready to review or commit:
+
+```text
+build/my-system/
+├── my-system.drawio   # editable diagram
+├── diagram.json       # normalized Diagram IR
+├── previews/          # dependency-free SVGs, one per page
+├── audit.json         # quality score, findings, and repairs
+└── bundle.json        # stable artifact manifest
+```
+
+Use `init blueprint`, `init erd`, or `init ha` for an architecture definition pack, database model, or HA/failover design. SQL DDL works without a starter:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  build schema.sql -o build/database --strict
+```
+
+Desktop-quality PNG/SVG/PDF/JPG export requires [draw.io Desktop](https://github.com/jgraph/drawio-desktop). The core bundle workflow does not.
 
 ## Architecture blueprint pack
 
@@ -177,15 +199,27 @@ The audit checks the source plus generated draw.io geometry for contrast, text d
 
 ## Install as an agent skill
 
-Clone the repository, then copy or symlink `skills/drawio-diagram-engineer` into the skills directory used by your agent:
+In Codex, ask the built-in skill installer to install the skill folder:
 
-```bash
-git clone https://github.com/uulab-official/drawio-skills.git
-ln -s "$PWD/drawio-skills/skills/drawio-diagram-engineer" \
-  "$HOME/.codex/skills/drawio-diagram-engineer"
+```text
+$skill-installer install https://github.com/uulab-official/drawio-skills/tree/main/skills/drawio-diagram-engineer
 ```
 
-The skill follows the Agent Skills folder convention and includes Codex UI metadata in `agents/openai.yaml`.
+For a cloned repository, the tested installer copies the skill, runs its self-check, and reports whether the agent must restart:
+
+```bash
+python3 scripts/install_skill.py
+```
+
+Use `--mode symlink` while developing the skill or `--target <skills-directory>` for another Agent Skills-compatible client. Existing installations are never replaced unless `--force` is explicit.
+
+The distributable ZIP is reproducible:
+
+```bash
+python3 scripts/package_skill.py
+```
+
+This writes `dist/drawio-diagram-engineer.zip` and its `.sha256` checksum.
 
 ## Diagram IR
 
@@ -209,6 +243,9 @@ See [the IR reference](skills/drawio-diagram-engineer/references/ir-format.md) f
 ## CLI
 
 ```text
+drawio_tool.py doctor [--format human|json]
+drawio_tool.py init <architecture|blueprint|erd|ha|routing|terraform|kubernetes|github-actions|gitlab-ci> [-o <starter>]
+drawio_tool.py build <model|source> [-o <bundle-dir>] [--type auto|...] [--strict]
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
 drawio_tool.py blueprint <blueprint.json> -o <pack.drawio> [--ir-output <ir.json>] [--preview-dir <dir>] [--theme-file <theme.json>]
 drawio_tool.py erd <erd.json|schema.sql> -o <erd.drawio> [--ir-output <ir.json>] [--preview-dir <dir>]
@@ -225,9 +262,13 @@ drawio_tool.py render <diagram.drawio> -o <output.png|svg|pdf|jpg> [--embed]
 
 JSON works without third-party packages. YAML input is optional and requires PyYAML.
 
+`build` auto-detects Diagram IR, Blueprint, ERD, HA, SQL DDL, Terraform, common Kubernetes/OpenAPI/Compose documents, repository source, and supported CI definitions. It does not copy the input into the bundle, which avoids accidentally packaging Kubernetes Secret documents or proprietary source trees.
+
+For copy-paste workflows, bundle semantics, exit codes, overwrite behavior, and troubleshooting, see the [user workflows guide](skills/drawio-diagram-engineer/references/user-workflows.md).
+
 ## Roadmap
 
-The v0.3–v0.8 feature roadmap is complete. The next milestone focuses on the v1 compatibility policy, migration rules, cross-platform Desktop integration, security auditing, installation tests, and reproducible signed releases. See [ROADMAP.md](ROADMAP.md).
+The v0.3–v0.9 roadmap is complete. The next milestone freezes the v1 compatibility policy and adds cross-platform Desktop integration, deeper security auditing, and signed releases. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

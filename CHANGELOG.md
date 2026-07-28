@@ -2,6 +2,17 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 0.9.0 — 2026-07-28
+
+- Add `doctor` with machine-readable core readiness and optional YAML/Desktop capability reporting.
+- Add guarded `init` starters for architecture, Blueprint, ERD, HA, routing, infrastructure, and CI diagrams.
+- Add one-command `build` bundles containing normalized IR, editable draw.io, every SVG page, audit results, and a versioned manifest.
+- Default `.sql` builds to field-level Crow's Foot ERDs while retaining the generic SQL dependency importer.
+- Add safe bundle replacement that refuses to overwrite directories not owned by the tool.
+- Add a self-checking copy/symlink installer for Agent Skills-compatible clients.
+- Add byte-reproducible ZIP packaging with SHA-256 checksums.
+- Add onboarding, bundle-contract, exit-code, and troubleshooting documentation plus installation and distribution tests.
+
 ## 0.8.0 — 2026-07-28
 
 - Add explicit north/east/south/west edge ports and optional normalized endpoint offsets.

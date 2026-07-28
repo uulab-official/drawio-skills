@@ -9,47 +9,31 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
 
 ## Workflow
 
-1. Inspect the request and relevant source material. Infer a sensible diagram type, scope, direction, and theme when the user does not specify them.
+1. On first use or after an environment failure, run `doctor`. Read [user-workflows.md](references/user-workflows.md) for capability states, starter selection, bundle contents, safe overwrite behavior, and exit codes.
+2. Inspect the request and relevant source material. Infer a sensible diagram type, scope, direction, and theme when the user does not specify them.
    For a coordinated architecture diagram pack, read [blueprint.md](references/blueprint.md), author against [blueprint.schema.json](references/blueprint.schema.json), and use `blueprint`.
    For an ERD, read [erd.md](references/erd.md), author against [erd.schema.json](references/erd.schema.json), and use `erd`. Accept SQL DDL directly when it is the source of truth.
    For high availability, read [ha.md](references/ha.md), author against [ha.schema.json](references/ha.schema.json), and use `ha`.
-2. Write a Diagram IR JSON file. Read [ir-format.md](references/ir-format.md) for the schema and [authoring.md](references/authoring.md) for diagram-specific choices. Use [diagram-ir.schema.json](references/diagram-ir.schema.json) with schema-aware tooling.
+3. Write or adapt the smallest structured source. Use `init architecture`, `init blueprint`, `init erd`, or `init ha` when no source exists. Read [ir-format.md](references/ir-format.md) for Diagram IR and [authoring.md](references/authoring.md) for diagram-specific choices.
    When starting from a Python/TypeScript tree, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI, read [importers.md](references/importers.md) and generate the IR with `import`.
    When automatic connectors remain visually ambiguous or a fixed interface matters, read [routing.md](references/routing.md) before assigning explicit ports.
    When organization styling or deeper visual QA is required, read [style-system.md](references/style-system.md) and use a validated theme pack.
-3. Compile it:
+4. Prefer the one-command bundle workflow:
 
    ```bash
-   python3 <skill-dir>/scripts/drawio_tool.py compile diagram.json -o diagram.drawio
+   python3 <skill-dir>/scripts/drawio_tool.py build source.json \
+     -o build/diagram --name diagram --strict
    ```
 
-4. Run the deterministic quality gate:
+   This creates normalized IR, editable `.drawio`, all SVG previews, `audit.json`, and `bundle.json`. Use the lower-level `compile`, `validate`, `preview`, and `audit` commands only when the user needs individual artifacts or an incremental workflow.
+5. If draw.io Desktop is available and a Desktop export is requested, render from the bundle's `.drawio`:
 
    ```bash
-   python3 <skill-dir>/scripts/drawio_tool.py validate diagram.drawio --strict
+   python3 <skill-dir>/scripts/drawio_tool.py render build/diagram/diagram.drawio -o diagram.png
    ```
 
-5. Create a dependency-free SVG preview:
-
-   ```bash
-   python3 <skill-dir>/scripts/drawio_tool.py preview diagram.json -o diagram.preview.svg
-   ```
-
-6. For a structured repair report, audit the source and generated geometry:
-
-   ```bash
-   python3 <skill-dir>/scripts/drawio_tool.py audit diagram.json \
-     -o diagram.audit.json --preview-dir diagram.audit-previews --strict
-   ```
-
-7. If draw.io Desktop is available, render the authoritative preview:
-
-   ```bash
-   python3 <skill-dir>/scripts/drawio_tool.py render diagram.drawio -o diagram.png
-   ```
-
-8. Inspect the preview visually. Fix hierarchy, clipped text, collisions, unclear edges, weak contrast, and excess detail. Repeat compile, validate, and preview at most twice before presenting the best result.
-9. Deliver the editable `.drawio`, the IR source, audit report, and requested exports. State clearly when Desktop export was skipped.
+6. Inspect every bundled preview visually. Fix hierarchy, clipped text, collisions, unclear edges, weak contrast, and excess detail. Rebuild at most twice before presenting the best result.
+7. Deliver the bundle's editable `.drawio`, IR source, audit report, previews, and requested exports. State clearly when Desktop export was skipped.
 
 When comparing an approved architecture with a newly generated model, read [drift.md](references/drift.md), run `diff`, and deliver both the machine-readable report and editable drift view.
 
@@ -97,6 +81,9 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 
 `scripts/drawio_tool.py` is standard-library-only for JSON input. YAML input is supported when PyYAML is installed. It provides:
 
+- `doctor`: verify core files and Python/XML support, then report optional YAML and Desktop capabilities.
+- `init`: copy a safe starter for architecture, Blueprint, ERD, HA, routing, infrastructure, or CI.
+- `build`: auto-detect a model or source and create a complete, audited `drawio-diagram-bundle/v1`.
 - `compile`: validate IR, calculate deterministic layout, and emit uncompressed editable draw.io XML.
 - `blueprint`: project one architecture model into context, logical, data, deployment, security, and decision pages.
 - `erd`: validate entities, fields, keys, types, and cardinalities, then generate an editable Crow's Foot ERD from a model or SQL DDL.

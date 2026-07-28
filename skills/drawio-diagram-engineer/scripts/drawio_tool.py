@@ -8,6 +8,7 @@ import ast
 import base64
 import copy
 import html
+import importlib.util
 import json
 import math
 import os
@@ -23,7 +24,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 ALLOWED_DIRECTIONS = {"LR", "TB"}
 ALLOWED_THEMES = {"light", "dark", "colorblind"}
 ALLOWED_KINDS = {
@@ -108,6 +109,7 @@ VERIFIED_SHAPES = {
     "rectangle", "cylinder3", "message", "rhombus", "process", "document", "note",
 }
 ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
+SKILL_DIR = ASSET_DIR.parent
 _SHAPE_REGISTRY: dict[str, Any] | None = None
 
 
@@ -4361,6 +4363,277 @@ def find_drawio() -> str | None:
     return None
 
 
+STARTER_PROFILES = {
+    "architecture": ("example.architecture.json", "architecture.json"),
+    "blueprint": ("example.blueprint.json", "architecture-blueprint.json"),
+    "erd": ("example.erd.json", "database-erd.json"),
+    "ha": ("example.ha.json", "high-availability.json"),
+    "routing": ("example.routing.json", "routed-architecture.json"),
+    "terraform": ("example.terraform.tf", "infrastructure.tf"),
+    "kubernetes": ("example.kubernetes.json", "kubernetes.json"),
+    "github-actions": ("example.github-actions.json", "github-actions.json"),
+    "gitlab-ci": ("example.gitlab-ci.json", "gitlab-ci.json"),
+}
+
+
+def doctor_report() -> dict[str, Any]:
+    checks: list[dict[str, str]] = []
+
+    def add(name: str, status: str, message: str) -> None:
+        checks.append({"name": name, "status": status, "message": message})
+
+    python_ok = sys.version_info >= (3, 9)
+    add(
+        "python",
+        "pass" if python_ok else "fail",
+        f"{sys.version.split()[0]} ({sys.executable}); Python 3.9 or newer is required",
+    )
+    try:
+        ET.fromstring("<diagram />")
+        add("xml", "pass", "standard-library XML parser is available")
+    except Exception as exc:  # pragma: no cover - guards broken interpreter builds
+        add("xml", "fail", f"XML parser failed: {exc}")
+
+    required = [
+        SKILL_DIR / "SKILL.md",
+        SKILL_DIR / "LICENSE.txt",
+        SKILL_DIR / "agents/openai.yaml",
+        SKILL_DIR / "references/diagram-ir.schema.json",
+        ASSET_DIR / "shape-registry.json",
+        ASSET_DIR / "example.architecture.json",
+        ASSET_DIR / "example.erd.json",
+        ASSET_DIR / "example.ha.json",
+    ]
+    missing = [str(path.relative_to(SKILL_DIR)) for path in required if not path.is_file()]
+    add(
+        "skill-files",
+        "fail" if missing else "pass",
+        f"missing: {', '.join(missing)}" if missing else f"{len(required)} required files are present",
+    )
+    try:
+        registry = json.loads((ASSET_DIR / "shape-registry.json").read_text(encoding="utf-8"))
+        valid_registry = isinstance(registry, dict) and bool(registry)
+        add(
+            "shape-registry",
+            "pass" if valid_registry else "fail",
+            "shape registry is readable" if valid_registry else "shape registry is empty or invalid",
+        )
+    except (OSError, json.JSONDecodeError) as exc:
+        add("shape-registry", "fail", f"shape registry failed to load: {exc}")
+
+    yaml_available = importlib.util.find_spec("yaml") is not None
+    add(
+        "yaml",
+        "pass" if yaml_available else "optional",
+        "PyYAML is available" if yaml_available else "PyYAML is not installed; JSON workflows remain available",
+    )
+    desktop = find_drawio()
+    add(
+        "drawio-desktop",
+        "pass" if desktop else "optional",
+        desktop or "draw.io Desktop was not found; editable .drawio and SVG preview generation remain available",
+    )
+    failures = [check for check in checks if check["status"] == "fail"]
+    return {
+        "tool": "drawio-diagram-engineer",
+        "version": VERSION,
+        "ready": not failures,
+        "checks": checks,
+        "capabilities": {
+            "editable_drawio": not failures,
+            "svg_preview": not failures,
+            "yaml_input": yaml_available,
+            "desktop_export": desktop is not None,
+        },
+    }
+
+
+def command_doctor(args: argparse.Namespace) -> int:
+    report = doctor_report()
+    if args.format == "json":
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        print(f"drawio-diagram-engineer {report['version']}")
+        for check in report["checks"]:
+            print(f"[{check['status'].upper():8}] {check['name']}: {check['message']}")
+        print(
+            "\nReady for core workflows."
+            if report["ready"]
+            else "\nCore workflow is not ready. Fix the FAIL checks above."
+        )
+    return 0 if report["ready"] else 2
+
+
+def command_init(args: argparse.Namespace) -> int:
+    asset_name, default_name = STARTER_PROFILES[args.profile]
+    source = ASSET_DIR / asset_name
+    output = Path(args.output or default_name)
+    if output.exists() and not args.force:
+        raise ValueError(f"{output} already exists; choose another path or pass --force")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, output)
+    build_output = Path("build") / slugify(output.stem)
+    next_command = (
+        f"{Path(sys.executable).name} {Path(__file__).resolve()} build {output} "
+        f"-o {build_output} --strict"
+    )
+    print(json.dumps({
+        "profile": args.profile,
+        "output": str(output),
+        "next": next_command,
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def prepare_build_model(
+    path: Path,
+    build_type: str,
+    title: str | None,
+    max_files: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]], str]:
+    selected = build_type
+    loaded: dict[str, Any] | None = None
+    if selected == "auto" and path.is_file() and path.suffix.lower() in {".json", ".yaml", ".yml"}:
+        loaded = load_data(path)
+        if "blueprint" in loaded:
+            selected = "blueprint"
+        elif "erd" in loaded:
+            selected = "erd"
+        elif "ha" in loaded:
+            selected = "ha"
+        elif "version" in loaded and (
+            "diagram" in loaded or "pages" in loaded or "nodes" in loaded
+        ):
+            selected = "diagram"
+    if selected == "auto" and path.suffix.lower() == ".sql":
+        selected = "sql-erd"
+
+    if selected == "diagram":
+        data = loaded or load_data(path)
+        return data, [], "diagram"
+    if selected == "blueprint":
+        data = loaded or load_data(path)
+        issues = validate_blueprint(data)
+        return blueprint_to_ir(data), issues, "blueprint"
+    if selected in {"erd", "sql-erd"}:
+        data = (
+            sql_to_erd(path.read_text(encoding="utf-8"), title or path.stem)
+            if selected == "sql-erd" or path.suffix.lower() == ".sql"
+            else (loaded or load_data(path))
+        )
+        issues = validate_erd(data)
+        return erd_to_ir(data), issues, "erd"
+    if selected == "ha":
+        data = loaded or load_data(path)
+        issues = validate_ha(data)
+        return ha_to_ir(data), issues, "ha"
+    data = import_source(path, selected, title, max_files)
+    return data, [], selected
+
+
+def command_build(args: argparse.Namespace) -> int:
+    source = Path(args.input)
+    if not source.exists():
+        raise ValueError(f"input does not exist: {source}")
+    output = Path(args.output) if args.output else Path("build") / slugify(source.stem)
+    if output.exists() and not output.is_dir():
+        raise ValueError(f"output must be a directory: {output}")
+    if output.exists() and any(output.iterdir()):
+        marker = output / "bundle.json"
+        if not args.force:
+            raise ValueError(f"{output} is not empty; choose another directory or pass --force")
+        if not marker.is_file():
+            raise ValueError(f"refusing to replace unrecognized directory {output}; bundle.json is missing")
+        try:
+            marker_data = json.loads(marker.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"refusing to replace invalid bundle directory {output}") from exc
+        if marker_data.get("generator") != "drawio-diagram-engineer":
+            raise ValueError(f"refusing to replace directory not owned by drawio-diagram-engineer: {output}")
+
+    diagram_ir, source_issues, model_type = prepare_build_model(
+        source, args.type, args.title, args.max_files,
+    )
+    if args.theme_file:
+        diagram_ir = apply_theme_pack(diagram_ir, load_theme_pack(Path(args.theme_file)))
+    ir_issues = validate_ir(diagram_ir)
+    initial_issues = source_issues + ir_issues
+    if any(item["level"] == "error" for item in initial_issues):
+        print_report(initial_issues, {"model": model_type, "input": str(source)})
+        return 2
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{slugify(output.name)}-", dir=str(output.parent)))
+    try:
+        name = slugify(args.name or source.stem)
+        ir_path = staging / "diagram.json"
+        drawio_path = staging / f"{name}.drawio"
+        preview_dir = staging / "previews"
+        preview_dir.mkdir()
+        ir_path.write_text(
+            json.dumps(diagram_ir, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        compile_drawio(diagram_ir).write(drawio_path, encoding="utf-8", xml_declaration=True)
+        drawio_issues, summary = validate_drawio(drawio_path)
+        preview_names = []
+        for page_id, page in page_documents(diagram_ir):
+            preview_name = f"{page_id}.svg"
+            compile_svg(page).write(
+                preview_dir / preview_name, encoding="utf-8", xml_declaration=True,
+            )
+            preview_names.append(f"previews/{preview_name}")
+        all_issues = initial_issues + drawio_issues
+        audit = build_audit_report(all_issues, summary, preview_names)
+        (staging / "audit.json").write_text(
+            json.dumps(audit, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        manifest = {
+            "format": "drawio-diagram-bundle/v1",
+            "generator": "drawio-diagram-engineer",
+            "tool_version": VERSION,
+            "name": name,
+            "model": model_type,
+            "source": {"name": source.name, "included": False},
+            "score": audit["score"],
+            "artifacts": {
+                "ir": "diagram.json",
+                "drawio": f"{name}.drawio",
+                "audit": "audit.json",
+                "previews": preview_names,
+            },
+        }
+        (staging / "bundle.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        if output.exists():
+            if any(output.iterdir()):
+                shutil.rmtree(output)
+            else:
+                output.rmdir()
+        staging.replace(output)
+    except Exception:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise
+
+    print(json.dumps({
+        "output": str(output),
+        "model": model_type,
+        "score": audit["score"],
+        "drawio": str(output / manifest["artifacts"]["drawio"]),
+        "previews": [str(output / item) for item in preview_names],
+        "audit": str(output / "audit.json"),
+    }, indent=2, ensure_ascii=False))
+    if audit["errors"]:
+        return 2
+    if args.strict and audit["score"] < 90:
+        return 3
+    return 0
+
+
 def command_compile(args: argparse.Namespace) -> int:
     path = Path(args.input)
     data = load_data(path)
@@ -4744,6 +5017,38 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=VERSION)
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    doctor_parser = subparsers.add_parser("doctor", help="check core and optional capabilities")
+    doctor_parser.add_argument("--format", choices=["human", "json"], default="human")
+    doctor_parser.set_defaults(func=command_doctor)
+
+    init_parser = subparsers.add_parser("init", help="copy a starter model into the current project")
+    init_parser.add_argument("profile", choices=sorted(STARTER_PROFILES))
+    init_parser.add_argument("-o", "--output")
+    init_parser.add_argument("--force", action="store_true")
+    init_parser.set_defaults(func=command_init)
+
+    build_one_parser = subparsers.add_parser(
+        "build", help="create an editable diagram, previews, IR, and audit in one bundle"
+    )
+    build_one_parser.add_argument("input")
+    build_one_parser.add_argument("-o", "--output")
+    build_one_parser.add_argument(
+        "--type",
+        choices=[
+            "auto", "diagram", "blueprint", "erd", "sql-erd", "ha",
+            "python", "typescript", "openapi", "sql", "compose",
+            "terraform", "kubernetes", "github-actions", "gitlab-ci",
+        ],
+        default="auto",
+    )
+    build_one_parser.add_argument("--name")
+    build_one_parser.add_argument("--title")
+    build_one_parser.add_argument("--theme-file")
+    build_one_parser.add_argument("--max-files", type=int, default=500)
+    build_one_parser.add_argument("--strict", action="store_true")
+    build_one_parser.add_argument("--force", action="store_true")
+    build_one_parser.set_defaults(func=command_build)
 
     compile_parser = subparsers.add_parser("compile", help="compile Diagram IR to .drawio")
     compile_parser.add_argument("input")

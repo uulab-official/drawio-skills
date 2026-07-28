@@ -1,0 +1,162 @@
+{
+  "version": "1",
+  "blueprint": {
+    "title": "Commerce Platform",
+    "direction": "LR",
+    "theme": "colorblind"
+  },
+  "views": ["context", "logical", "data", "deployment", "security", "decisions"],
+  "elements": [
+    {
+      "id": "customer",
+      "label": "Customer",
+      "scope": "actor",
+      "zone": "Internet"
+    },
+    {
+      "id": "commerce",
+      "label": "Commerce Platform",
+      "scope": "system",
+      "description": "Ordering and checkout"
+    },
+    {
+      "id": "web",
+      "label": "Web App",
+      "scope": "container",
+      "parent": "commerce",
+      "domain": "Experience",
+      "technology": "Next.js",
+      "zone": "Public",
+      "deploy_to": "web-cluster"
+    },
+    {
+      "id": "api",
+      "label": "API Gateway",
+      "scope": "container",
+      "parent": "commerce",
+      "domain": "Platform",
+      "technology": "Kotlin",
+      "zone": "Private",
+      "deploy_to": "app-cluster"
+    },
+    {
+      "id": "orders",
+      "label": "Order Service",
+      "scope": "component",
+      "parent": "api",
+      "domain": "Orders",
+      "technology": "Kotlin",
+      "zone": "Private",
+      "deploy_to": "app-cluster"
+    },
+    {
+      "id": "events",
+      "label": "Order Events",
+      "scope": "data",
+      "kind": "queue",
+      "parent": "commerce",
+      "domain": "Platform",
+      "technology": "Kafka",
+      "zone": "Private",
+      "deploy_to": "app-cluster"
+    },
+    {
+      "id": "orders-db",
+      "label": "Orders DB",
+      "scope": "data",
+      "kind": "database",
+      "parent": "commerce",
+      "domain": "Data",
+      "technology": "PostgreSQL",
+      "zone": "Data",
+      "deploy_to": "data-cluster"
+    },
+    {
+      "id": "payment",
+      "label": "Payment Provider",
+      "scope": "external",
+      "zone": "Internet"
+    },
+    {
+      "id": "web-cluster",
+      "label": "Web Cluster",
+      "scope": "infrastructure",
+      "description": "CDN and edge runtime",
+      "zone": "Public"
+    },
+    {
+      "id": "app-cluster",
+      "label": "Application Cluster",
+      "scope": "infrastructure",
+      "description": "Private Kubernetes",
+      "zone": "Private"
+    },
+    {
+      "id": "data-cluster",
+      "label": "Data Cluster",
+      "scope": "infrastructure",
+      "description": "Managed database network",
+      "zone": "Data"
+    }
+  ],
+  "relations": [
+    {
+      "id": "customer-web",
+      "from": "customer",
+      "to": "web",
+      "label": "HTTPS",
+      "kind": "sync"
+    },
+    {
+      "id": "web-api",
+      "from": "web",
+      "to": "api",
+      "label": "JSON/HTTPS",
+      "kind": "sync"
+    },
+    {
+      "id": "api-orders",
+      "from": "api",
+      "to": "orders",
+      "label": "commands",
+      "kind": "sync"
+    },
+    {
+      "id": "orders-store",
+      "from": "orders",
+      "to": "orders-db",
+      "label": "reads/writes",
+      "kind": "data"
+    },
+    {
+      "id": "orders-events",
+      "from": "orders",
+      "to": "events",
+      "label": "OrderCreated",
+      "kind": "async"
+    },
+    {
+      "id": "orders-payment",
+      "from": "orders",
+      "to": "payment",
+      "label": "charges",
+      "kind": "sync"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "event-driven-orders",
+      "title": "Publish order domain events",
+      "status": "accepted",
+      "decision": "Use Kafka events to decouple downstream processing.",
+      "affects": ["orders", "events"]
+    },
+    {
+      "id": "isolated-data-zone",
+      "title": "Isolate persistent order data",
+      "status": "accepted",
+      "decision": "Run the order database in a dedicated data zone.",
+      "affects": ["orders-db", "data-cluster"]
+    }
+  ]
+}

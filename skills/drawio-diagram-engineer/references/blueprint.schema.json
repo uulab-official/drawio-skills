@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/architecture-blueprint-v1.json",
+  "title": "Architecture Blueprint Model",
+  "type": "object",
+  "required": ["version", "blueprint", "elements", "relations"],
+  "properties": {
+    "version": {"const": "1"},
+    "blueprint": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1},
+        "direction": {"enum": ["LR", "TB"]},
+        "theme": {"enum": ["light", "dark", "colorblind"]}
+      },
+      "additionalProperties": true
+    },
+    "views": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["context", "logical", "data", "deployment", "security", "decisions"]
+      }
+    },
+    "elements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/element"}
+    },
+    "relations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/relation"}
+    },
+    "decisions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/decision"}
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "element": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "label": {"type": "string", "minLength": 1},
+        "scope": {
+          "enum": [
+            "actor",
+            "external",
+            "system",
+            "container",
+            "component",
+            "data",
+            "infrastructure"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "client",
+            "service",
+            "database",
+            "queue",
+            "external",
+            "decision",
+            "process",
+            "document",
+            "note"
+          ]
+        },
+        "parent": {"$ref": "#/$defs/id"},
+        "description": {"type": "string"},
+        "technology": {"type": "string"},
+        "runtime": {"type": "string"},
+        "domain": {"type": "string"},
+        "zone": {"type": "string"},
+        "deploy_to": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": true
+    },
+    "relation": {
+      "type": "object",
+      "required": ["id", "from", "to"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "from": {"$ref": "#/$defs/id"},
+        "to": {"$ref": "#/$defs/id"},
+        "label": {"type": "string"},
+        "kind": {
+          "enum": ["sync", "async", "data", "dependency", "association"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "decision": {
+      "type": "object",
+      "required": ["id", "title", "affects"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "title": {"type": "string", "minLength": 1},
+        "status": {
+          "enum": ["proposed", "accepted", "deprecated", "superseded"]
+        },
+        "decision": {"type": "string"},
+        "rationale": {"type": "string"},
+        "affects": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/id"}
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

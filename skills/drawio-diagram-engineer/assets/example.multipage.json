@@ -1,0 +1,47 @@
+{
+  "version": "1",
+  "diagram": {
+    "direction": "LR",
+    "theme": "colorblind"
+  },
+  "pages": [
+    {
+      "id": "context",
+      "title": "Commerce platform — Context",
+      "nodes": [
+        {"id": "customer", "label": "Customer", "kind": "client"},
+        {
+          "id": "platform",
+          "label": "Commerce platform",
+          "kind": "service",
+          "description": "Click to inspect containers",
+          "link": "containers"
+        },
+        {"id": "payments", "label": "Payment provider", "kind": "external"}
+      ],
+      "edges": [
+        {"id": "customer-platform", "from": "customer", "to": "platform", "label": "shops"},
+        {"id": "platform-payments", "from": "platform", "to": "payments", "label": "charges"}
+      ]
+    },
+    {
+      "id": "containers",
+      "title": "Commerce platform — Containers",
+      "groups": [
+        {"id": "apps", "label": "Applications"},
+        {"id": "data", "label": "Data"}
+      ],
+      "nodes": [
+        {"id": "web", "label": "Web app", "kind": "client", "group": "apps"},
+        {"id": "api", "label": "API", "kind": "service", "group": "apps"},
+        {"id": "orders", "label": "Order service", "kind": "service", "group": "apps"},
+        {"id": "orders-db", "label": "Orders", "kind": "database", "group": "data"}
+      ],
+      "edges": [
+        {"id": "web-api", "from": "web", "to": "api", "label": "HTTPS"},
+        {"id": "api-orders", "from": "api", "to": "orders", "label": "commands"},
+        {"id": "orders-store", "from": "orders", "to": "orders-db", "label": "stores", "kind": "data"}
+      ]
+    }
+  ]
+}

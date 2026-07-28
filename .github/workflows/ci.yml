@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m unittest discover -s tests -v
+      - name: Compile and validate examples
+        run: |
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            compile skills/drawio-diagram-engineer/assets/example.architecture.json \
+            -o /tmp/architecture.drawio
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            validate /tmp/architecture.drawio --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            compile skills/drawio-diagram-engineer/assets/example.multipage.json \
+            -o /tmp/multipage.drawio
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            validate /tmp/multipage.drawio --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            preview skills/drawio-diagram-engineer/assets/example.multipage.json \
+            --page context -o /tmp/context.svg
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            blueprint skills/drawio-diagram-engineer/assets/example.blueprint.json \
+            -o /tmp/blueprint.drawio \
+            --ir-output /tmp/blueprint.diagram.json \
+            --preview-dir /tmp/blueprint-previews \
+            --strict
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            audit skills/drawio-diagram-engineer/assets/example.blueprint.json \
+            -o /tmp/blueprint.audit.json \
+            --preview-dir /tmp/blueprint-audit-previews \
+            --theme-file skills/drawio-diagram-engineer/assets/themes/corporate.json \
+            --strict

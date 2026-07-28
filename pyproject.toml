@@ -1,0 +1,23 @@
+[project]
+name = "drawio-skills"
+version = "0.5.0"
+description = "Deterministic Diagram IR compiler and agent skill for draw.io"
+requires-python = ">=3.9"
+license = {text = "Apache-2.0"}
+authors = [{name = "UULAB"}]
+keywords = ["drawio", "diagram", "agent-skill", "architecture", "visualization"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+[project.urls]
+Homepage = "https://github.com/uulab-official/drawio-skills"
+Repository = "https://github.com/uulab-official/drawio-skills"
+Issues = "https://github.com/uulab-official/drawio-skills/issues"
+
+[tool.ruff]
+line-length = 110
+target-version = "py39"

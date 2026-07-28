@@ -1,0 +1,276 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="0.5.0">
+  <diagram id="page-context" name="Commerce Platform — System Context">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="node-customer" value="&lt;b&gt;Customer&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfeff;strokeColor=#0e7490;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="100" y="100" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-commerce" value="&lt;b&gt;Commerce Platform&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Ordering and checkout&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;" link="data:page/id,page-logical">
+          <mxGeometry x="410" y="100" width="203" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-payment" value="&lt;b&gt;Payment Provider&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="773" y="100" width="168" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-commerce" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-commerce" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-logical" name="Commerce Platform — Logical Architecture">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="group-group-domain-data" value="Data" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="1310" y="251" width="210" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-domain-experience" value="Experience" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="380" y="473" width="210" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-domain-orders" value="Orders" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="1000" y="695" width="210" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-domain-platform" value="Platform" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="690" y="917" width="830" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="node-customer" value="&lt;b&gt;Customer&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfeff;strokeColor=#0e7490;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="100" y="100" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-web" value="&lt;b&gt;Web App&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Next.js&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;" link="data:page/id,page-deployment">
+          <mxGeometry x="410" y="528" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-api" value="&lt;b&gt;API Gateway&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kotlin&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;" link="data:page/id,page-deployment">
+          <mxGeometry x="720" y="972" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders" value="&lt;b&gt;Order Service&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kotlin&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;" link="data:page/id,page-deployment">
+          <mxGeometry x="1030" y="750" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-events" value="&lt;b&gt;Order Events&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kafka&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fffbeb;strokeColor=#b45309;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=message;" link="data:page/id,page-data">
+          <mxGeometry x="1340" y="972" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders-db" value="&lt;b&gt;Orders DB&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;PostgreSQL&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;" link="data:page/id,page-data">
+          <mxGeometry x="1340" y="306" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-payment" value="&lt;b&gt;Payment Provider&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="1340" y="100" width="168" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-web-api" value="JSON/HTTPS" edge="1" parent="1" source="node-web" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-api-orders" value="commands" edge="1" parent="1" source="node-api" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-data" name="Commerce Platform — Data Flow">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="group-group-domain-data" value="Data" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="380" y="251" width="210" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-domain-orders" value="Orders" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="70" y="473" width="210" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-domain-platform" value="Platform" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="380" y="695" width="210" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders" value="&lt;b&gt;Order Service&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kotlin&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="100" y="528" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-events" value="&lt;b&gt;Order Events&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kafka&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fffbeb;strokeColor=#b45309;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=message;">
+          <mxGeometry x="410" y="750" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders-db" value="&lt;b&gt;Orders DB&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;PostgreSQL&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="410" y="306" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-payment" value="&lt;b&gt;Payment Provider&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="410" y="100" width="168" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-deployment" name="Commerce Platform — Deployment">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="group-group-zone-data" value="Data" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="70" y="45" width="284" height="389" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-zone-private" value="Private" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="444" y="45" width="710" height="389" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-zone-public" value="Public" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="1244" y="45" width="256" height="389" as="geometry" />
+        </mxCell>
+        <mxCell id="node-web" value="&lt;b&gt;Web App&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Next.js&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="1274" y="332" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-api" value="&lt;b&gt;API Gateway&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kotlin&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="474" y="332" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders" value="&lt;b&gt;Order Service&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kotlin&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="974" y="332" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-events" value="&lt;b&gt;Order Events&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kafka&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fffbeb;strokeColor=#b45309;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=message;">
+          <mxGeometry x="724" y="332" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders-db" value="&lt;b&gt;Orders DB&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;PostgreSQL&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="100" y="332" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-web-cluster" value="&lt;b&gt;Web Cluster&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;CDN and edge runtime&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="1274" y="100" width="196" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-app-cluster" value="&lt;b&gt;Application Cluster&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Private Kubernetes&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="474" y="100" width="189" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-data-cluster" value="&lt;b&gt;Data Cluster&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Managed database network&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="100" y="100" width="224" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-deploy-web-to-web-cluster" value="hosts" edge="1" parent="1" source="node-web-cluster" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-deploy-api-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-deploy-orders-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-deploy-events-to-app-cluster" value="hosts" edge="1" parent="1" source="node-app-cluster" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-deploy-orders-db-to-data-cluster" value="hosts" edge="1" parent="1" source="node-data-cluster" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-security" name="Commerce Platform — Network &amp; Security Zones">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="group-group-zone-data" value="Data" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="1310" y="45" width="210" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-zone-internet" value="Internet" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="70" y="267" width="1468" height="141" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-zone-private" value="Private" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="690" y="473" width="830" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="group-group-zone-public" value="Public" vertex="1" parent="1" style="swimlane=1;horizontal=1;startSize=30;rounded=1;fillColor=#f8fafc;swimlaneFillColor=#f8fafc;strokeColor=#64748b;fontColor=#111827;fontStyle=1;html=1;collapsible=0;">
+          <mxGeometry x="380" y="695" width="210" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="node-customer" value="&lt;b&gt;Customer&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfeff;strokeColor=#0e7490;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="100" y="322" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="node-web" value="&lt;b&gt;Web App&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Next.js&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="410" y="750" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-api" value="&lt;b&gt;API Gateway&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kotlin&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="720" y="528" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders" value="&lt;b&gt;Order Service&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kotlin&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;">
+          <mxGeometry x="1030" y="528" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-events" value="&lt;b&gt;Order Events&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kafka&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fffbeb;strokeColor=#b45309;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=message;">
+          <mxGeometry x="1340" y="528" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders-db" value="&lt;b&gt;Orders DB&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;PostgreSQL&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;">
+          <mxGeometry x="1340" y="100" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-payment" value="&lt;b&gt;Payment Provider&lt;/b&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="1340" y="322" width="168" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-customer-web" value="HTTPS" edge="1" parent="1" source="node-customer" target="node-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-web-api" value="JSON/HTTPS" edge="1" parent="1" source="node-web" target="node-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-api-orders" value="commands" edge="1" parent="1" source="node-api" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-store" value="reads/writes" edge="1" parent="1" source="node-orders" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-events" value="OrderCreated" edge="1" parent="1" source="node-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=open;endFill=0;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-orders-payment" value="charges" edge="1" parent="1" source="node-orders" target="node-payment" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=block;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-decisions" name="Commerce Platform — Architecture Decisions">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="node-decision-event-driven-orders" value="&lt;b&gt;Publish order domain events&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;ACCEPTED · Use Kafka events to decouple downstream processing.&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fefce8;strokeColor=#a16207;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=note;size=20;">
+          <mxGeometry x="220" y="100" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="node-decision-isolated-data-zone" value="&lt;b&gt;Isolate persistent order data&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;ACCEPTED · Run the order database in a dedicated data zone.&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fefce8;strokeColor=#a16207;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=note;size=20;">
+          <mxGeometry x="840" y="100" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders" value="&lt;b&gt;Order Service&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kotlin&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;" link="data:page/id,page-logical">
+          <mxGeometry x="100" y="360" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-events" value="&lt;b&gt;Order Events&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Kafka&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#fffbeb;strokeColor=#b45309;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=message;" link="data:page/id,page-logical">
+          <mxGeometry x="360" y="360" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-orders-db" value="&lt;b&gt;Orders DB&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;PostgreSQL&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#ecfdf5;strokeColor=#047857;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=cylinder3;boundedLbl=1;backgroundOutline=1;" link="data:page/id,page-logical">
+          <mxGeometry x="720" y="360" width="150" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="node-data-cluster" value="&lt;b&gt;Data Cluster&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Managed database network&lt;/font&gt;" vertex="1" parent="1" style="whiteSpace=wrap;html=1;rounded=1;arcSize=12;fillColor=#f8fafc;strokeColor=#475569;strokeWidth=2;fontColor=#111827;fontSize=13;align=center;verticalAlign=middle;spacing=8;shape=rectangle;dashed=1;">
+          <mxGeometry x="980" y="360" width="224" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-decision-event-driven-orders-affects-orders" value="affects" edge="1" parent="1" source="node-decision-event-driven-orders" target="node-orders" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-decision-event-driven-orders-affects-events" value="affects" edge="1" parent="1" source="node-decision-event-driven-orders" target="node-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-decision-isolated-data-zone-affects-orders-db" value="affects" edge="1" parent="1" source="node-decision-isolated-data-zone" target="node-orders-db" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-decision-isolated-data-zone-affects-data-cluster" value="affects" edge="1" parent="1" source="node-decision-isolated-data-zone" target="node-data-cluster" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=2;endArrow=none;endFill=1;fontColor=#111827;fontSize=11;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/theme-pack-v1.json",
+  "title": "Draw.io Diagram Engineer Theme Pack",
+  "type": "object",
+  "required": ["version", "name", "tokens"],
+  "properties": {
+    "version": {"const": "1"},
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "tokens": {
+      "type": "object",
+      "required": [
+        "background",
+        "group_fill",
+        "group_stroke",
+        "font",
+        "edge",
+        "client",
+        "service",
+        "database",
+        "queue",
+        "external",
+        "decision",
+        "process",
+        "document",
+        "note"
+      ],
+      "properties": {
+        "background": {"$ref": "#/$defs/color"},
+        "group_fill": {"$ref": "#/$defs/color"},
+        "group_stroke": {"$ref": "#/$defs/color"},
+        "font": {"$ref": "#/$defs/color"},
+        "edge": {"$ref": "#/$defs/color"},
+        "client": {"$ref": "#/$defs/pair"},
+        "service": {"$ref": "#/$defs/pair"},
+        "database": {"$ref": "#/$defs/pair"},
+        "queue": {"$ref": "#/$defs/pair"},
+        "external": {"$ref": "#/$defs/pair"},
+        "decision": {"$ref": "#/$defs/pair"},
+        "process": {"$ref": "#/$defs/pair"},
+        "document": {"$ref": "#/$defs/pair"},
+        "note": {"$ref": "#/$defs/pair"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "color": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "pair": {
+      "type": "array",
+      "prefixItems": [
+        {"$ref": "#/$defs/color"},
+        {"$ref": "#/$defs/color"}
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

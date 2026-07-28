@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1580" height="580" viewBox="0 0 1580 580" role="img" aria-label="Commerce Platform — Deployment">
+  <rect width="100%" height="100%" fill="#ffffff" />
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
+    </marker>
+  </defs>
+  <rect x="70" y="45" width="284" height="389" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+  <text x="86" y="69" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Data</text>
+  <rect x="444" y="45" width="710" height="389" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+  <text x="460" y="69" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Private</text>
+  <rect x="1244" y="45" width="256" height="389" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+  <text x="1260" y="69" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Public</text>
+  <polyline points="1372.0,172 1372.0,252.0 1349.0,252.0 1349.0,332" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="7 5" />
+  <text x="1360.5" y="244.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">hosts</text>
+  <polyline points="568.5,172 568.5,252.0 549.0,252.0 549.0,332" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="7 5" />
+  <text x="558.75" y="244.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">hosts</text>
+  <polyline points="568.5,172 568.5,252.0 1049.0,252.0 1049.0,332" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="7 5" />
+  <text x="808.75" y="244.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">hosts</text>
+  <polyline points="568.5,172 568.5,252.0 799.0,252.0 799.0,332" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="7 5" />
+  <text x="683.75" y="244.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">hosts</text>
+  <polyline points="212.0,172 212.0,252.0 175.0,252.0 175.0,332" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow)" stroke-dasharray="7 5" />
+  <text x="193.5" y="244.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">hosts</text>
+  <rect x="1274" y="332" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
+  <text x="1349.0" y="361.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Web App</text>
+  <text x="1349.0" y="381.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Next.js</text>
+  <rect x="474" y="332" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
+  <text x="549.0" y="361.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">API Gateway</text>
+  <text x="549.0" y="381.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kotlin</text>
+  <rect x="974" y="332" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
+  <text x="1049.0" y="361.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Order Service</text>
+  <text x="1049.0" y="381.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kotlin</text>
+  <rect x="724" y="332" width="150" height="72" rx="12" fill="#fffbeb" stroke="#b45309" stroke-width="2" />
+  <text x="799.0" y="361.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Order Events</text>
+  <text x="799.0" y="381.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kafka</text>
+  <rect x="100" y="332" width="150" height="72" rx="12" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
+  <ellipse cx="175.0" cy="342" rx="75.0" ry="10" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
+  <text x="175.0" y="361.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Orders DB</text>
+  <text x="175.0" y="381.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">PostgreSQL</text>
+  <rect x="1274" y="100" width="196" height="72" rx="12" fill="#f8fafc" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" />
+  <text x="1372.0" y="129.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Web Cluster</text>
+  <text x="1372.0" y="149.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">CDN and edge runtime</text>
+  <rect x="474" y="100" width="189" height="72" rx="12" fill="#f8fafc" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" />
+  <text x="568.5" y="129.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Application Cluster</text>
+  <text x="568.5" y="149.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Private Kubernetes</text>
+  <rect x="100" y="100" width="224" height="72" rx="12" fill="#f8fafc" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" />
+  <text x="212.0" y="129.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Data Cluster</text>
+  <text x="212.0" y="149.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Managed database network</text>
+</svg>

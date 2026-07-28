@@ -1,0 +1,619 @@
+{
+  "version": "1",
+  "diagram": {
+    "direction": "LR",
+    "theme": "colorblind",
+    "theme_tokens": {
+      "background": "#ffffff",
+      "group_fill": "#f8fafc",
+      "group_stroke": "#64748b",
+      "font": "#111827",
+      "edge": "#334155",
+      "client": [
+        "#ecfeff",
+        "#0e7490"
+      ],
+      "service": [
+        "#eff6ff",
+        "#1d4ed8"
+      ],
+      "database": [
+        "#ecfdf5",
+        "#047857"
+      ],
+      "queue": [
+        "#fffbeb",
+        "#b45309"
+      ],
+      "external": [
+        "#f8fafc",
+        "#475569"
+      ],
+      "decision": [
+        "#fff1f2",
+        "#be123c"
+      ],
+      "process": [
+        "#eef2ff",
+        "#4338ca"
+      ],
+      "document": [
+        "#faf5ff",
+        "#7e22ce"
+      ],
+      "note": [
+        "#fefce8",
+        "#a16207"
+      ]
+    }
+  },
+  "pages": [
+    {
+      "id": "context",
+      "title": "Commerce Platform — System Context",
+      "nodes": [
+        {
+          "id": "customer",
+          "label": "Customer",
+          "kind": "client"
+        },
+        {
+          "id": "commerce",
+          "label": "Commerce Platform",
+          "kind": "service",
+          "description": "Ordering and checkout",
+          "link": "logical"
+        },
+        {
+          "id": "payment",
+          "label": "Payment Provider",
+          "kind": "external"
+        }
+      ],
+      "edges": [
+        {
+          "id": "customer-web",
+          "from": "customer",
+          "to": "commerce",
+          "label": "HTTPS",
+          "kind": "sync"
+        },
+        {
+          "id": "orders-payment",
+          "from": "commerce",
+          "to": "payment",
+          "label": "charges",
+          "kind": "sync"
+        }
+      ]
+    },
+    {
+      "id": "logical",
+      "title": "Commerce Platform — Logical Architecture",
+      "groups": [
+        {
+          "id": "group-domain-data",
+          "label": "Data"
+        },
+        {
+          "id": "group-domain-experience",
+          "label": "Experience"
+        },
+        {
+          "id": "group-domain-orders",
+          "label": "Orders"
+        },
+        {
+          "id": "group-domain-platform",
+          "label": "Platform"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "customer",
+          "label": "Customer",
+          "kind": "client"
+        },
+        {
+          "id": "web",
+          "label": "Web App",
+          "kind": "service",
+          "description": "Next.js",
+          "group": "group-domain-experience",
+          "link": "deployment"
+        },
+        {
+          "id": "api",
+          "label": "API Gateway",
+          "kind": "service",
+          "description": "Kotlin",
+          "group": "group-domain-platform",
+          "link": "deployment"
+        },
+        {
+          "id": "orders",
+          "label": "Order Service",
+          "kind": "service",
+          "description": "Kotlin",
+          "group": "group-domain-orders",
+          "link": "deployment"
+        },
+        {
+          "id": "events",
+          "label": "Order Events",
+          "kind": "queue",
+          "description": "Kafka",
+          "group": "group-domain-platform",
+          "link": "data"
+        },
+        {
+          "id": "orders-db",
+          "label": "Orders DB",
+          "kind": "database",
+          "description": "PostgreSQL",
+          "group": "group-domain-data",
+          "link": "data"
+        },
+        {
+          "id": "payment",
+          "label": "Payment Provider",
+          "kind": "external"
+        }
+      ],
+      "edges": [
+        {
+          "id": "customer-web",
+          "from": "customer",
+          "to": "web",
+          "label": "HTTPS",
+          "kind": "sync"
+        },
+        {
+          "id": "web-api",
+          "from": "web",
+          "to": "api",
+          "label": "JSON/HTTPS",
+          "kind": "sync"
+        },
+        {
+          "id": "api-orders",
+          "from": "api",
+          "to": "orders",
+          "label": "commands",
+          "kind": "sync"
+        },
+        {
+          "id": "orders-store",
+          "from": "orders",
+          "to": "orders-db",
+          "label": "reads/writes",
+          "kind": "data"
+        },
+        {
+          "id": "orders-events",
+          "from": "orders",
+          "to": "events",
+          "label": "OrderCreated",
+          "kind": "async"
+        },
+        {
+          "id": "orders-payment",
+          "from": "orders",
+          "to": "payment",
+          "label": "charges",
+          "kind": "sync"
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "title": "Commerce Platform — Data Flow",
+      "groups": [
+        {
+          "id": "group-domain-data",
+          "label": "Data"
+        },
+        {
+          "id": "group-domain-orders",
+          "label": "Orders"
+        },
+        {
+          "id": "group-domain-platform",
+          "label": "Platform"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "orders",
+          "label": "Order Service",
+          "kind": "service",
+          "description": "Kotlin",
+          "group": "group-domain-orders"
+        },
+        {
+          "id": "events",
+          "label": "Order Events",
+          "kind": "queue",
+          "description": "Kafka",
+          "group": "group-domain-platform"
+        },
+        {
+          "id": "orders-db",
+          "label": "Orders DB",
+          "kind": "database",
+          "description": "PostgreSQL",
+          "group": "group-domain-data"
+        },
+        {
+          "id": "payment",
+          "label": "Payment Provider",
+          "kind": "external"
+        }
+      ],
+      "edges": [
+        {
+          "id": "orders-store",
+          "from": "orders",
+          "to": "orders-db",
+          "label": "reads/writes",
+          "kind": "data"
+        },
+        {
+          "id": "orders-events",
+          "from": "orders",
+          "to": "events",
+          "label": "OrderCreated",
+          "kind": "async"
+        },
+        {
+          "id": "orders-payment",
+          "from": "orders",
+          "to": "payment",
+          "label": "charges",
+          "kind": "sync"
+        }
+      ]
+    },
+    {
+      "id": "deployment",
+      "title": "Commerce Platform — Deployment",
+      "diagram": {
+        "direction": "TB"
+      },
+      "groups": [
+        {
+          "id": "group-zone-data",
+          "label": "Data"
+        },
+        {
+          "id": "group-zone-private",
+          "label": "Private"
+        },
+        {
+          "id": "group-zone-public",
+          "label": "Public"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "web",
+          "label": "Web App",
+          "kind": "service",
+          "description": "Next.js",
+          "group": "group-zone-public"
+        },
+        {
+          "id": "api",
+          "label": "API Gateway",
+          "kind": "service",
+          "description": "Kotlin",
+          "group": "group-zone-private"
+        },
+        {
+          "id": "orders",
+          "label": "Order Service",
+          "kind": "service",
+          "description": "Kotlin",
+          "group": "group-zone-private"
+        },
+        {
+          "id": "events",
+          "label": "Order Events",
+          "kind": "queue",
+          "description": "Kafka",
+          "group": "group-zone-private"
+        },
+        {
+          "id": "orders-db",
+          "label": "Orders DB",
+          "kind": "database",
+          "description": "PostgreSQL",
+          "group": "group-zone-data"
+        },
+        {
+          "id": "web-cluster",
+          "label": "Web Cluster",
+          "kind": "external",
+          "description": "CDN and edge runtime",
+          "group": "group-zone-public"
+        },
+        {
+          "id": "app-cluster",
+          "label": "Application Cluster",
+          "kind": "external",
+          "description": "Private Kubernetes",
+          "group": "group-zone-private"
+        },
+        {
+          "id": "data-cluster",
+          "label": "Data Cluster",
+          "kind": "external",
+          "description": "Managed database network",
+          "group": "group-zone-data"
+        }
+      ],
+      "edges": [
+        {
+          "id": "deploy-web-to-web-cluster",
+          "from": "web-cluster",
+          "to": "web",
+          "label": "hosts",
+          "kind": "dependency"
+        },
+        {
+          "id": "deploy-api-to-app-cluster",
+          "from": "app-cluster",
+          "to": "api",
+          "label": "hosts",
+          "kind": "dependency"
+        },
+        {
+          "id": "deploy-orders-to-app-cluster",
+          "from": "app-cluster",
+          "to": "orders",
+          "label": "hosts",
+          "kind": "dependency"
+        },
+        {
+          "id": "deploy-events-to-app-cluster",
+          "from": "app-cluster",
+          "to": "events",
+          "label": "hosts",
+          "kind": "dependency"
+        },
+        {
+          "id": "deploy-orders-db-to-data-cluster",
+          "from": "data-cluster",
+          "to": "orders-db",
+          "label": "hosts",
+          "kind": "dependency"
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Commerce Platform — Network & Security Zones",
+      "groups": [
+        {
+          "id": "group-zone-data",
+          "label": "Data"
+        },
+        {
+          "id": "group-zone-internet",
+          "label": "Internet"
+        },
+        {
+          "id": "group-zone-private",
+          "label": "Private"
+        },
+        {
+          "id": "group-zone-public",
+          "label": "Public"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "customer",
+          "label": "Customer",
+          "kind": "client",
+          "group": "group-zone-internet"
+        },
+        {
+          "id": "web",
+          "label": "Web App",
+          "kind": "service",
+          "description": "Next.js",
+          "group": "group-zone-public"
+        },
+        {
+          "id": "api",
+          "label": "API Gateway",
+          "kind": "service",
+          "description": "Kotlin",
+          "group": "group-zone-private"
+        },
+        {
+          "id": "orders",
+          "label": "Order Service",
+          "kind": "service",
+          "description": "Kotlin",
+          "group": "group-zone-private"
+        },
+        {
+          "id": "events",
+          "label": "Order Events",
+          "kind": "queue",
+          "description": "Kafka",
+          "group": "group-zone-private"
+        },
+        {
+          "id": "orders-db",
+          "label": "Orders DB",
+          "kind": "database",
+          "description": "PostgreSQL",
+          "group": "group-zone-data"
+        },
+        {
+          "id": "payment",
+          "label": "Payment Provider",
+          "kind": "external",
+          "group": "group-zone-internet"
+        }
+      ],
+      "edges": [
+        {
+          "id": "customer-web",
+          "from": "customer",
+          "to": "web",
+          "label": "HTTPS",
+          "kind": "sync"
+        },
+        {
+          "id": "web-api",
+          "from": "web",
+          "to": "api",
+          "label": "JSON/HTTPS",
+          "kind": "sync"
+        },
+        {
+          "id": "api-orders",
+          "from": "api",
+          "to": "orders",
+          "label": "commands",
+          "kind": "sync"
+        },
+        {
+          "id": "orders-store",
+          "from": "orders",
+          "to": "orders-db",
+          "label": "reads/writes",
+          "kind": "data"
+        },
+        {
+          "id": "orders-events",
+          "from": "orders",
+          "to": "events",
+          "label": "OrderCreated",
+          "kind": "async"
+        },
+        {
+          "id": "orders-payment",
+          "from": "orders",
+          "to": "payment",
+          "label": "charges",
+          "kind": "sync"
+        }
+      ]
+    },
+    {
+      "id": "decisions",
+      "title": "Commerce Platform — Architecture Decisions",
+      "diagram": {
+        "direction": "TB"
+      },
+      "nodes": [
+        {
+          "id": "decision-event-driven-orders",
+          "label": "Publish order domain events",
+          "kind": "note",
+          "description": "ACCEPTED · Use Kafka events to decouple downstream processing.",
+          "size": {
+            "width": 280,
+            "height": 100
+          },
+          "position": {
+            "x": 220,
+            "y": 100
+          }
+        },
+        {
+          "id": "decision-isolated-data-zone",
+          "label": "Isolate persistent order data",
+          "kind": "note",
+          "description": "ACCEPTED · Run the order database in a dedicated data zone.",
+          "size": {
+            "width": 280,
+            "height": 100
+          },
+          "position": {
+            "x": 840,
+            "y": 100
+          }
+        },
+        {
+          "id": "orders",
+          "label": "Order Service",
+          "kind": "service",
+          "description": "Kotlin",
+          "link": "logical",
+          "position": {
+            "x": 100,
+            "y": 360
+          }
+        },
+        {
+          "id": "events",
+          "label": "Order Events",
+          "kind": "queue",
+          "description": "Kafka",
+          "link": "logical",
+          "position": {
+            "x": 360,
+            "y": 360
+          }
+        },
+        {
+          "id": "orders-db",
+          "label": "Orders DB",
+          "kind": "database",
+          "description": "PostgreSQL",
+          "link": "logical",
+          "position": {
+            "x": 720,
+            "y": 360
+          }
+        },
+        {
+          "id": "data-cluster",
+          "label": "Data Cluster",
+          "kind": "external",
+          "description": "Managed database network",
+          "position": {
+            "x": 980,
+            "y": 360
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "decision-event-driven-orders-affects-orders",
+          "from": "decision-event-driven-orders",
+          "to": "orders",
+          "label": "affects",
+          "kind": "association"
+        },
+        {
+          "id": "decision-event-driven-orders-affects-events",
+          "from": "decision-event-driven-orders",
+          "to": "events",
+          "label": "affects",
+          "kind": "association"
+        },
+        {
+          "id": "decision-isolated-data-zone-affects-orders-db",
+          "from": "decision-isolated-data-zone",
+          "to": "orders-db",
+          "label": "affects",
+          "kind": "association"
+        },
+        {
+          "id": "decision-isolated-data-zone-affects-data-cluster",
+          "from": "decision-isolated-data-zone",
+          "to": "data-cluster",
+          "label": "affects",
+          "kind": "association"
+        }
+      ]
+    }
+  ]
+}

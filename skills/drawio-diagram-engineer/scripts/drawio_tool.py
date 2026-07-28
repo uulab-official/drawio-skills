@@ -1,0 +1,2462 @@
+#!/usr/bin/env python3
+"""Deterministic Diagram IR compiler and draw.io quality tool."""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import base64
+import copy
+import json
+import math
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.parse
+import xml.etree.ElementTree as ET
+import zlib
+from collections import defaultdict, deque
+from pathlib import Path
+from typing import Any
+
+VERSION = "0.5.0"
+ALLOWED_DIRECTIONS = {"LR", "TB"}
+ALLOWED_THEMES = {"light", "dark", "colorblind"}
+ALLOWED_KINDS = {
+    "client", "service", "database", "queue", "external", "decision",
+    "process", "document", "note",
+}
+ALLOWED_EDGE_KINDS = {"sync", "async", "data", "dependency", "association"}
+ALLOWED_BLUEPRINT_SCOPES = {
+    "actor", "external", "system", "container", "component", "data", "infrastructure",
+}
+ALLOWED_BLUEPRINT_VIEWS = {"context", "logical", "data", "deployment", "security", "decisions"}
+ALLOWED_DECISION_STATUS = {"proposed", "accepted", "deprecated", "superseded"}
+TOP_LEVEL_FIELDS = {"version", "diagram", "groups", "nodes", "edges", "pages"}
+DIAGRAM_FIELDS = {"title", "direction", "theme", "theme_tokens", "gap", "background"}
+PAGE_FIELDS = {"id", "title", "diagram", "groups", "nodes", "edges"}
+GROUP_FIELDS = {"id", "label"}
+NODE_FIELDS = {"id", "label", "kind", "group", "description", "position", "size", "style", "link"}
+EDGE_FIELDS = {"id", "from", "to", "label", "kind", "style"}
+
+THEMES = {
+    "light": {
+        "background": "#ffffff", "group_fill": "#f8fafc", "group_stroke": "#94a3b8",
+        "font": "#0f172a", "edge": "#475569",
+        "client": ("#e0f2fe", "#0284c7"), "service": ("#ede9fe", "#7c3aed"),
+        "database": ("#dcfce7", "#16a34a"), "queue": ("#fef3c7", "#d97706"),
+        "external": ("#f1f5f9", "#64748b"), "decision": ("#ffe4e6", "#e11d48"),
+        "process": ("#dbeafe", "#2563eb"), "document": ("#fae8ff", "#c026d3"),
+        "note": ("#fef9c3", "#ca8a04"),
+    },
+    "dark": {
+        "background": "#0f172a", "group_fill": "#1e293b", "group_stroke": "#64748b",
+        "font": "#f8fafc", "edge": "#cbd5e1",
+        "client": ("#164e63", "#38bdf8"), "service": ("#4c1d95", "#a78bfa"),
+        "database": ("#14532d", "#4ade80"), "queue": ("#78350f", "#fbbf24"),
+        "external": ("#334155", "#94a3b8"), "decision": ("#881337", "#fb7185"),
+        "process": ("#1e3a8a", "#60a5fa"), "document": ("#701a75", "#e879f9"),
+        "note": ("#713f12", "#fde047"),
+    },
+    "colorblind": {
+        "background": "#ffffff", "group_fill": "#f7f7f7", "group_stroke": "#7a7a7a",
+        "font": "#111111", "edge": "#4d4d4d",
+        "client": ("#d9f0d3", "#009e73"), "service": ("#d6e5f3", "#0072b2"),
+        "database": ("#fff2cc", "#e69f00"), "queue": ("#fce4d6", "#d55e00"),
+        "external": ("#eeeeee", "#666666"), "decision": ("#f4cccc", "#cc79a7"),
+        "process": ("#cfe2f3", "#56b4e9"), "document": ("#eadcf8", "#8b5cf6"),
+        "note": ("#fff2cc", "#b8860b"),
+    },
+}
+
+THEME_COLOR_KEYS = {"background", "group_fill", "group_stroke", "font", "edge"}
+THEME_KIND_KEYS = set(ALLOWED_KINDS)
+VERIFIED_SHAPES = {
+    "rectangle", "cylinder3", "message", "rhombus", "process", "document", "note",
+}
+ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
+_SHAPE_REGISTRY: dict[str, Any] | None = None
+
+
+def load_data(path: Path) -> dict[str, Any]:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() in {".yaml", ".yml"}:
+        try:
+            import yaml  # type: ignore
+        except ImportError as exc:
+            raise ValueError("YAML input requires PyYAML; use JSON or install pyyaml") from exc
+        data = yaml.safe_load(text)
+    else:
+        data = json.loads(text)
+    if not isinstance(data, dict):
+        raise ValueError("root value must be an object")
+    return data
+
+
+def is_hex_color(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", value) is not None
+
+
+def hex_rgb(value: str) -> tuple[int, int, int]:
+    return tuple(int(value[index:index + 2], 16) for index in (1, 3, 5))  # type: ignore[return-value]
+
+
+def relative_luminance(value: str) -> float:
+    channels = []
+    for channel in hex_rgb(value):
+        normalized = channel / 255
+        channels.append(normalized / 12.92 if normalized <= 0.04045 else ((normalized + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+
+def contrast_ratio(first: str, second: str) -> float:
+    left, right = relative_luminance(first), relative_luminance(second)
+    lighter, darker = max(left, right), min(left, right)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def validate_theme_tokens(tokens: Any) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    if not isinstance(tokens, dict):
+        return [issue("error", "theme.tokens", "theme tokens must be an object")]
+    for key in sorted(THEME_COLOR_KEYS):
+        if not is_hex_color(tokens.get(key)):
+            issues.append(issue("error", "theme.color", f"{key} must be a 6-digit hex color", key))
+    for key in sorted(THEME_KIND_KEYS):
+        pair = tokens.get(key)
+        if (
+            not isinstance(pair, (list, tuple))
+            or len(pair) != 2
+            or not all(is_hex_color(color) for color in pair)
+        ):
+            issues.append(issue("error", "theme.pair", f"{key} must contain fill and stroke colors", key))
+            continue
+        font = tokens.get("font")
+        if is_hex_color(font):
+            ratio = contrast_ratio(str(font), str(pair[0]))
+            if ratio < 4.5:
+                issues.append(issue(
+                    "warning", "theme.contrast",
+                    f"{key} text contrast is {ratio:.2f}:1; target at least 4.5:1", key,
+                ))
+    if is_hex_color(tokens.get("font")) and is_hex_color(tokens.get("background")):
+        ratio = contrast_ratio(str(tokens["font"]), str(tokens["background"]))
+        if ratio < 4.5:
+            issues.append(issue(
+                "warning", "theme.contrast",
+                f"canvas text contrast is {ratio:.2f}:1; target at least 4.5:1", "background",
+            ))
+    return issues
+
+
+def load_theme_pack(path: Path) -> dict[str, Any]:
+    pack = load_data(path)
+    if str(pack.get("version", "")) != "1" or not valid_semantic_id(str(pack.get("name", ""))):
+        raise ValueError("theme pack requires version 1 and a kebab-case name")
+    issues = validate_theme_tokens(pack.get("tokens"))
+    errors = [item for item in issues if item["level"] == "error"]
+    if errors:
+        raise ValueError(f"invalid theme pack: {errors[0]['message']}")
+    return copy.deepcopy(pack["tokens"])
+
+
+def apply_theme_pack(data: dict[str, Any], tokens: dict[str, Any]) -> dict[str, Any]:
+    result = copy.deepcopy(data)
+    result.setdefault("diagram", {})["theme_tokens"] = copy.deepcopy(tokens)
+    return result
+
+
+def resolve_theme(diagram: dict[str, Any]) -> dict[str, Any]:
+    tokens = diagram.get("theme_tokens")
+    if isinstance(tokens, dict):
+        return tokens
+    return THEMES[str(diagram.get("theme", "light"))]
+
+
+def load_shape_registry() -> dict[str, Any]:
+    global _SHAPE_REGISTRY
+    if _SHAPE_REGISTRY is not None:
+        return _SHAPE_REGISTRY
+    registry = load_data(ASSET_DIR / "shape-registry.json")
+    if str(registry.get("version", "")) != "1" or not isinstance(registry.get("shapes"), dict):
+        raise ValueError("shape registry requires version 1 and shapes")
+    provenance = registry.get("provenance", {})
+    if provenance.get("license") != "Apache-2.0" or not str(provenance.get("source", "")).startswith("https://github.com/jgraph/"):
+        raise ValueError("shape registry requires JGraph source and Apache-2.0 provenance")
+    for kind in sorted(ALLOWED_KINDS):
+        entry = registry["shapes"].get(kind)
+        if not isinstance(entry, dict) or entry.get("shape") not in VERIFIED_SHAPES:
+            raise ValueError(f"shape registry has no verified shape for {kind}")
+        if not isinstance(entry.get("style"), dict):
+            raise ValueError(f"shape registry style is invalid for {kind}")
+    _SHAPE_REGISTRY = registry
+    return registry
+
+
+def issue(level: str, code: str, message: str, cell: str | None = None) -> dict[str, Any]:
+    item: dict[str, Any] = {"level": level, "code": code, "message": message}
+    if cell:
+        item["cell"] = cell
+    return item
+
+
+def valid_semantic_id(value: str) -> bool:
+    return re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value) is not None
+
+
+def validate_ir(data: dict[str, Any], allow_page_links: bool = False) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    for field in sorted(set(data) - TOP_LEVEL_FIELDS):
+        issues.append(issue("warning", "ir.unknown-field", f"unknown top-level field: {field}"))
+    if str(data.get("version", "")) != "1":
+        issues.append(issue("error", "ir.version", "version must be \"1\""))
+    if "pages" in data:
+        pages = data.get("pages")
+        if not isinstance(pages, list) or not pages:
+            return issues + [issue("error", "pages.required", "pages must be a non-empty array")]
+        page_ids: set[str] = set()
+        defaults = data.get("diagram", {}) if isinstance(data.get("diagram"), dict) else {}
+        for index, page in enumerate(pages):
+            if not isinstance(page, dict) or not page.get("id") or not page.get("title"):
+                issues.append(issue("error", "page.required", f"page {index} requires id and title"))
+                continue
+            page_id = str(page["id"])
+            if not valid_semantic_id(page_id):
+                issues.append(issue("error", "id.format", f"invalid page id: {page_id}", page_id))
+            if page_id in page_ids:
+                issues.append(issue("error", "page.duplicate", f"duplicate page id: {page_id}", page_id))
+            page_ids.add(page_id)
+            for field in sorted(set(page) - PAGE_FIELDS):
+                issues.append(issue("warning", "page.unknown-field", f"unknown page field: {field}", page_id))
+            page_diagram = page.get("diagram", {}) if isinstance(page.get("diagram"), dict) else {}
+            page_data = {
+                "version": "1",
+                "diagram": {**defaults, **page_diagram, "title": page["title"]},
+                "groups": page.get("groups", []),
+                "nodes": page.get("nodes", []),
+                "edges": page.get("edges", []),
+            }
+            for page_issue in validate_ir(page_data, allow_page_links=True):
+                page_issue = dict(page_issue)
+                page_issue["page"] = page_id
+                issues.append(page_issue)
+        for page in pages:
+            if not isinstance(page, dict):
+                continue
+            for node in page.get("nodes", []) if isinstance(page.get("nodes"), list) else []:
+                if isinstance(node, dict) and node.get("link") and node["link"] not in page_ids:
+                    issues.append(issue(
+                        "error", "node.link", f"unknown linked page: {node['link']}", str(node.get("id", ""))
+                    ))
+        return issues
+    diagram = data.get("diagram", {})
+    if not isinstance(diagram, dict):
+        issues.append(issue("error", "ir.diagram", "diagram must be an object"))
+        diagram = {}
+    for field in sorted(set(diagram) - DIAGRAM_FIELDS):
+        issues.append(issue("warning", "diagram.unknown-field", f"unknown diagram field: {field}"))
+    direction = diagram.get("direction", "LR")
+    if direction not in ALLOWED_DIRECTIONS:
+        issues.append(issue("error", "ir.direction", "direction must be LR or TB"))
+    theme = diagram.get("theme", "light")
+    if theme not in ALLOWED_THEMES:
+        issues.append(issue("error", "ir.theme", f"unknown theme: {theme}"))
+    gap = diagram.get("gap", 100)
+    if not isinstance(gap, int) or isinstance(gap, bool) or not 40 <= gap <= 400:
+        issues.append(issue("error", "ir.gap", "gap must be an integer from 40 to 400"))
+    background = diagram.get("background")
+    if background is not None and (
+        not isinstance(background, str) or re.fullmatch(r"#[0-9a-fA-F]{6}", background) is None
+    ):
+        issues.append(issue("error", "ir.background", "background must be a 6-digit hex color"))
+    if "theme_tokens" in diagram:
+        issues.extend(validate_theme_tokens(diagram["theme_tokens"]))
+
+    groups = data.get("groups", [])
+    nodes = data.get("nodes", [])
+    edges = data.get("edges", [])
+    if not isinstance(groups, list) or not isinstance(nodes, list) or not isinstance(edges, list):
+        return issues + [issue("error", "ir.collections", "groups, nodes, and edges must be arrays")]
+
+    group_ids: set[str] = set()
+    for group in groups:
+        if not isinstance(group, dict) or not group.get("id") or not group.get("label"):
+            issues.append(issue("error", "group.required", "each group requires id and label"))
+            continue
+        for field in sorted(set(group) - GROUP_FIELDS):
+            issues.append(issue("warning", "group.unknown-field", f"unknown group field: {field}", str(group["id"])))
+        gid = str(group["id"])
+        if not valid_semantic_id(gid):
+            issues.append(issue("error", "id.format", f"invalid group id: {gid}", gid))
+        if gid in group_ids:
+            issues.append(issue("error", "id.duplicate", f"duplicate group id: {gid}", gid))
+        group_ids.add(gid)
+
+    node_ids: set[str] = set()
+    for node in nodes:
+        if not isinstance(node, dict) or not node.get("id") or not node.get("label"):
+            issues.append(issue("error", "node.required", "each node requires id and label"))
+            continue
+        nid = str(node["id"])
+        if not valid_semantic_id(nid):
+            issues.append(issue("error", "id.format", f"invalid node id: {nid}", nid))
+        for field in sorted(set(node) - NODE_FIELDS):
+            issues.append(issue("warning", "node.unknown-field", f"unknown node field: {field}", nid))
+        if nid in node_ids or nid in group_ids:
+            issues.append(issue("error", "id.duplicate", f"duplicate id: {nid}", nid))
+        node_ids.add(nid)
+        kind = node.get("kind", "service")
+        if kind not in ALLOWED_KINDS:
+            issues.append(issue("warning", "node.kind", f"unknown kind {kind}; service style will be used", nid))
+        if node.get("group") and node["group"] not in group_ids:
+            issues.append(issue("error", "node.group", f"unknown group: {node['group']}", nid))
+        position = node.get("position")
+        if position is not None and (
+            not isinstance(position, dict)
+            or not all(isinstance(position.get(axis), (int, float)) and not isinstance(position.get(axis), bool) for axis in ("x", "y"))
+        ):
+            issues.append(issue("error", "node.position", "position requires numeric x and y", nid))
+        size = node.get("size")
+        if size is not None and (
+            not isinstance(size, dict)
+            or any(
+                key in size and (
+                    not isinstance(size[key], (int, float))
+                    or isinstance(size[key], bool)
+                    or size[key] <= 0
+                )
+                for key in ("width", "height")
+            )
+        ):
+            issues.append(issue("error", "node.size", "size width and height must be positive numbers", nid))
+        if node.get("link") and not allow_page_links:
+            issues.append(issue("error", "node.link", "page links require multi-page IR", nid))
+        custom_style = node.get("style")
+        if isinstance(custom_style, dict):
+            for field in ("fill", "stroke", "font"):
+                if field in custom_style and not is_hex_color(custom_style[field]):
+                    issues.append(issue("error", "node.style.color", f"{field} must be a 6-digit hex color", nid))
+            active_theme = resolve_theme(diagram)
+            fill = custom_style.get("fill", active_theme.get(kind, active_theme["service"])[0])
+            font = custom_style.get("font", active_theme["font"])
+            if is_hex_color(fill) and is_hex_color(font):
+                ratio = contrast_ratio(str(font), str(fill))
+                if ratio < 4.5:
+                    issues.append(issue(
+                        "warning", "node.contrast",
+                        f"text contrast is {ratio:.2f}:1; target at least 4.5:1", nid,
+                    ))
+
+    seen_edge_ids: set[str] = set()
+    degrees: dict[str, int] = defaultdict(int)
+    for index, edge in enumerate(edges):
+        if not isinstance(edge, dict) or not edge.get("from") or not edge.get("to"):
+            issues.append(issue("error", "edge.required", f"edge {index} requires from and to"))
+            continue
+        source, target = str(edge["from"]), str(edge["to"])
+        eid = str(edge.get("id", f"{source}-to-{target}-{index + 1}"))
+        if not valid_semantic_id(eid):
+            issues.append(issue("error", "id.format", f"invalid edge id: {eid}", eid))
+        for field in sorted(set(edge) - EDGE_FIELDS):
+            issues.append(issue("warning", "edge.unknown-field", f"unknown edge field: {field}", eid))
+        if eid in seen_edge_ids or eid in node_ids or eid in group_ids:
+            issues.append(issue("error", "id.duplicate", f"duplicate id: {eid}", eid))
+        seen_edge_ids.add(eid)
+        if source not in node_ids:
+            issues.append(issue("error", "edge.source", f"unknown source: {source}", eid))
+        if target not in node_ids:
+            issues.append(issue("error", "edge.target", f"unknown target: {target}", eid))
+        if source == target:
+            issues.append(issue("error", "edge.self-loop", "self-loops are not supported", eid))
+        if edge.get("kind", "sync") not in ALLOWED_EDGE_KINDS:
+            issues.append(issue("warning", "edge.kind", f"unknown edge kind: {edge.get('kind')}", eid))
+        degrees[source] += 1
+        degrees[target] += 1
+
+    for nid in sorted(node_ids):
+        if degrees[nid] == 0 and len(node_ids) > 1:
+            issues.append(issue("warning", "node.isolated", "node has no relationships", nid))
+    return issues
+
+
+def stable_ranks(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> dict[str, int]:
+    ids = [str(node["id"]) for node in nodes]
+    adjacency: dict[str, list[str]] = {nid: [] for nid in ids}
+    indegree = {nid: 0 for nid in ids}
+    for edge in edges:
+        source, target = str(edge["from"]), str(edge["to"])
+        if source in adjacency and target in indegree and target not in adjacency[source]:
+            adjacency[source].append(target)
+            indegree[target] += 1
+    queue = deque(sorted(nid for nid, degree in indegree.items() if degree == 0))
+    ranks = {nid: 0 for nid in ids}
+    visited: set[str] = set()
+    while queue:
+        source = queue.popleft()
+        visited.add(source)
+        for target in sorted(adjacency[source]):
+            ranks[target] = max(ranks[target], ranks[source] + 1)
+            indegree[target] -= 1
+            if indegree[target] == 0:
+                queue.append(target)
+    # Place cycle members deterministically after their strongest predecessor.
+    for nid in sorted(set(ids) - visited):
+        predecessors = [str(e["from"]) for e in edges if str(e["to"]) == nid and str(e["from"]) != nid]
+        ranks[nid] = max((ranks.get(pred, 0) + 1 for pred in predecessors), default=0)
+    return ranks
+
+
+def node_size(node: dict[str, Any]) -> tuple[int, int]:
+    explicit = node.get("size", {})
+    if isinstance(explicit, dict) and explicit:
+        return int(explicit.get("width", 180)), int(explicit.get("height", 72))
+    label = str(node.get("label", ""))
+    description = str(node.get("description", ""))
+    width = max(150, min(280, 56 + max(len(label), min(len(description), 30)) * 7))
+    height = 72 if description else 56
+    if node.get("kind") == "decision":
+        return max(width, 150), max(height, 90)
+    return width, height
+
+
+def calculate_layout(data: dict[str, Any]) -> dict[str, tuple[int, int, int, int]]:
+    nodes = data.get("nodes", [])
+    edges = data.get("edges", [])
+    direction = data.get("diagram", {}).get("direction", "LR")
+    gap = int(data.get("diagram", {}).get("gap", 100))
+    ranks = stable_ranks(nodes, edges)
+    rank_nodes: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for node in nodes:
+        rank_nodes[ranks[str(node["id"])]].append(node)
+    ordered_groups = [str(group["id"]) for group in data.get("groups", [])]
+    if any(not node.get("group") for node in nodes):
+        ordered_groups.insert(0, "__ungrouped__")
+    for node in nodes:
+        group_id = str(node.get("group") or "__ungrouped__")
+        if group_id not in ordered_groups:
+            ordered_groups.append(group_id)
+
+    primary_origins: dict[int, int] = {}
+    primary_cursor = 100
+    for rank in sorted(rank_nodes):
+        primary_origins[rank] = primary_cursor
+        max_primary = max(
+            (node_size(node)[0 if direction == "LR" else 1] for node in rank_nodes[rank]),
+            default=160,
+        )
+        primary_cursor += max_primary + gap + 60
+
+    band_origins: dict[str, int] = {}
+    band_cursor = 100
+    for group_id in ordered_groups:
+        max_cross_total = 0
+        for rank in rank_nodes:
+            members = [
+                node for node in rank_nodes[rank]
+                if str(node.get("group") or "__ungrouped__") == group_id
+            ]
+            if not members:
+                continue
+            sizes = [node_size(node)[1 if direction == "LR" else 0] for node in members]
+            max_cross_total = max(max_cross_total, sum(sizes) + gap * max(0, len(sizes) - 1))
+        if max_cross_total:
+            band_origins[group_id] = band_cursor
+            band_cursor += max_cross_total + gap + 50
+
+    layout: dict[str, tuple[int, int, int, int]] = {}
+    for rank in sorted(rank_nodes):
+        by_group: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for node in rank_nodes[rank]:
+            by_group[str(node.get("group") or "__ungrouped__")].append(node)
+        for members in by_group.values():
+            members.sort(key=lambda item: str(item["id"]))
+        for group_id in ordered_groups:
+            cross_cursor = band_origins.get(group_id, 100)
+            for node in by_group.get(group_id, []):
+                width, height = node_size(node)
+                position = node.get("position")
+                if isinstance(position, dict) and "x" in position and "y" in position:
+                    x, y = int(position["x"]), int(position["y"])
+                elif direction == "LR":
+                    x, y = primary_origins[rank], cross_cursor
+                else:
+                    x, y = cross_cursor, primary_origins[rank]
+                layout[str(node["id"])] = (x, y, width, height)
+                cross_cursor += (height if direction == "LR" else width) + gap
+    return layout
+
+
+def style_string(parts: dict[str, Any]) -> str:
+    return ";".join(f"{key}={str(value).lower() if isinstance(value, bool) else value}" for key, value in parts.items()) + ";"
+
+
+def node_style(node: dict[str, Any], theme: dict[str, Any]) -> str:
+    kind = str(node.get("kind", "service"))
+    fill, stroke = theme.get(kind, theme["service"])
+    custom = node.get("style", {}) if isinstance(node.get("style"), dict) else {}
+    fill, stroke = custom.get("fill", fill), custom.get("stroke", stroke)
+    parts: dict[str, Any] = {
+        "whiteSpace": "wrap", "html": 1, "rounded": 1, "arcSize": 12,
+        "fillColor": fill, "strokeColor": stroke, "strokeWidth": 2,
+        "fontColor": custom.get("font", theme["font"]), "fontSize": 13,
+        "align": "center", "verticalAlign": "middle", "spacing": 8,
+    }
+    shapes = load_shape_registry()["shapes"]
+    registry_entry = shapes.get(kind, shapes["service"])
+    parts.update(registry_entry["style"])
+    if "dashed" in custom:
+        parts["dashed"] = 1 if custom["dashed"] else 0
+    if "rounded" in custom:
+        parts["rounded"] = 1 if custom["rounded"] else 0
+    return style_string(parts)
+
+
+def edge_style(edge: dict[str, Any], theme: dict[str, Any], direction: str) -> str:
+    kind = edge.get("kind", "sync")
+    custom = edge.get("style", {}) if isinstance(edge.get("style"), dict) else {}
+    parts: dict[str, Any] = {
+        "edgeStyle": "orthogonalEdgeStyle", "rounded": 1, "orthogonalLoop": 1,
+        "jettySize": "auto", "html": 1, "strokeColor": custom.get("color", theme["edge"]),
+        "strokeWidth": custom.get("width", 2), "endArrow": "block", "endFill": 1,
+        "fontColor": theme["font"], "fontSize": 11, "labelBackgroundColor": theme["background"],
+    }
+    if direction == "LR":
+        parts.update({"exitX": 1, "exitY": 0.5, "entryX": 0, "entryY": 0.5})
+    else:
+        parts.update({"exitX": 0.5, "exitY": 1, "entryX": 0.5, "entryY": 0})
+    if kind in {"async", "dependency"}:
+        parts["dashed"] = 1
+    if kind == "async":
+        parts["endArrow"] = "open"
+        parts["endFill"] = 0
+    if kind == "association":
+        parts["endArrow"] = "none"
+    if custom.get("dashed") is not None:
+        parts["dashed"] = 1 if custom["dashed"] else 0
+    return style_string(parts)
+
+
+def page_documents(data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    if "pages" not in data:
+        return [("main", data)]
+    defaults = data.get("diagram", {}) if isinstance(data.get("diagram"), dict) else {}
+    documents = []
+    for page in data.get("pages", []):
+        page_diagram = page.get("diagram", {}) if isinstance(page.get("diagram"), dict) else {}
+        documents.append((
+            str(page["id"]),
+            {
+                "version": "1",
+                "diagram": {**defaults, **page_diagram, "title": page["title"]},
+                "groups": page.get("groups", []),
+                "nodes": page.get("nodes", []),
+                "edges": page.get("edges", []),
+            },
+        ))
+    return documents
+
+
+def append_page(mxfile: ET.Element, page_id: str, data: dict[str, Any]) -> None:
+    diagram_data = data.get("diagram", {})
+    title = str(diagram_data.get("title", "Diagram"))
+    direction = str(diagram_data.get("direction", "LR"))
+    theme = resolve_theme(diagram_data)
+    layout = calculate_layout(data)
+
+    diagram = ET.SubElement(mxfile, "diagram", {"id": f"page-{page_id}", "name": title})
+    model = ET.SubElement(diagram, "mxGraphModel", {
+        "dx": "1200", "dy": "800", "grid": "1", "gridSize": "10", "guides": "1",
+        "tooltips": "1", "connect": "1", "arrows": "1", "fold": "1", "page": "1",
+        "pageScale": "1", "pageWidth": "1169", "pageHeight": "827",
+        "background": str(diagram_data.get("background", theme["background"])),
+        "math": "0", "shadow": "0",
+    })
+    root = ET.SubElement(model, "root")
+    ET.SubElement(root, "mxCell", {"id": "0"})
+    ET.SubElement(root, "mxCell", {"id": "1", "parent": "0"})
+
+    groups = data.get("groups", [])
+    for group in groups:
+        member_boxes = [layout[str(n["id"])] for n in data.get("nodes", []) if n.get("group") == group["id"]]
+        if not member_boxes:
+            continue
+        min_x = min(box[0] for box in member_boxes) - 30
+        min_y = min(box[1] for box in member_boxes) - 55
+        max_x = max(box[0] + box[2] for box in member_boxes) + 30
+        max_y = max(box[1] + box[3] for box in member_boxes) + 30
+        cell = ET.SubElement(root, "mxCell", {
+            "id": f"group-{group['id']}", "value": str(group["label"]), "vertex": "1", "parent": "1",
+            "style": style_string({
+                "swimlane": 1, "horizontal": 1, "startSize": 30, "rounded": 1,
+                "fillColor": theme["group_fill"], "swimlaneFillColor": theme["group_fill"],
+                "strokeColor": theme["group_stroke"], "fontColor": theme["font"],
+                "fontStyle": 1, "html": 1, "collapsible": 0,
+            }),
+        })
+        ET.SubElement(cell, "mxGeometry", {
+            "x": str(min_x), "y": str(min_y), "width": str(max_x - min_x),
+            "height": str(max_y - min_y), "as": "geometry",
+        })
+
+    for node in data.get("nodes", []):
+        nid = str(node["id"])
+        x, y, width, height = layout[nid]
+        description = str(node.get("description", "")).strip()
+        value = f"<b>{node['label']}</b>"
+        if description:
+            value += f"<br><font style=\"font-size:10px\">{description}</font>"
+        cell = ET.SubElement(root, "mxCell", {
+            "id": f"node-{nid}", "value": value, "vertex": "1", "parent": "1",
+            "style": node_style(node, theme),
+        })
+        if node.get("link"):
+            cell.set("link", f"data:page/id,page-{node['link']}")
+        ET.SubElement(cell, "mxGeometry", {
+            "x": str(x), "y": str(y), "width": str(width), "height": str(height), "as": "geometry",
+        })
+
+    edge_counts: dict[str, int] = defaultdict(int)
+    for index, edge in enumerate(data.get("edges", []), start=1):
+        source, target = str(edge["from"]), str(edge["to"])
+        base_id = str(edge.get("id", f"{source}-to-{target}"))
+        edge_counts[base_id] += 1
+        eid = base_id if edge_counts[base_id] == 1 else f"{base_id}-{edge_counts[base_id]}"
+        cell = ET.SubElement(root, "mxCell", {
+            "id": f"edge-{eid}", "value": str(edge.get("label", "")), "edge": "1", "parent": "1",
+            "source": f"node-{source}", "target": f"node-{target}",
+            "style": edge_style(edge, theme, direction),
+        })
+        ET.SubElement(cell, "mxGeometry", {"relative": "1", "as": "geometry"})
+
+
+def compile_drawio(data: dict[str, Any]) -> ET.ElementTree:
+    mxfile = ET.Element(
+        "mxfile",
+        {"host": "app.diagrams.net", "agent": "drawio-diagram-engineer", "version": VERSION},
+    )
+    for page_id, page_data in page_documents(data):
+        append_page(mxfile, page_id, page_data)
+    ET.indent(mxfile, space="  ")
+    return ET.ElementTree(mxfile)
+
+
+def select_page(data: dict[str, Any], page_id: str | None = None) -> dict[str, Any]:
+    documents = page_documents(data)
+    if page_id:
+        for candidate_id, page in documents:
+            if candidate_id == page_id:
+                return page
+        raise ValueError(f"unknown page: {page_id}")
+    if len(documents) > 1:
+        raise ValueError("multi-page IR requires --page for SVG preview")
+    return documents[0][1]
+
+
+def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
+    """Create a dependency-free review preview from a single-page IR."""
+    diagram = data.get("diagram", {})
+    direction = str(diagram.get("direction", "LR"))
+    theme = resolve_theme(diagram)
+    layout = calculate_layout(data)
+    group_boxes: list[tuple[dict[str, Any], int, int, int, int]] = []
+    for group in data.get("groups", []):
+        members = [layout[str(node["id"])] for node in data.get("nodes", []) if node.get("group") == group["id"]]
+        if not members:
+            continue
+        min_x = min(box[0] for box in members) - 30
+        min_y = min(box[1] for box in members) - 55
+        max_x = max(box[0] + box[2] for box in members) + 30
+        max_y = max(box[1] + box[3] for box in members) + 30
+        group_boxes.append((group, min_x, min_y, max_x - min_x, max_y - min_y))
+    max_x = max(
+        [x + width for x, _, width, _ in layout.values()]
+        + [x + width for _, x, _, width, _ in group_boxes]
+        + [800]
+    ) + 80
+    max_y = max(
+        [y + height for _, y, _, height in layout.values()]
+        + [y + height for _, _, y, _, height in group_boxes]
+        + [500]
+    ) + 80
+    svg = ET.Element("svg", {
+        "xmlns": "http://www.w3.org/2000/svg", "width": str(max_x), "height": str(max_y),
+        "viewBox": f"0 0 {max_x} {max_y}", "role": "img",
+        "aria-label": str(diagram.get("title", "Diagram preview")),
+    })
+    ET.SubElement(svg, "rect", {
+        "width": "100%", "height": "100%",
+        "fill": str(diagram.get("background", theme["background"])),
+    })
+    defs = ET.SubElement(svg, "defs")
+    marker = ET.SubElement(defs, "marker", {
+        "id": "arrow", "viewBox": "0 0 10 10", "refX": "9", "refY": "5",
+        "markerWidth": "7", "markerHeight": "7", "orient": "auto-start-reverse",
+    })
+    ET.SubElement(marker, "path", {"d": "M 0 0 L 10 5 L 0 10 z", "fill": theme["edge"]})
+
+    for group, x, y, width, height in group_boxes:
+        ET.SubElement(svg, "rect", {
+            "x": str(x), "y": str(y), "width": str(width), "height": str(height),
+            "rx": "14", "fill": theme["group_fill"], "stroke": theme["group_stroke"],
+            "stroke-width": "2",
+        })
+        label = ET.SubElement(svg, "text", {
+            "x": str(x + 16), "y": str(y + 24), "fill": theme["font"],
+            "font-family": "Inter, Arial, sans-serif", "font-size": "14", "font-weight": "700",
+        })
+        label.text = str(group["label"])
+
+    node_map = {str(node["id"]): node for node in data.get("nodes", [])}
+    for edge in data.get("edges", []):
+        source_id, target_id = str(edge["from"]), str(edge["to"])
+        source, target = layout[source_id], layout[target_id]
+        if direction == "LR":
+            start = (source[0] + source[2], source[1] + source[3] / 2)
+            end = (target[0], target[1] + target[3] / 2)
+            midpoint = (start[0] + end[0]) / 2
+            points = [start, (midpoint, start[1]), (midpoint, end[1]), end]
+        else:
+            start = (source[0] + source[2] / 2, source[1] + source[3])
+            end = (target[0] + target[2] / 2, target[1])
+            midpoint = (start[1] + end[1]) / 2
+            points = [start, (start[0], midpoint), (end[0], midpoint), end]
+        edge_kind = str(edge.get("kind", "sync"))
+        attrs = {
+            "points": " ".join(f"{x},{y}" for x, y in points), "fill": "none",
+            "stroke": theme["edge"], "stroke-width": "2", "marker-end": "url(#arrow)",
+        }
+        if edge_kind in {"async", "dependency"}:
+            attrs["stroke-dasharray"] = "7 5"
+        if edge_kind == "association":
+            attrs.pop("marker-end")
+        ET.SubElement(svg, "polyline", attrs)
+        edge_label = str(edge.get("label", "")).strip()
+        if edge_label:
+            label = ET.SubElement(svg, "text", {
+                "x": str((start[0] + end[0]) / 2), "y": str((start[1] + end[1]) / 2 - 8),
+                "fill": theme["font"], "font-family": "Inter, Arial, sans-serif",
+                "font-size": "11", "text-anchor": "middle",
+            })
+            label.text = edge_label
+
+    for node_id, node in node_map.items():
+        x, y, width, height = layout[node_id]
+        kind = str(node.get("kind", "service"))
+        fill, stroke = theme.get(kind, theme["service"])
+        custom = node.get("style", {}) if isinstance(node.get("style"), dict) else {}
+        fill, stroke = custom.get("fill", fill), custom.get("stroke", stroke)
+        if kind == "decision":
+            points = f"{x + width / 2},{y} {x + width},{y + height / 2} {x + width / 2},{y + height} {x},{y + height / 2}"
+            ET.SubElement(svg, "polygon", {
+                "points": points, "fill": fill, "stroke": stroke, "stroke-width": "2",
+            })
+        else:
+            ET.SubElement(svg, "rect", {
+                "x": str(x), "y": str(y), "width": str(width), "height": str(height),
+                "rx": "12", "fill": fill, "stroke": stroke, "stroke-width": "2",
+                **({"stroke-dasharray": "7 5"} if kind == "external" else {}),
+            })
+            if kind == "database":
+                ET.SubElement(svg, "ellipse", {
+                    "cx": str(x + width / 2), "cy": str(y + 10), "rx": str(width / 2),
+                    "ry": "10", "fill": fill, "stroke": stroke, "stroke-width": "2",
+                })
+        label = ET.SubElement(svg, "text", {
+            "x": str(x + width / 2), "y": str(y + height / 2 - (7 if node.get("description") else 0)),
+            "fill": custom.get("font", theme["font"]), "font-family": "Inter, Arial, sans-serif",
+            "font-size": "13", "font-weight": "700", "text-anchor": "middle",
+        })
+        label.text = str(node["label"])
+        if node.get("description"):
+            description = ET.SubElement(svg, "text", {
+                "x": str(x + width / 2), "y": str(y + height / 2 + 13),
+                "fill": custom.get("font", theme["font"]), "font-family": "Inter, Arial, sans-serif",
+                "font-size": "10", "text-anchor": "middle",
+            })
+            text = str(node["description"])
+            description.text = text if len(text) <= 42 else text[:39] + "…"
+    ET.indent(svg, space="  ")
+    return ET.ElementTree(svg)
+
+
+def parse_number(value: str | None, default: float = 0) -> float:
+    try:
+        return float(value) if value is not None else default
+    except ValueError:
+        return default
+
+
+def load_drawio_root(path: Path) -> ET.Element:
+    """Load uncompressed or standard compressed draw.io XML."""
+    root = ET.parse(path).getroot()
+    if root.findall(".//mxCell"):
+        return root
+    decoded_models: list[ET.Element] = []
+    for diagram in root.findall(".//diagram"):
+        payload = (diagram.text or "").strip()
+        if not payload:
+            continue
+        try:
+            compressed = base64.b64decode(payload)
+            xml_text = urllib.parse.unquote(
+                zlib.decompress(compressed, -15).decode("utf-8")
+            )
+            decoded_models.append(ET.fromstring(xml_text))
+        except (ValueError, zlib.error, UnicodeDecodeError, ET.ParseError) as exc:
+            raise ValueError(f"cannot decode compressed draw.io page {diagram.get('name', '')}: {exc}") from exc
+    if decoded_models:
+        wrapper = ET.Element("decodedDrawio")
+        for model in decoded_models:
+            wrapper.append(model)
+        return wrapper
+    return root
+
+
+def rectangles_overlap(
+    left: tuple[str, float, float, float, float],
+    right: tuple[str, float, float, float, float],
+) -> bool:
+    return (
+        left[1] < right[1] + right[3] and left[1] + left[3] > right[1]
+        and left[2] < right[2] + right[4] and left[2] + left[4] > right[2]
+    )
+
+
+def orientation(a: tuple[float, float], b: tuple[float, float], c: tuple[float, float]) -> float:
+    return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+
+
+def segments_cross(
+    a: tuple[float, float], b: tuple[float, float],
+    c: tuple[float, float], d: tuple[float, float],
+) -> bool:
+    first = orientation(a, b, c) * orientation(a, b, d)
+    second = orientation(c, d, a) * orientation(c, d, b)
+    return first < 0 and second < 0
+
+
+def segment_crosses_rectangle(
+    start: tuple[float, float], end: tuple[float, float],
+    rectangle: tuple[str, float, float, float, float],
+) -> bool:
+    _, x, y, width, height = rectangle
+    corners = [(x, y), (x + width, y), (x + width, y + height), (x, y + height)]
+    if x < start[0] < x + width and y < start[1] < y + height:
+        return True
+    if x < end[0] < x + width and y < end[1] < y + height:
+        return True
+    return any(
+        segments_cross(start, end, corners[index], corners[(index + 1) % 4])
+        for index in range(4)
+    )
+
+
+def parse_style_values(style: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for token in style.split(";"):
+        if "=" in token:
+            key, value = token.split("=", 1)
+            values[key] = value
+    return values
+
+
+def validate_drawio(path: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    loaded_root = load_drawio_root(path)
+    models = [loaded_root] if loaded_root.tag == "mxGraphModel" else loaded_root.findall(".//mxGraphModel")
+    total_nodes = total_edges = total_groups = 0
+    max_x = max_y = 0.0
+    for page_index, model in enumerate(models, start=1):
+        page_name = f"page-{page_index}"
+        cells = model.findall(".//mxCell")
+        ids: set[str] = set()
+        cell_map: dict[str, ET.Element] = {}
+        for cell in cells:
+            cid = cell.get("id")
+            if not cid:
+                item = issue("error", "xml.id.missing", "mxCell is missing id")
+                item["page"] = page_name
+                issues.append(item)
+                continue
+            if cid in ids:
+                item = issue("error", "xml.id.duplicate", f"duplicate cell id: {cid}", cid)
+                item["page"] = page_name
+                issues.append(item)
+            ids.add(cid)
+            cell_map[cid] = cell
+
+        for cell in cells:
+            cid = cell.get("id", "")
+            parent = cell.get("parent")
+            if parent and parent not in ids:
+                item = issue("error", "xml.parent", f"missing parent: {parent}", cid)
+                item["page"] = page_name
+                issues.append(item)
+            if cell.get("edge") == "1":
+                for attr in ("source", "target"):
+                    endpoint = cell.get(attr)
+                    if not endpoint or endpoint not in ids:
+                        item = issue("error", f"xml.edge.{attr}", f"missing {attr}: {endpoint}", cid)
+                        item["page"] = page_name
+                        issues.append(item)
+                if cell.find("mxGeometry") is None:
+                    item = issue("error", "xml.edge.geometry", "edge has no mxGeometry", cid)
+                    item["page"] = page_name
+                    issues.append(item)
+
+        vertices: list[tuple[str, float, float, float, float]] = []
+        groups: list[tuple[str, float, float, float, float]] = []
+        group_ids = {cell.get("id") for cell in cells if "swimlane=1" in cell.get("style", "")}
+        for cell in cells:
+            cid = cell.get("id", "")
+            if cell.get("vertex") != "1":
+                continue
+            geo = cell.find("mxGeometry")
+            if geo is None:
+                item = issue("error", "xml.vertex.geometry", "vertex has no mxGeometry", cid)
+                item["page"] = page_name
+                issues.append(item)
+                continue
+            box = (
+                cid, parse_number(geo.get("x")), parse_number(geo.get("y")),
+                parse_number(geo.get("width")), parse_number(geo.get("height")),
+            )
+            if cid in group_ids:
+                groups.append(box)
+                continue
+            vertices.append(box)
+            if box[1] < 0 or box[2] < 0:
+                item = issue("warning", "layout.negative", "vertex has negative coordinates", cid)
+                item["page"] = page_name
+                issues.append(item)
+            raw_label = cell.get("value", "")
+            plain_label = re.sub(r"<[^>]+>", " ", raw_label)
+            text_length = len(re.sub(r"\s+", " ", plain_label).strip())
+            if box[3] > 0 and text_length * 6.3 > box[3] * max(1, math.ceil(box[4] / 24)):
+                item = issue("warning", "label.clipping", "label may be clipped", cid)
+                item["page"] = page_name
+                issues.append(item)
+            area = box[3] * box[4]
+            density = text_length / (area / 1000) if area > 0 else 0
+            if density > 5.5:
+                item = issue(
+                    "warning", "label.density",
+                    f"text density is {density:.1f} characters per 1000px²; target at most 5.5",
+                    cid,
+                )
+                item["page"] = page_name
+                issues.append(item)
+            styles = parse_style_values(cell.get("style", ""))
+            fill, font = styles.get("fillColor"), styles.get("fontColor")
+            if is_hex_color(fill) and is_hex_color(font):
+                ratio = contrast_ratio(str(font), str(fill))
+                if ratio < 4.5:
+                    item = issue(
+                        "warning", "node.contrast",
+                        f"text contrast is {ratio:.2f}:1; target at least 4.5:1",
+                        cid,
+                    )
+                    item["page"] = page_name
+                    issues.append(item)
+
+        for index, left in enumerate(vertices):
+            for right in vertices[index + 1:]:
+                if rectangles_overlap(left, right):
+                    item = issue("error", "layout.overlap", f"overlaps {right[0]}", left[0])
+                    item["page"] = page_name
+                    issues.append(item)
+        for index, left in enumerate(groups):
+            for right in groups[index + 1:]:
+                if rectangles_overlap(left, right):
+                    item = issue("error", "layout.group-overlap", f"group overlaps {right[0]}", left[0])
+                    item["page"] = page_name
+                    issues.append(item)
+
+        boxes = {box[0]: box for box in vertices}
+        route_segments: list[tuple[str, str, str, tuple[float, float], tuple[float, float]]] = []
+        for cell in cells:
+            if cell.get("edge") != "1":
+                continue
+            source, target = cell.get("source", ""), cell.get("target", "")
+            if source not in boxes or target not in boxes:
+                continue
+            source_box, target_box = boxes[source], boxes[target]
+            start = (source_box[1] + source_box[3] / 2, source_box[2] + source_box[4] / 2)
+            end = (target_box[1] + target_box[3] / 2, target_box[2] + target_box[4] / 2)
+            route_segments.append((cell.get("id", ""), source, target, start, end))
+            for other in vertices:
+                if other[0] in {source, target}:
+                    continue
+                if segment_crosses_rectangle(start, end, other):
+                    item = issue(
+                        "warning", "routing.node-risk",
+                        f"direct route may cross {other[0]}; inspect rendered orthogonal route",
+                        cell.get("id", ""),
+                    )
+                    item["page"] = page_name
+                    issues.append(item)
+        for index, left in enumerate(route_segments):
+            for right in route_segments[index + 1:]:
+                if {left[1], left[2]} & {right[1], right[2]}:
+                    continue
+                if segments_cross(left[3], left[4], right[3], right[4]):
+                    item = issue(
+                        "warning", "routing.crossing-risk",
+                        f"route may cross {right[0]}; inspect rendered orthogonal routes", left[0],
+                    )
+                    item["page"] = page_name
+                    issues.append(item)
+
+        page_max_x = max((x + width for _, x, _, width, _ in vertices), default=0)
+        page_max_y = max((y + height for _, _, y, _, height in vertices), default=0)
+        if page_max_x > 5000 or page_max_y > 5000:
+            item = issue("warning", "layout.canvas", f"large canvas: {int(page_max_x)}×{int(page_max_y)}")
+            item["page"] = page_name
+            issues.append(item)
+        total_nodes += len(vertices)
+        total_edges += sum(1 for cell in cells if cell.get("edge") == "1")
+        total_groups += len(group_ids)
+        max_x, max_y = max(max_x, page_max_x), max(max_y, page_max_y)
+
+    summary = {
+        "pages": len(models),
+        "nodes": total_nodes,
+        "edges": total_edges,
+        "groups": total_groups,
+        "bounds": {"width": int(max_x), "height": int(max_y)},
+    }
+    return issues, summary
+
+
+def score_issues(issues: list[dict[str, Any]]) -> int:
+    score = 100
+    for item in issues:
+        score -= 20 if item["level"] == "error" else 5
+    return max(0, score)
+
+
+def print_report(issues: list[dict[str, Any]], summary: dict[str, Any] | None = None) -> None:
+    payload = {
+        "score": score_issues(issues),
+        "errors": sum(1 for item in issues if item["level"] == "error"),
+        "warnings": sum(1 for item in issues if item["level"] == "warning"),
+        "issues": issues,
+    }
+    if summary is not None:
+        payload["summary"] = summary
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
+REPAIR_SUGGESTIONS = {
+    "layout.overlap": "Move the reported nodes apart or regenerate the page with more spacing.",
+    "layout.group-overlap": "Separate the group bands or split the page into smaller views.",
+    "label.clipping": "Shorten the label, move detail into description, or increase node dimensions.",
+    "label.density": "Reduce text or enlarge the node; keep one primary idea per node.",
+    "node.contrast": "Choose text and fill colors with at least 4.5:1 contrast.",
+    "theme.contrast": "Adjust the theme font or fill token to at least 4.5:1 contrast.",
+    "routing.node-risk": "Add spacing or explicit waypoints so the connector avoids the reported node.",
+    "routing.crossing-risk": "Reorder nodes, change direction, or add a routing corridor.",
+    "node.isolated": "Connect the node, explain why it is intentionally isolated, or remove it from the view.",
+    "layout.canvas": "Split the diagram into linked pages or reduce its scope.",
+}
+
+
+def build_audit_report(
+    issues: list[dict[str, Any]], summary: dict[str, Any], previews: list[str] | None = None,
+) -> dict[str, Any]:
+    grouped: dict[str, dict[str, Any]] = {}
+    for item in issues:
+        code = str(item["code"])
+        entry = grouped.setdefault(code, {
+            "code": code,
+            "suggestion": REPAIR_SUGGESTIONS.get(
+                code, "Inspect the reported element and make the smallest source-level correction."
+            ),
+            "targets": [],
+        })
+        target = {"cell": item.get("cell"), "page": item.get("page"), "message": item["message"]}
+        if target not in entry["targets"]:
+            entry["targets"].append(target)
+    return {
+        "version": "1",
+        "score": score_issues(issues),
+        "errors": sum(1 for item in issues if item["level"] == "error"),
+        "warnings": sum(1 for item in issues if item["level"] == "warning"),
+        "summary": summary,
+        "issues": issues,
+        "repairs": list(grouped.values()),
+        "visual_review": {
+            "status": "required" if previews else "preview-not-generated",
+            "previews": previews or [],
+            "checklist": [
+                "Verify the primary reading path and hierarchy.",
+                "Inspect actual orthogonal edge crossings and stacked connectors.",
+                "Confirm labels remain legible at normal zoom.",
+                "Confirm color meaning is consistent and not the only differentiator.",
+                "Confirm every page answers one architecture question.",
+            ],
+        },
+    }
+
+
+def slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "item"
+
+
+def collect_refs(value: Any) -> set[str]:
+    refs: set[str] = set()
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key == "$ref" and isinstance(child, str):
+                refs.add(child.rsplit("/", 1)[-1])
+            else:
+                refs.update(collect_refs(child))
+    elif isinstance(value, list):
+        for child in value:
+            refs.update(collect_refs(child))
+    return refs
+
+
+def import_openapi(source: dict[str, Any], title: str | None = None) -> dict[str, Any]:
+    info = source.get("info", {}) if isinstance(source.get("info"), dict) else {}
+    api_title = title or str(info.get("title", "OpenAPI"))
+    nodes: list[dict[str, Any]] = [
+        {"id": "api", "label": api_title, "kind": "service", "description": "API surface"}
+    ]
+    edges: list[dict[str, Any]] = []
+    groups = [{"id": "operations", "label": "Operations"}]
+    schemas = source.get("components", {}).get("schemas", {}) if isinstance(source.get("components"), dict) else {}
+    if not schemas and isinstance(source.get("definitions"), dict):
+        schemas = source["definitions"]
+    schema_ids: dict[str, str] = {}
+    if isinstance(schemas, dict) and schemas:
+        groups.append({"id": "schemas", "label": "Schemas"})
+        for name in sorted(schemas):
+            node_id = f"schema-{slugify(name)}"
+            schema_ids[str(name)] = node_id
+            schema = schemas[name] if isinstance(schemas[name], dict) else {}
+            required = schema.get("required", []) if isinstance(schema.get("required"), list) else []
+            nodes.append({
+                "id": node_id,
+                "label": str(name),
+                "kind": "database",
+                "group": "schemas",
+                "description": f"{len(schema.get('properties', {}))} fields · {len(required)} required",
+            })
+    methods = {"get", "post", "put", "patch", "delete", "options", "head", "trace"}
+    paths = source.get("paths", {}) if isinstance(source.get("paths"), dict) else {}
+    used_ids: set[str] = {"api", *schema_ids.values()}
+    for path_name in sorted(paths):
+        path_item = paths[path_name] if isinstance(paths[path_name], dict) else {}
+        for method in sorted(methods & set(path_item)):
+            operation = path_item[method] if isinstance(path_item[method], dict) else {}
+            raw_id = str(operation.get("operationId") or f"{method}-{path_name}")
+            base_id = f"op-{slugify(raw_id)}"
+            node_id = base_id
+            suffix = 2
+            while node_id in used_ids:
+                node_id = f"{base_id}-{suffix}"
+                suffix += 1
+            used_ids.add(node_id)
+            summary = str(operation.get("summary") or operation.get("operationId") or path_name)
+            nodes.append({
+                "id": node_id, "label": summary, "kind": "process", "group": "operations",
+                "description": f"{method.upper()} {path_name}",
+            })
+            edges.append({
+                "id": f"api-to-{node_id}", "from": "api", "to": node_id,
+                "label": method.upper(), "kind": "sync",
+            })
+            for schema_name in sorted(collect_refs(operation)):
+                if schema_name in schema_ids:
+                    edges.append({
+                        "id": f"{node_id}-uses-{schema_ids[schema_name]}",
+                        "from": node_id, "to": schema_ids[schema_name],
+                        "label": "uses", "kind": "data",
+                    })
+    return {
+        "version": "1",
+        "diagram": {"title": f"{api_title} API", "direction": "LR", "theme": "colorblind"},
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def split_sql_columns(body: str) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    for char in body:
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth = max(0, depth - 1)
+        if char == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(char)
+    if current:
+        parts.append("".join(current).strip())
+    return parts
+
+
+def normalize_sql_name(value: str) -> str:
+    return value.strip().strip("`\"[]").split(".")[-1].strip("`\"[]")
+
+
+def import_sql(text: str, title: str | None = None) -> dict[str, Any]:
+    pattern = re.compile(
+        r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([`\"\[\]\w.]+)\s*\((.*?)\)\s*;",
+        re.IGNORECASE | re.DOTALL,
+    )
+    tables: dict[str, dict[str, Any]] = {}
+    relations: list[tuple[str, str, str]] = []
+    for match in pattern.finditer(text):
+        table_name = normalize_sql_name(match.group(1))
+        columns: list[str] = []
+        primary_keys: list[str] = []
+        for definition in split_sql_columns(match.group(2)):
+            table_pk = re.match(r"(?:CONSTRAINT\s+\S+\s+)?PRIMARY\s+KEY\s*\(([^)]+)\)", definition, re.I)
+            table_fk = re.match(
+                r"(?:CONSTRAINT\s+\S+\s+)?FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+([`\"\[\]\w.]+)",
+                definition, re.I,
+            )
+            if table_pk:
+                primary_keys.extend(normalize_sql_name(item) for item in table_pk.group(1).split(","))
+                continue
+            if table_fk:
+                local = normalize_sql_name(table_fk.group(1).split(",")[0])
+                relations.append((table_name, normalize_sql_name(table_fk.group(2)), local))
+                continue
+            column_match = re.match(r"([`\"\[\]\w]+)\s+(.+)", definition, re.I | re.S)
+            if not column_match:
+                continue
+            column_name = normalize_sql_name(column_match.group(1))
+            columns.append(column_name)
+            remainder = column_match.group(2)
+            if re.search(r"\bPRIMARY\s+KEY\b", remainder, re.I):
+                primary_keys.append(column_name)
+            inline_fk = re.search(r"\bREFERENCES\s+([`\"\[\]\w.]+)", remainder, re.I)
+            if inline_fk:
+                relations.append((table_name, normalize_sql_name(inline_fk.group(1)), column_name))
+        tables[table_name] = {"columns": columns, "primary_keys": primary_keys}
+    if not tables:
+        raise ValueError("no CREATE TABLE statements found")
+    referenced = {target for _, target, _ in relations}
+    nodes = []
+    for table_name in sorted(set(tables) | referenced):
+        if table_name in tables:
+            table = tables[table_name]
+            pk_text = ", ".join(table["primary_keys"]) or "none"
+            description = f"{len(table['columns'])} columns · PK: {pk_text}"
+            kind = "database"
+        else:
+            description, kind = "Referenced external table", "external"
+        nodes.append({
+            "id": f"table-{slugify(table_name)}", "label": table_name, "kind": kind,
+            "group": "tables", "description": description,
+        })
+    edges = [
+        {
+            "id": f"fk-{slugify(source)}-{slugify(target)}-{slugify(column)}",
+            "from": f"table-{slugify(source)}", "to": f"table-{slugify(target)}",
+            "label": f"FK {column}", "kind": "data",
+        }
+        for source, target, column in relations
+    ]
+    return {
+        "version": "1",
+        "diagram": {"title": title or "Database schema", "direction": "LR", "theme": "colorblind"},
+        "groups": [{"id": "tables", "label": "Tables"}],
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def import_compose(source: dict[str, Any], title: str | None = None) -> dict[str, Any]:
+    services = source.get("services")
+    if not isinstance(services, dict) or not services:
+        raise ValueError("compose file has no services")
+    groups = [{"id": "services", "label": "Services"}]
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+    service_ids = {str(name): f"service-{slugify(str(name))}" for name in services}
+    for name in sorted(services):
+        config = services[name] if isinstance(services[name], dict) else {}
+        image = str(config.get("image") or config.get("build") or "local")
+        lowered = f"{name} {image}".lower()
+        kind = "database" if any(token in lowered for token in ("postgres", "mysql", "mongo", "redis", "mariadb")) else "service"
+        nodes.append({
+            "id": service_ids[str(name)], "label": str(name), "kind": kind,
+            "group": "services", "description": image,
+        })
+        depends = config.get("depends_on", [])
+        dependency_names = list(depends) if isinstance(depends, (list, dict)) else []
+        for dependency in sorted(str(item) for item in dependency_names):
+            if dependency in service_ids:
+                edges.append({
+                    "id": f"{service_ids[str(name)]}-depends-{service_ids[dependency]}",
+                    "from": service_ids[str(name)], "to": service_ids[dependency],
+                    "label": "depends on", "kind": "dependency",
+                })
+    volumes = source.get("volumes", {})
+    if isinstance(volumes, dict) and volumes:
+        groups.append({"id": "volumes", "label": "Volumes"})
+        for volume_name in sorted(volumes):
+            volume_id = f"volume-{slugify(str(volume_name))}"
+            nodes.append({
+                "id": volume_id, "label": str(volume_name), "kind": "database",
+                "group": "volumes", "description": "Named volume",
+            })
+            for service_name, config in services.items():
+                mounts = config.get("volumes", []) if isinstance(config, dict) else []
+                for mount in mounts if isinstance(mounts, list) else []:
+                    source_name = str(mount).split(":", 1)[0] if not isinstance(mount, dict) else str(mount.get("source", ""))
+                    if source_name == volume_name:
+                        edges.append({
+                            "id": f"{service_ids[str(service_name)]}-mounts-{volume_id}",
+                            "from": service_ids[str(service_name)], "to": volume_id,
+                            "label": "mounts", "kind": "data",
+                        })
+    return {
+        "version": "1",
+        "diagram": {"title": title or "Docker Compose", "direction": "LR", "theme": "colorblind"},
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+IGNORED_SOURCE_DIRS = {
+    ".git", ".hg", ".svn", ".venv", "venv", "node_modules", "dist", "build",
+    "__pycache__", ".next", ".turbo", "coverage",
+}
+
+
+def discover_source_files(root: Path, suffixes: set[str], max_files: int) -> list[Path]:
+    if not root.is_dir():
+        raise ValueError(f"source root is not a directory: {root}")
+    files = sorted(
+        path for path in root.rglob("*")
+        if path.is_file()
+        and path.suffix.lower() in suffixes
+        and not (set(path.relative_to(root).parts) & IGNORED_SOURCE_DIRS)
+    )
+    if len(files) > max_files:
+        raise ValueError(f"source tree has {len(files)} matching files; raise --max-files above {max_files} explicitly")
+    return files
+
+
+def unique_module_ids(relative_names: list[str]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    used: set[str] = set()
+    for name in sorted(relative_names):
+        base = f"module-{slugify(name)}"
+        candidate = base
+        suffix = 2
+        while candidate in used:
+            candidate = f"{base}-{suffix}"
+            suffix += 1
+        result[name] = candidate
+        used.add(candidate)
+    return result
+
+
+def code_groups(relative_paths: list[Path]) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    group_labels = sorted({path.parts[0] for path in relative_paths if len(path.parts) > 1})
+    groups = [{"id": f"package-{slugify(label)}", "label": label} for label in group_labels]
+    mapping = {label: f"package-{slugify(label)}" for label in group_labels}
+    return groups, mapping
+
+
+def import_python_tree(root: Path, title: str | None = None, max_files: int = 500) -> dict[str, Any]:
+    files = discover_source_files(root, {".py"}, max_files)
+    if not files:
+        raise ValueError("no Python source files found")
+    module_files: dict[str, Path] = {}
+    relative_paths: dict[str, Path] = {}
+    for path in files:
+        relative = path.relative_to(root)
+        parts = list(relative.with_suffix("").parts)
+        if parts[-1] == "__init__":
+            parts = parts[:-1]
+        module = ".".join(parts) or root.name
+        module_files[module] = path
+        relative_paths[module] = relative
+    module_ids = unique_module_ids(list(module_files))
+    groups, group_mapping = code_groups(list(relative_paths.values()))
+    nodes: list[dict[str, Any]] = []
+    for module in sorted(module_files):
+        relative = relative_paths[module]
+        node: dict[str, Any] = {
+            "id": module_ids[module], "label": module, "kind": "service",
+            "description": str(relative),
+        }
+        if len(relative.parts) > 1:
+            node["group"] = group_mapping[relative.parts[0]]
+        nodes.append(node)
+
+    def resolve_module(name: str) -> str | None:
+        candidate = name
+        while candidate:
+            if candidate in module_files:
+                return candidate
+            candidate = candidate.rsplit(".", 1)[0] if "." in candidate else ""
+        return None
+
+    relations: set[tuple[str, str]] = set()
+    for module in sorted(module_files):
+        path = module_files[module]
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (SyntaxError, UnicodeDecodeError) as exc:
+            raise ValueError(f"cannot parse {path.relative_to(root)}: {exc}") from exc
+        package_parts = module.split(".") if path.name == "__init__.py" else module.split(".")[:-1]
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    keep = max(0, len(package_parts) - (node.level - 1))
+                    base = package_parts[:keep]
+                    if node.module:
+                        base.extend(node.module.split("."))
+                    base_name = ".".join(base)
+                elif node.module:
+                    base_name = node.module
+                else:
+                    base_name = ""
+                for alias in node.names:
+                    if alias.name == "*":
+                        if base_name:
+                            imported.add(base_name)
+                    else:
+                        imported.add(f"{base_name}.{alias.name}".strip("."))
+        for dependency in imported:
+            resolved = resolve_module(dependency)
+            if resolved and resolved != module:
+                relations.add((module, resolved))
+    edges = [
+        {
+            "id": f"{module_ids[source]}-imports-{module_ids[target]}",
+            "from": module_ids[source], "to": module_ids[target],
+            "label": "imports", "kind": "dependency",
+        }
+        for source, target in sorted(relations)
+    ]
+    return {
+        "version": "1",
+        "diagram": {"title": title or f"{root.name} Python modules", "direction": "LR", "theme": "colorblind"},
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def import_typescript_tree(root: Path, title: str | None = None, max_files: int = 500) -> dict[str, Any]:
+    suffixes = {".ts", ".tsx", ".js", ".jsx"}
+    files = discover_source_files(root, suffixes, max_files)
+    files = [path for path in files if not path.name.endswith(".d.ts")]
+    if not files:
+        raise ValueError("no TypeScript or JavaScript source files found")
+    relative_paths = {str(path.relative_to(root).with_suffix("")): path.relative_to(root) for path in files}
+    module_ids = unique_module_ids(list(relative_paths))
+    absolute_to_name = {path.resolve(): name for name, path in ((name, root / rel) for name, rel in relative_paths.items())}
+    groups, group_mapping = code_groups(list(relative_paths.values()))
+    nodes: list[dict[str, Any]] = []
+    for name in sorted(relative_paths):
+        relative = relative_paths[name]
+        node: dict[str, Any] = {
+            "id": module_ids[name], "label": name.replace("/", "."), "kind": "service",
+            "description": str(relative),
+        }
+        if len(relative.parts) > 1:
+            node["group"] = group_mapping[relative.parts[0]]
+        nodes.append(node)
+
+    def resolve_relative(source_file: Path, specifier: str) -> str | None:
+        if not specifier.startswith("."):
+            return None
+        base = (source_file.parent / specifier).resolve()
+        candidates = [base]
+        candidates.extend(Path(f"{base}{suffix}") for suffix in sorted(suffixes))
+        candidates.extend((base / f"index{suffix}") for suffix in sorted(suffixes))
+        for candidate in candidates:
+            if candidate in absolute_to_name:
+                return absolute_to_name[candidate]
+        return None
+
+    pattern = re.compile(
+        r"(?:import|export)\s+(?:[\s\S]*?\s+from\s+)?[\"']([^\"']+)[\"']"
+        r"|require\s*\(\s*[\"']([^\"']+)[\"']\s*\)"
+        r"|import\s*\(\s*[\"']([^\"']+)[\"']\s*\)"
+    )
+    relations: set[tuple[str, str]] = set()
+    for name in sorted(relative_paths):
+        source_file = (root / relative_paths[name]).resolve()
+        try:
+            text = source_file.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError(f"cannot read {relative_paths[name]}: {exc}") from exc
+        for match in pattern.finditer(text):
+            specifier = next(value for value in match.groups() if value is not None)
+            resolved = resolve_relative(source_file, specifier)
+            if resolved and resolved != name:
+                relations.add((name, resolved))
+    edges = [
+        {
+            "id": f"{module_ids[source]}-imports-{module_ids[target]}",
+            "from": module_ids[source], "to": module_ids[target],
+            "label": "imports", "kind": "dependency",
+        }
+        for source, target in sorted(relations)
+    ]
+    return {
+        "version": "1",
+        "diagram": {
+            "title": title or f"{root.name} TypeScript modules",
+            "direction": "LR", "theme": "colorblind",
+        },
+        "groups": groups,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def import_source(
+    path: Path, source_type: str, title: str | None = None, max_files: int = 500,
+) -> dict[str, Any]:
+    if source_type == "auto":
+        if path.is_dir():
+            python_count = sum(1 for item in path.rglob("*.py") if not (set(item.relative_to(path).parts) & IGNORED_SOURCE_DIRS))
+            typescript_count = sum(
+                1 for item in path.rglob("*")
+                if item.suffix.lower() in {".ts", ".tsx", ".js", ".jsx"}
+                and not (set(item.relative_to(path).parts) & IGNORED_SOURCE_DIRS)
+            )
+            if python_count == typescript_count == 0:
+                raise ValueError("cannot detect source type in directory; use --type")
+            source_type = "python" if python_count >= typescript_count else "typescript"
+        elif path.suffix.lower() == ".sql":
+            source_type = "sql"
+        else:
+            loaded = load_data(path)
+            if "openapi" in loaded or "swagger" in loaded:
+                source_type = "openapi"
+            elif "services" in loaded:
+                source_type = "compose"
+            else:
+                raise ValueError("cannot detect source type; use --type")
+    if source_type == "python":
+        return import_python_tree(path, title, max_files)
+    if source_type == "typescript":
+        return import_typescript_tree(path, title, max_files)
+    if source_type == "sql":
+        return import_sql(path.read_text(encoding="utf-8"), title)
+    loaded = load_data(path)
+    if source_type == "openapi":
+        return import_openapi(loaded, title)
+    if source_type == "compose":
+        return import_compose(loaded, title)
+    raise ValueError(f"unsupported source type: {source_type}")
+
+
+def validate_blueprint(data: dict[str, Any]) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    if str(data.get("version", "")) != "1":
+        issues.append(issue("error", "blueprint.version", "version must be \"1\""))
+    metadata = data.get("blueprint")
+    if not isinstance(metadata, dict) or not metadata.get("title"):
+        issues.append(issue("error", "blueprint.metadata", "blueprint requires a title"))
+        metadata = {}
+    if metadata.get("theme", "colorblind") not in ALLOWED_THEMES:
+        issues.append(issue("error", "blueprint.theme", f"unknown theme: {metadata.get('theme')}"))
+    if metadata.get("direction", "LR") not in ALLOWED_DIRECTIONS:
+        issues.append(issue("error", "blueprint.direction", "direction must be LR or TB"))
+    elements = data.get("elements")
+    relations = data.get("relations", [])
+    if not isinstance(elements, list) or not elements:
+        return issues + [issue("error", "blueprint.elements", "elements must be a non-empty array")]
+    if not isinstance(relations, list):
+        return issues + [issue("error", "blueprint.relations", "relations must be an array")]
+    element_ids: set[str] = set()
+    element_map: dict[str, dict[str, Any]] = {}
+    for index, element in enumerate(elements):
+        if not isinstance(element, dict) or not element.get("id") or not element.get("label"):
+            issues.append(issue("error", "blueprint.element.required", f"element {index} requires id and label"))
+            continue
+        element_id = str(element["id"])
+        if not valid_semantic_id(element_id):
+            issues.append(issue("error", "id.format", f"invalid element id: {element_id}", element_id))
+        if element_id in element_ids:
+            issues.append(issue("error", "id.duplicate", f"duplicate element id: {element_id}", element_id))
+        element_ids.add(element_id)
+        element_map[element_id] = element
+        scope = element.get("scope", "component")
+        if scope not in ALLOWED_BLUEPRINT_SCOPES:
+            issues.append(issue("error", "blueprint.scope", f"unknown scope: {scope}", element_id))
+        kind = element.get("kind")
+        if kind is not None and kind not in ALLOWED_KINDS:
+            issues.append(issue("error", "blueprint.kind", f"unknown kind: {kind}", element_id))
+        for field in ("parent", "deploy_to"):
+            target = element.get(field)
+            if target is not None and not isinstance(target, str):
+                issues.append(issue("error", f"blueprint.{field}", f"{field} must be an element id", element_id))
+    for element_id, element in element_map.items():
+        parent = element.get("parent")
+        if parent and parent not in element_ids:
+            issues.append(issue("error", "blueprint.parent", f"unknown parent: {parent}", element_id))
+        deployment = element.get("deploy_to")
+        if deployment and deployment not in element_ids:
+            issues.append(issue("error", "blueprint.deploy-to", f"unknown deployment target: {deployment}", element_id))
+        elif deployment and element_map[deployment].get("scope") != "infrastructure":
+            issues.append(issue(
+                "error", "blueprint.deploy-to",
+                f"deployment target must have infrastructure scope: {deployment}", element_id,
+            ))
+        visited: set[str] = set()
+        current = element_id
+        while current in element_map and element_map[current].get("parent"):
+            current = str(element_map[current]["parent"])
+            if current in visited or current == element_id:
+                issues.append(issue("error", "blueprint.parent-cycle", "parent hierarchy contains a cycle", element_id))
+                break
+            visited.add(current)
+    relation_ids: set[str] = set()
+    for index, relation in enumerate(relations):
+        if not isinstance(relation, dict) or not relation.get("from") or not relation.get("to"):
+            issues.append(issue("error", "blueprint.relation.required", f"relation {index} requires from and to"))
+            continue
+        source, target = str(relation["from"]), str(relation["to"])
+        relation_id = str(relation.get("id", f"{source}-to-{target}-{index + 1}"))
+        if not valid_semantic_id(relation_id):
+            issues.append(issue("error", "id.format", f"invalid relation id: {relation_id}", relation_id))
+        if relation_id in relation_ids:
+            issues.append(issue("error", "id.duplicate", f"duplicate relation id: {relation_id}", relation_id))
+        if relation_id in element_ids:
+            issues.append(issue("error", "id.duplicate", f"relation id conflicts with element: {relation_id}", relation_id))
+        relation_ids.add(relation_id)
+        if source not in element_ids:
+            issues.append(issue("error", "blueprint.relation.source", f"unknown source: {source}", relation_id))
+        if target not in element_ids:
+            issues.append(issue("error", "blueprint.relation.target", f"unknown target: {target}", relation_id))
+        if source == target:
+            issues.append(issue("error", "blueprint.relation.self-loop", "self-relations are not supported", relation_id))
+        if relation.get("kind", "sync") not in ALLOWED_EDGE_KINDS:
+            issues.append(issue("error", "blueprint.relation.kind", "unknown relation kind", relation_id))
+    decisions = data.get("decisions", [])
+    if not isinstance(decisions, list):
+        issues.append(issue("error", "blueprint.decisions", "decisions must be an array"))
+        decisions = []
+    decision_ids: set[str] = set()
+    for index, decision in enumerate(decisions):
+        if not isinstance(decision, dict) or not decision.get("id") or not decision.get("title"):
+            issues.append(issue("error", "blueprint.decision.required", f"decision {index} requires id and title"))
+            continue
+        decision_id = str(decision["id"])
+        if not valid_semantic_id(decision_id):
+            issues.append(issue("error", "id.format", f"invalid decision id: {decision_id}", decision_id))
+        if decision_id in decision_ids:
+            issues.append(issue("error", "id.duplicate", f"duplicate decision id: {decision_id}", decision_id))
+        decision_ids.add(decision_id)
+        status = decision.get("status", "proposed")
+        if status not in ALLOWED_DECISION_STATUS:
+            issues.append(issue("error", "blueprint.decision.status", f"unknown status: {status}", decision_id))
+        affects = decision.get("affects", [])
+        if not isinstance(affects, list) or not affects:
+            issues.append(issue("error", "blueprint.decision.affects", "decision requires affected elements", decision_id))
+        else:
+            for element_id in affects:
+                if element_id not in element_ids:
+                    issues.append(issue(
+                        "error", "blueprint.decision.affects",
+                        f"unknown affected element: {element_id}", decision_id,
+                    ))
+    views = data.get("views")
+    if views is not None:
+        if not isinstance(views, list) or not views:
+            issues.append(issue("error", "blueprint.views", "views must be a non-empty array"))
+        else:
+            unknown = sorted(set(views) - ALLOWED_BLUEPRINT_VIEWS)
+            if unknown:
+                issues.append(issue("error", "blueprint.views", f"unknown views: {', '.join(unknown)}"))
+    return issues
+
+
+def blueprint_default_kind(element: dict[str, Any]) -> str:
+    if element.get("kind"):
+        return str(element["kind"])
+    return {
+        "actor": "client",
+        "external": "external",
+        "data": "database",
+        "infrastructure": "external",
+    }.get(str(element.get("scope", "component")), "service")
+
+
+def blueprint_groups(
+    elements: list[dict[str, Any]], field: str, prefix: str,
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    labels = sorted({str(element[field]) for element in elements if element.get(field)})
+    groups: list[dict[str, Any]] = []
+    mapping: dict[str, str] = {}
+    used: set[str] = {str(element["id"]) for element in elements}
+    for label in labels:
+        base = f"group-{prefix}-{slugify(label)}"
+        group_id = base
+        suffix = 2
+        while group_id in used:
+            group_id = f"{base}-{suffix}"
+            suffix += 1
+        used.add(group_id)
+        mapping[label] = group_id
+        groups.append({"id": group_id, "label": label})
+    return groups, mapping
+
+
+def blueprint_node(
+    element: dict[str, Any], group: str | None = None, link: str | None = None,
+) -> dict[str, Any]:
+    description_parts = [
+        str(element[field]).strip()
+        for field in ("description", "technology", "runtime")
+        if element.get(field)
+    ]
+    node: dict[str, Any] = {
+        "id": str(element["id"]),
+        "label": str(element["label"]),
+        "kind": blueprint_default_kind(element),
+    }
+    if description_parts:
+        node["description"] = " · ".join(dict.fromkeys(description_parts))
+    if group:
+        node["group"] = group
+    if link:
+        node["link"] = link
+    return node
+
+
+def blueprint_project_endpoint(
+    element_id: str, visible: set[str], elements: dict[str, dict[str, Any]],
+) -> str | None:
+    current = element_id
+    visited: set[str] = set()
+    while current not in visible:
+        if current in visited or current not in elements or not elements[current].get("parent"):
+            return None
+        visited.add(current)
+        current = str(elements[current]["parent"])
+    return current
+
+
+def blueprint_edges(
+    relations: list[dict[str, Any]],
+    visible: set[str],
+    elements: dict[str, dict[str, Any]],
+    project: bool = False,
+) -> list[dict[str, Any]]:
+    edges: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    used_ids: set[str] = set()
+    for index, relation in enumerate(relations, start=1):
+        source, target = str(relation["from"]), str(relation["to"])
+        if project:
+            source = blueprint_project_endpoint(source, visible, elements) or ""
+            target = blueprint_project_endpoint(target, visible, elements) or ""
+        if not source or not target or source == target or source not in visible or target not in visible:
+            continue
+        label = str(relation.get("label", ""))
+        kind = str(relation.get("kind", "sync"))
+        key = (source, target, label, kind)
+        if key in seen:
+            continue
+        seen.add(key)
+        base_id = str(relation.get("id", f"{source}-to-{target}-{index}"))
+        edge_id = base_id
+        suffix = 2
+        while edge_id in used_ids:
+            edge_id = f"{base_id}-{suffix}"
+            suffix += 1
+        used_ids.add(edge_id)
+        edges.append({"id": edge_id, "from": source, "to": target, "label": label, "kind": kind})
+    return edges
+
+
+def blueprint_to_ir(
+    data: dict[str, Any], requested_views: list[str] | None = None,
+) -> dict[str, Any]:
+    validation = validate_blueprint(data)
+    errors = [item for item in validation if item["level"] == "error"]
+    if errors:
+        raise ValueError(f"invalid blueprint: {errors[0]['message']}")
+    metadata = data["blueprint"]
+    title = str(metadata["title"])
+    theme = str(metadata.get("theme", "colorblind"))
+    direction = str(metadata.get("direction", "LR"))
+    element_list = [copy.deepcopy(element) for element in data["elements"]]
+    elements = {str(element["id"]): element for element in element_list}
+    relations = [copy.deepcopy(relation) for relation in data.get("relations", [])]
+    default_views = ["context", "logical", "data", "deployment", "security"]
+    if data.get("decisions"):
+        default_views.append("decisions")
+    views = requested_views or data.get("views") or default_views
+    unknown = sorted(set(views) - ALLOWED_BLUEPRINT_VIEWS)
+    if unknown:
+        raise ValueError(f"unknown blueprint views: {', '.join(unknown)}")
+    pages: list[dict[str, Any]] = []
+
+    if "context" in views:
+        context_elements = [
+            element for element in element_list
+            if element.get("scope", "component") in {"actor", "external", "system"}
+        ]
+        if not any(element.get("scope") == "system" for element in context_elements):
+            context_elements.extend(
+                element for element in element_list
+                if not element.get("parent") and element not in context_elements
+            )
+        visible = {str(element["id"]) for element in context_elements}
+        nodes = [
+            blueprint_node(
+                element,
+                link="logical" if element.get("scope") == "system" and "logical" in views else None,
+            )
+            for element in context_elements
+        ]
+        pages.append({
+            "id": "context", "title": f"{title} — System Context",
+            "nodes": nodes, "edges": blueprint_edges(relations, visible, elements, project=True),
+        })
+
+    if "logical" in views:
+        parent_ids = {
+            str(element["parent"]) for element in element_list if element.get("parent")
+        }
+        logical_elements = [
+            element for element in element_list
+            if element.get("scope", "component") != "infrastructure"
+            and not (element.get("scope") == "system" and str(element["id"]) in parent_ids)
+        ]
+        groups, group_map = blueprint_groups(logical_elements, "domain", "domain")
+        nodes = []
+        for element in logical_elements:
+            link = None
+            if element.get("scope") == "data" and "data" in views:
+                link = "data"
+            elif element.get("deploy_to") and "deployment" in views:
+                link = "deployment"
+            nodes.append(blueprint_node(element, group_map.get(str(element.get("domain"))), link))
+        visible = {str(element["id"]) for element in logical_elements}
+        pages.append({
+            "id": "logical", "title": f"{title} — Logical Architecture",
+            "groups": groups, "nodes": nodes,
+            "edges": blueprint_edges(relations, visible, elements),
+        })
+
+    if "data" in views:
+        data_ids = {
+            str(element["id"]) for element in element_list
+            if element.get("scope") == "data" or blueprint_default_kind(element) in {"database", "queue"}
+        }
+        for relation in relations:
+            source, target = str(relation["from"]), str(relation["to"])
+            if relation.get("kind") == "data" or source in data_ids or target in data_ids:
+                data_ids.update((str(relation["from"]), str(relation["to"])))
+        data_elements = [element for element in element_list if str(element["id"]) in data_ids]
+        if data_elements:
+            groups, group_map = blueprint_groups(data_elements, "domain", "domain")
+            pages.append({
+                "id": "data", "title": f"{title} — Data Flow",
+                "groups": groups,
+                "nodes": [
+                    blueprint_node(element, group_map.get(str(element.get("domain"))))
+                    for element in data_elements
+                ],
+                "edges": blueprint_edges(relations, data_ids, elements),
+            })
+
+    if "deployment" in views:
+        deployment_elements = [
+            element for element in element_list
+            if element.get("scope") == "infrastructure" or element.get("deploy_to")
+        ]
+        if deployment_elements:
+            groups, group_map = blueprint_groups(deployment_elements, "zone", "zone")
+            visible = {str(element["id"]) for element in deployment_elements}
+            infrastructure_ids = {
+                str(element["id"]) for element in deployment_elements
+                if element.get("scope") == "infrastructure"
+            }
+            deployment_edges = blueprint_edges(relations, infrastructure_ids, elements)
+            for element in deployment_elements:
+                target = element.get("deploy_to")
+                if target and target in visible:
+                    deployment_edges.append({
+                        "id": f"deploy-{element['id']}-to-{target}",
+                        "from": str(target), "to": str(element["id"]),
+                        "label": "hosts", "kind": "dependency",
+                    })
+            pages.append({
+                "id": "deployment", "title": f"{title} — Deployment",
+                "diagram": {"direction": "TB"},
+                "groups": groups,
+                "nodes": [
+                    blueprint_node(element, group_map.get(str(element.get("zone"))))
+                    for element in deployment_elements
+                ],
+                "edges": deployment_edges,
+            })
+
+    if "security" in views:
+        zoned_ids = {
+            str(element["id"]) for element in element_list
+            if element.get("zone") and element.get("scope") != "infrastructure"
+        }
+        for relation in relations:
+            source, target = str(relation["from"]), str(relation["to"])
+            if source in zoned_ids or target in zoned_ids:
+                if elements[source].get("scope") in {"actor", "external"}:
+                    zoned_ids.add(source)
+                if elements[target].get("scope") in {"actor", "external"}:
+                    zoned_ids.add(target)
+        security_elements = [element for element in element_list if str(element["id"]) in zoned_ids]
+        if security_elements:
+            groups, group_map = blueprint_groups(security_elements, "zone", "zone")
+            pages.append({
+                "id": "security", "title": f"{title} — Network & Security Zones",
+                "groups": groups,
+                "nodes": [
+                    blueprint_node(element, group_map.get(str(element.get("zone"))))
+                    for element in security_elements
+                ],
+                "edges": blueprint_edges(relations, zoned_ids, elements),
+            })
+    if "decisions" in views and data.get("decisions"):
+        owned_affected: dict[str, list[str]] = {}
+        affected_owner: dict[str, str] = {}
+        for decision in data["decisions"]:
+            decision_id = str(decision["id"])
+            owned_affected[decision_id] = []
+            for element_id in decision.get("affects", []):
+                element_id = str(element_id)
+                if element_id not in affected_owner:
+                    affected_owner[element_id] = decision_id
+                    owned_affected[decision_id].append(element_id)
+        affected_ids = set(affected_owner)
+        decision_nodes = []
+        decision_edges = []
+        lane_starts: dict[str, int] = {}
+        lane_cursor = 100
+        for decision in data["decisions"]:
+            decision_id = str(decision["id"])
+            lane_starts[decision_id] = lane_cursor
+            lane_cursor += max(360, len(owned_affected[decision_id]) * 260) + 100
+        for decision in data["decisions"]:
+            decision_id = f"decision-{decision['id']}"
+            status = str(decision.get("status", "proposed"))
+            summary = str(decision.get("decision") or decision.get("rationale") or "").strip()
+            description = status.upper()
+            if summary:
+                description += f" · {summary}"
+            lane_id = str(decision["id"])
+            lane_width = max(360, len(owned_affected[lane_id]) * 260)
+            decision_nodes.append({
+                "id": decision_id,
+                "label": str(decision["title"]),
+                "kind": "note",
+                "description": description,
+                "size": {"width": 280, "height": 100},
+                "position": {
+                    "x": lane_starts[lane_id] + (lane_width - 280) // 2,
+                    "y": 100,
+                },
+            })
+            for element_id in decision.get("affects", []):
+                decision_edges.append({
+                    "id": f"{decision_id}-affects-{element_id}",
+                    "from": decision_id,
+                    "to": str(element_id),
+                    "label": "affects",
+                    "kind": "association",
+                })
+        affected_nodes = []
+        lane_offsets: dict[str, int] = defaultdict(int)
+        for element_id in sorted(
+            affected_ids,
+            key=lambda item: (
+                list(lane_starts).index(affected_owner[item]),
+                owned_affected[affected_owner[item]].index(item),
+            ),
+        ):
+            lane_id = affected_owner[element_id]
+            node = blueprint_node(
+                elements[element_id],
+                link=(
+                    "logical"
+                    if "logical" in views
+                    and elements[element_id].get("scope") != "infrastructure"
+                    else None
+                ),
+            )
+            node["position"] = {
+                "x": lane_starts[lane_id] + lane_offsets[lane_id] * 260,
+                "y": 360,
+            }
+            lane_offsets[lane_id] += 1
+            affected_nodes.append(node)
+        pages.append({
+            "id": "decisions", "title": f"{title} — Architecture Decisions",
+            "diagram": {"direction": "TB"},
+            "nodes": decision_nodes + affected_nodes,
+            "edges": decision_edges,
+        })
+    if not pages:
+        raise ValueError("requested blueprint views produced no pages")
+    page_ids = {str(page["id"]) for page in pages}
+    for page in pages:
+        for node in page.get("nodes", []):
+            if node.get("link") not in page_ids:
+                node.pop("link", None)
+    return {
+        "version": "1",
+        "diagram": {"direction": direction, "theme": theme},
+        "pages": pages,
+    }
+
+
+def patch_target(data: dict[str, Any], page_id: str | None) -> dict[str, Any]:
+    if "pages" not in data:
+        if page_id:
+            raise ValueError("page selector is only valid for multi-page IR")
+        return data
+    if not page_id:
+        raise ValueError("each operation on multi-page IR requires a page")
+    for page in data.get("pages", []):
+        if isinstance(page, dict) and page.get("id") == page_id:
+            return page
+    raise ValueError(f"unknown page: {page_id}")
+
+
+def find_by_id(items: list[dict[str, Any]], item_id: str, kind: str) -> dict[str, Any]:
+    for item in items:
+        if str(item.get("id")) == item_id:
+            return item
+    raise ValueError(f"unknown {kind}: {item_id}")
+
+
+def apply_ir_operations(data: dict[str, Any], operations: list[dict[str, Any]]) -> dict[str, Any]:
+    result = copy.deepcopy(data)
+    for index, operation in enumerate(operations):
+        if not isinstance(operation, dict) or not operation.get("op"):
+            raise ValueError(f"operation {index} requires op")
+        op = str(operation["op"])
+        target = patch_target(result, operation.get("page"))
+        target.setdefault("groups", [])
+        target.setdefault("nodes", [])
+        target.setdefault("edges", [])
+        nodes, edges, groups = target["nodes"], target["edges"], target["groups"]
+        if op == "set-diagram":
+            updates = operation.get("set")
+            if not isinstance(updates, dict):
+                raise ValueError("set-diagram requires set object")
+            target.setdefault("diagram", {}).update(updates)
+        elif op == "add-group":
+            group = operation.get("group")
+            if not isinstance(group, dict):
+                raise ValueError("add-group requires group object")
+            groups.append(copy.deepcopy(group))
+        elif op == "remove-group":
+            group_id = str(operation.get("id", ""))
+            if any(node.get("group") == group_id for node in nodes):
+                raise ValueError(f"group {group_id} is still in use")
+            groups.remove(find_by_id(groups, group_id, "group"))
+        elif op == "add-node":
+            node = operation.get("node")
+            if not isinstance(node, dict):
+                raise ValueError("add-node requires node object")
+            nodes.append(copy.deepcopy(node))
+        elif op in {"update-node", "move-node"}:
+            node = find_by_id(nodes, str(operation.get("id", "")), "node")
+            updates = operation.get("set") if op == "update-node" else {"position": operation.get("position")}
+            if not isinstance(updates, dict) or "id" in updates:
+                raise ValueError(f"{op} requires safe mutable fields")
+            node.update(copy.deepcopy(updates))
+        elif op == "remove-node":
+            node_id = str(operation.get("id", ""))
+            incident = [edge for edge in edges if edge.get("from") == node_id or edge.get("to") == node_id]
+            if incident and not operation.get("cascade"):
+                raise ValueError(f"node {node_id} has {len(incident)} incident edges; set cascade=true")
+            nodes.remove(find_by_id(nodes, node_id, "node"))
+            if incident:
+                target["edges"] = [edge for edge in edges if edge not in incident]
+        elif op == "add-edge":
+            edge = operation.get("edge")
+            if not isinstance(edge, dict):
+                raise ValueError("add-edge requires edge object")
+            edges.append(copy.deepcopy(edge))
+        elif op == "update-edge":
+            edge = find_by_id(edges, str(operation.get("id", "")), "edge")
+            updates = operation.get("set")
+            if not isinstance(updates, dict) or "id" in updates:
+                raise ValueError("update-edge requires safe mutable fields")
+            edge.update(copy.deepcopy(updates))
+        elif op == "remove-edge":
+            edges.remove(find_by_id(edges, str(operation.get("id", "")), "edge"))
+        else:
+            raise ValueError(f"unsupported operation: {op}")
+    issues = validate_ir(result)
+    errors = [item for item in issues if item["level"] == "error"]
+    if errors:
+        raise ValueError(f"patch would create invalid IR: {errors[0]['message']}")
+    return result
+
+
+def find_drawio() -> str | None:
+    candidates = ["drawio", "draw.io"]
+    if sys.platform == "darwin":
+        candidates.append("/Applications/draw.io.app/Contents/MacOS/draw.io")
+    if os.name == "nt":
+        candidates.append(r"C:\Program Files\draw.io\draw.io.exe")
+    for candidate in candidates:
+        if os.path.isabs(candidate) and os.path.exists(candidate):
+            return candidate
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return None
+
+
+def command_compile(args: argparse.Namespace) -> int:
+    path = Path(args.input)
+    data = load_data(path)
+    if args.theme_file:
+        data = apply_theme_pack(data, load_theme_pack(Path(args.theme_file)))
+    issues = validate_ir(data)
+    if any(item["level"] == "error" for item in issues):
+        print_report(issues)
+        return 2
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    compile_drawio(data).write(output, encoding="utf-8", xml_declaration=True)
+    documents = page_documents(data)
+    print_report(issues, {
+        "output": str(output),
+        "pages": len(documents),
+        "nodes": sum(len(page.get("nodes", [])) for _, page in documents),
+        "edges": sum(len(page.get("edges", [])) for _, page in documents),
+    })
+    return 0
+
+
+def command_import(args: argparse.Namespace) -> int:
+    data = import_source(Path(args.input), args.type, args.title, args.max_files)
+    issues = validate_ir(data)
+    if any(item["level"] == "error" for item in issues):
+        print_report(issues)
+        return 2
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print_report(issues, {
+        "output": str(output), "type": args.type,
+        "nodes": len(data.get("nodes", [])), "edges": len(data.get("edges", [])),
+    })
+    return 0
+
+
+def command_blueprint(args: argparse.Namespace) -> int:
+    source = load_data(Path(args.input))
+    source_issues = validate_blueprint(source)
+    if any(item["level"] == "error" for item in source_issues):
+        print_report(source_issues)
+        return 2
+    views = [item.strip() for item in args.views.split(",") if item.strip()] if args.views else None
+    diagram_ir = blueprint_to_ir(source, views)
+    if args.theme_file:
+        diagram_ir = apply_theme_pack(diagram_ir, load_theme_pack(Path(args.theme_file)))
+    ir_issues = validate_ir(diagram_ir)
+    if any(item["level"] == "error" for item in ir_issues):
+        print_report(source_issues + ir_issues)
+        return 2
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    compile_drawio(diagram_ir).write(output, encoding="utf-8", xml_declaration=True)
+    drawio_issues, drawio_summary = validate_drawio(output)
+    if args.ir_output:
+        ir_output = Path(args.ir_output)
+        ir_output.parent.mkdir(parents=True, exist_ok=True)
+        ir_output.write_text(
+            json.dumps(diagram_ir, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    if args.preview_dir:
+        preview_dir = Path(args.preview_dir)
+        preview_dir.mkdir(parents=True, exist_ok=True)
+        for page_id, page in page_documents(diagram_ir):
+            compile_svg(page).write(
+                preview_dir / f"{page_id}.svg",
+                encoding="utf-8",
+                xml_declaration=True,
+            )
+    all_issues = source_issues + ir_issues + drawio_issues
+    summary = {
+        **drawio_summary,
+        "output": str(output),
+        "ir_output": str(args.ir_output) if args.ir_output else None,
+        "preview_dir": str(args.preview_dir) if args.preview_dir else None,
+    }
+    print_report(all_issues, summary)
+    if any(item["level"] == "error" for item in all_issues):
+        return 2
+    if args.strict and score_issues(all_issues) < 90:
+        return 3
+    return 0
+
+
+def command_patch(args: argparse.Namespace) -> int:
+    data = load_data(Path(args.input))
+    patch_data = load_data(Path(args.patch))
+    operations = patch_data.get("operations")
+    if not isinstance(operations, list):
+        raise ValueError("patch file requires an operations array")
+    result = apply_ir_operations(data, operations)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print_report(validate_ir(result), {"output": str(output), "operations": len(operations)})
+    return 0
+
+
+def command_preview(args: argparse.Namespace) -> int:
+    data = load_data(Path(args.input))
+    if args.theme_file:
+        data = apply_theme_pack(data, load_theme_pack(Path(args.theme_file)))
+    issues = validate_ir(data)
+    if any(item["level"] == "error" for item in issues):
+        print_report(issues)
+        return 2
+    page = select_page(data, args.page)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    compile_svg(page).write(output, encoding="utf-8", xml_declaration=True)
+    print_report(issues, {"output": str(output), "page": args.page or "main"})
+    return 0
+
+
+def command_audit(args: argparse.Namespace) -> int:
+    path = Path(args.input)
+    previews: list[str] = []
+    if path.suffix.lower() == ".drawio":
+        issues, summary = validate_drawio(path)
+    else:
+        source = load_data(path)
+        if "blueprint" in source:
+            issues = validate_blueprint(source)
+            diagram_ir = blueprint_to_ir(source) if not any(item["level"] == "error" for item in issues) else None
+        else:
+            diagram_ir = source
+            issues = []
+        if diagram_ir is not None:
+            if args.theme_file:
+                diagram_ir = apply_theme_pack(diagram_ir, load_theme_pack(Path(args.theme_file)))
+            issues.extend(validate_ir(diagram_ir))
+            documents = page_documents(diagram_ir)
+            if not any(item["level"] == "error" for item in issues):
+                with tempfile.TemporaryDirectory() as directory:
+                    generated = Path(directory) / "audit.drawio"
+                    compile_drawio(diagram_ir).write(
+                        generated, encoding="utf-8", xml_declaration=True
+                    )
+                    generated_issues, summary = validate_drawio(generated)
+                issues.extend(generated_issues)
+            else:
+                summary = {
+                    "pages": len(documents),
+                    "nodes": sum(len(page.get("nodes", [])) for _, page in documents),
+                    "edges": sum(len(page.get("edges", [])) for _, page in documents),
+                    "groups": sum(len(page.get("groups", [])) for _, page in documents),
+                }
+            if args.preview_dir and not any(item["level"] == "error" for item in issues):
+                preview_dir = Path(args.preview_dir)
+                preview_dir.mkdir(parents=True, exist_ok=True)
+                for page_id, page in documents:
+                    preview_path = preview_dir / f"{page_id}.svg"
+                    compile_svg(page).write(preview_path, encoding="utf-8", xml_declaration=True)
+                    previews.append(str(preview_path))
+        else:
+            summary = {"pages": 0, "nodes": 0, "edges": 0, "groups": 0}
+    report = build_audit_report(issues, summary, previews)
+    if args.output:
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    if report["errors"]:
+        return 2
+    if args.strict and report["score"] < 90:
+        return 3
+    return 0
+
+
+def command_validate(args: argparse.Namespace) -> int:
+    path = Path(args.input)
+    if path.suffix.lower() == ".drawio":
+        issues, summary = validate_drawio(path)
+    else:
+        data = load_data(path)
+        documents = page_documents(data)
+        issues, summary = validate_ir(data), {
+            "pages": len(documents),
+            "nodes": sum(len(page.get("nodes", [])) for _, page in documents),
+            "edges": sum(len(page.get("edges", [])) for _, page in documents),
+            "groups": sum(len(page.get("groups", [])) for _, page in documents),
+        }
+    print_report(issues, summary)
+    score = score_issues(issues)
+    if any(item["level"] == "error" for item in issues):
+        return 2
+    if args.strict and score < 90:
+        return 3
+    return 0
+
+
+def command_inspect(args: argparse.Namespace) -> int:
+    path = Path(args.input)
+    issues, summary = validate_drawio(path)
+    labels = []
+    for cell in load_drawio_root(path).findall(".//mxCell[@vertex='1']"):
+        if "swimlane=1" not in cell.get("style", ""):
+            labels.append({"id": cell.get("id"), "label": cell.get("value", "")})
+    summary["labels"] = labels
+    print(json.dumps({"summary": summary, "score": score_issues(issues), "issues": issues}, indent=2, ensure_ascii=False))
+    return 0
+
+
+def command_render(args: argparse.Namespace) -> int:
+    binary = find_drawio()
+    if not binary:
+        print("draw.io Desktop CLI was not found", file=sys.stderr)
+        return 4
+    output = Path(args.output)
+    fmt = args.format or output.suffix.lstrip(".").lower()
+    if fmt == "jpeg":
+        fmt = "jpg"
+    if fmt not in {"png", "svg", "pdf", "jpg"}:
+        print(f"unsupported export format: {fmt}", file=sys.stderr)
+        return 2
+    output.parent.mkdir(parents=True, exist_ok=True)
+    command = [binary, "-x", "-f", fmt, "-o", str(output)]
+    if fmt == "png":
+        command += ["--width", str(args.width)]
+    if args.embed and fmt in {"png", "svg", "pdf"}:
+        command.append("-e")
+    command.append(str(Path(args.input)))
+    completed = subprocess.run(command, text=True, capture_output=True, timeout=90)
+    if completed.returncode != 0:
+        print(completed.stderr or completed.stdout, file=sys.stderr)
+        return completed.returncode
+    print(json.dumps({"output": str(output), "format": fmt, "binary": binary}, indent=2))
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version=VERSION)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    compile_parser = subparsers.add_parser("compile", help="compile Diagram IR to .drawio")
+    compile_parser.add_argument("input")
+    compile_parser.add_argument("-o", "--output", required=True)
+    compile_parser.add_argument("--theme-file")
+    compile_parser.set_defaults(func=command_compile)
+
+    import_parser = subparsers.add_parser(
+        "import", help="convert source trees, OpenAPI, SQL, or Compose to Diagram IR"
+    )
+    import_parser.add_argument("input")
+    import_parser.add_argument("-o", "--output", required=True)
+    import_parser.add_argument(
+        "--type",
+        choices=["auto", "python", "typescript", "openapi", "sql", "compose"],
+        default="auto",
+    )
+    import_parser.add_argument("--title")
+    import_parser.add_argument("--max-files", type=int, default=500)
+    import_parser.set_defaults(func=command_import)
+
+    blueprint_parser = subparsers.add_parser(
+        "blueprint", help="generate a multi-view architecture blueprint"
+    )
+    blueprint_parser.add_argument("input")
+    blueprint_parser.add_argument("-o", "--output", required=True)
+    blueprint_parser.add_argument("--ir-output")
+    blueprint_parser.add_argument("--preview-dir")
+    blueprint_parser.add_argument(
+        "--views",
+        help="comma-separated context,logical,data,deployment,security,decisions views",
+    )
+    blueprint_parser.add_argument("--strict", action="store_true")
+    blueprint_parser.add_argument("--theme-file")
+    blueprint_parser.set_defaults(func=command_blueprint)
+
+    patch_parser = subparsers.add_parser("patch", help="apply atomic semantic operations to Diagram IR")
+    patch_parser.add_argument("input")
+    patch_parser.add_argument("patch")
+    patch_parser.add_argument("-o", "--output", required=True)
+    patch_parser.set_defaults(func=command_patch)
+
+    preview_parser = subparsers.add_parser("preview", help="create a dependency-free SVG review preview")
+    preview_parser.add_argument("input")
+    preview_parser.add_argument("-o", "--output", required=True)
+    preview_parser.add_argument("--page")
+    preview_parser.add_argument("--theme-file")
+    preview_parser.set_defaults(func=command_preview)
+
+    audit_parser = subparsers.add_parser(
+        "audit", help="produce a quality report, repair suggestions, and review previews"
+    )
+    audit_parser.add_argument("input")
+    audit_parser.add_argument("-o", "--output")
+    audit_parser.add_argument("--preview-dir")
+    audit_parser.add_argument("--theme-file")
+    audit_parser.add_argument("--strict", action="store_true")
+    audit_parser.set_defaults(func=command_audit)
+
+    validate_parser = subparsers.add_parser("validate", help="validate Diagram IR or .drawio")
+    validate_parser.add_argument("input")
+    validate_parser.add_argument("--strict", action="store_true")
+    validate_parser.set_defaults(func=command_validate)
+
+    inspect_parser = subparsers.add_parser("inspect", help="summarize a .drawio file")
+    inspect_parser.add_argument("input")
+    inspect_parser.set_defaults(func=command_inspect)
+
+    render_parser = subparsers.add_parser("render", help="export through draw.io Desktop")
+    render_parser.add_argument("input")
+    render_parser.add_argument("-o", "--output", required=True)
+    render_parser.add_argument("-f", "--format")
+    render_parser.add_argument("--width", type=int, default=2000)
+    render_parser.add_argument("--embed", action="store_true")
+    render_parser.set_defaults(func=command_render)
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
+    try:
+        args = parser.parse_args()
+        return int(args.func(args))
+    except (OSError, ValueError, json.JSONDecodeError, ET.ParseError, subprocess.TimeoutExpired) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

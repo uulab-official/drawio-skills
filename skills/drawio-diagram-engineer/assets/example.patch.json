@@ -1,0 +1,14 @@
+{
+  "operations": [
+    {
+      "op": "update-node",
+      "id": "api",
+      "set": {"description": "Authentication and routing"}
+    },
+    {
+      "op": "move-node",
+      "id": "api",
+      "position": {"x": 420, "y": 240}
+    }
+  ]
+}

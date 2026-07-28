@@ -1,0 +1,63 @@
+{
+  "version": "1",
+  "provenance": {
+    "source": "https://github.com/jgraph/drawio-mcp/blob/main/shared/style-reference.md",
+    "license": "Apache-2.0",
+    "scope": "Core mxGraph and draw.io Shapes.js identifiers only"
+  },
+  "shapes": {
+    "client": {
+      "shape": "rectangle",
+      "family": "core",
+      "style": {"shape": "rectangle", "rounded": 1}
+    },
+    "service": {
+      "shape": "rectangle",
+      "family": "core",
+      "style": {"shape": "rectangle", "rounded": 1}
+    },
+    "database": {
+      "shape": "cylinder3",
+      "family": "extended",
+      "style": {
+        "shape": "cylinder3",
+        "boundedLbl": 1,
+        "backgroundOutline": 1
+      }
+    },
+    "queue": {
+      "shape": "message",
+      "family": "extended",
+      "style": {"shape": "message"}
+    },
+    "external": {
+      "shape": "rectangle",
+      "family": "core",
+      "style": {"shape": "rectangle", "rounded": 1, "dashed": 1}
+    },
+    "decision": {
+      "shape": "rhombus",
+      "family": "core",
+      "style": {
+        "shape": "rhombus",
+        "perimeter": "rhombusPerimeter",
+        "rounded": 0
+      }
+    },
+    "process": {
+      "shape": "process",
+      "family": "extended",
+      "style": {"shape": "process"}
+    },
+    "document": {
+      "shape": "document",
+      "family": "extended",
+      "style": {"shape": "document", "boundedLbl": 1}
+    },
+    "note": {
+      "shape": "note",
+      "family": "extended",
+      "style": {"shape": "note", "size": 20}
+    }
+  }
+}

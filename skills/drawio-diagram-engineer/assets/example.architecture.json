@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "diagram": {
+    "title": "Order processing",
+    "direction": "LR",
+    "theme": "colorblind"
+  },
+  "groups": [
+    {"id": "channels", "label": "Channels"},
+    {"id": "platform", "label": "Platform"},
+    {"id": "data", "label": "Data"}
+  ],
+  "nodes": [
+    {"id": "web", "label": "Web app", "kind": "client", "group": "channels"},
+    {"id": "api", "label": "API gateway", "kind": "service", "group": "platform"},
+    {"id": "orders", "label": "Order service", "kind": "service", "group": "platform"},
+    {"id": "events", "label": "Order events", "kind": "queue", "group": "platform"},
+    {"id": "orders-db", "label": "Orders", "kind": "database", "group": "data"}
+  ],
+  "edges": [
+    {"id": "web-api", "from": "web", "to": "api", "label": "HTTPS", "kind": "sync"},
+    {"id": "api-orders", "from": "api", "to": "orders", "label": "create order", "kind": "sync"},
+    {"id": "orders-to-db", "from": "orders", "to": "orders-db", "label": "write", "kind": "data"},
+    {"id": "orders-events", "from": "orders", "to": "events", "label": "OrderCreated", "kind": "async"}
+  ]
+}

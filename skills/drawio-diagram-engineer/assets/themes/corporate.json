@@ -1,0 +1,20 @@
+{
+  "version": "1",
+  "name": "corporate",
+  "tokens": {
+    "background": "#ffffff",
+    "group_fill": "#f8fafc",
+    "group_stroke": "#64748b",
+    "font": "#111827",
+    "edge": "#334155",
+    "client": ["#ecfeff", "#0e7490"],
+    "service": ["#eff6ff", "#1d4ed8"],
+    "database": ["#ecfdf5", "#047857"],
+    "queue": ["#fffbeb", "#b45309"],
+    "external": ["#f8fafc", "#475569"],
+    "decision": ["#fff1f2", "#be123c"],
+    "process": ["#eef2ff", "#4338ca"],
+    "document": ["#faf5ff", "#7e22ce"],
+    "note": ["#fefce8", "#a16207"]
+  }
+}

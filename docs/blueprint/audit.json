@@ -1,0 +1,36 @@
+{
+  "version": "1",
+  "score": 100,
+  "errors": 0,
+  "warnings": 0,
+  "summary": {
+    "pages": 6,
+    "nodes": 35,
+    "edges": 26,
+    "groups": 14,
+    "bounds": {
+      "width": 1508,
+      "height": 1044
+    }
+  },
+  "issues": [],
+  "repairs": [],
+  "visual_review": {
+    "status": "required",
+    "previews": [
+      "docs/blueprint/context.svg",
+      "docs/blueprint/logical.svg",
+      "docs/blueprint/data.svg",
+      "docs/blueprint/deployment.svg",
+      "docs/blueprint/security.svg",
+      "docs/blueprint/decisions.svg"
+    ],
+    "checklist": [
+      "Verify the primary reading path and hierarchy.",
+      "Inspect actual orthogonal edge crossings and stacked connectors.",
+      "Confirm labels remain legible at normal zoom.",
+      "Confirm color meaning is consistent and not the only differentiator.",
+      "Confirm every page answers one architecture question."
+    ]
+  }
+}

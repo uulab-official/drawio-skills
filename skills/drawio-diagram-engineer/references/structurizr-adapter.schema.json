@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/structurizr-adapter.schema.json",
+  "title": "Structurizr workspace exported from an architecture blueprint",
+  "type": "object",
+  "required": ["name", "model", "views", "drawioAdapter"],
+  "properties": {
+    "name": {"type": "string", "minLength": 1},
+    "model": {
+      "type": "object",
+      "required": ["people", "softwareSystems", "relationships"],
+      "properties": {
+        "people": {"type": "array", "items": {"$ref": "#/$defs/element"}},
+        "softwareSystems": {"type": "array", "items": {"$ref": "#/$defs/element"}},
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "sourceId", "destinationId", "description"],
+            "properties": {
+              "id": {"type": "string"},
+              "sourceId": {"type": "string"},
+              "destinationId": {"type": "string"},
+              "description": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "views": {"type": "object"},
+    "drawioAdapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "tool_version", "source_sha256"],
+      "properties": {
+        "format": {"const": "drawio-structurizr-adapter/v1"},
+        "tool_version": {"type": "string", "minLength": 1},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  },
+  "$defs": {
+    "element": {
+      "type": "object",
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string", "minLength": 1},
+        "description": {"type": "string"}
+      }
+    }
+  }
+}

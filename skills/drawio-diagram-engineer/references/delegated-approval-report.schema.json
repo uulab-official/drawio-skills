@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/delegated-approval-report.schema.json",
+  "title": "Delegated approval verification report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format", "organization", "trust_policy_sha256", "passed",
+    "integrity_passed", "quorum_met", "minimum_approvals",
+    "active_approvals", "missing_roles", "missing_teams", "errors"
+  ],
+  "properties": {
+    "format": {"const": "drawio-delegated-approval-verification/v1"},
+    "organization": {"type": "string", "minLength": 1},
+    "trust_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "passed": {"type": "boolean"},
+    "integrity_passed": {"type": "boolean"},
+    "quorum_met": {"type": "boolean"},
+    "minimum_approvals": {"type": "integer", "minimum": 1},
+    "active_approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["event", "identity", "role", "teams", "delegation"],
+        "properties": {
+          "event": {"$ref": "#/$defs/sha256"},
+          "identity": {"type": "string", "minLength": 1},
+          "role": {"type": "string", "minLength": 1},
+          "teams": {"type": "array", "items": {"type": "string"}},
+          "delegation": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "missing_roles": {"type": "array", "items": {"type": "string"}},
+    "missing_teams": {"type": "array", "items": {"type": "string"}},
+    "errors": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

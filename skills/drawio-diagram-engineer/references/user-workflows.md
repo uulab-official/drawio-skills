@@ -69,7 +69,7 @@ python3 <skill-dir>/scripts/drawio_tool.py publish build/architecture \
 
 Run `policy-test <suite> --strict` before publication when policy packs or exceptions changed. The review site provides page navigation, persistent decisions, composed policy status, explicit-then-CODEOWNERS routing, SARIF, provenance, an in-toto attestation, `reports/summary.md`, machine-readable `review.json`, and optional GitHub Checks/visual-baseline adapters. Use `--carry-review <prior-review>` with an annotation update file to retain accepted and resolved decisions. Read [collaborative-review.md](collaborative-review.md) for the complete contract.
 
-After publication, use `record-approval` and `verify-approval-ledger` for signed quorum, `catalog-reviews` for multi-repository discovery, `governance-trends` for JSON/CSV dashboard exports, and the data-only rule-provider commands for organization checks. Read [governance-lifecycle.md](governance-lifecycle.md).
+After publication, use `record-approval` and `verify-approval-ledger` for signed quorum, `catalog-reviews` for multi-repository discovery, `governance-trends` for JSON/CSV dashboard exports, and the data-only rule-provider commands for organization checks. At organization scale, add `verify-delegated-approvals`, `transparency-log`, `catalog-portal`, and `export-governance-metrics`. Use the Structurizr/ADR adapters when an adjacent architecture tool owns part of the model. Read [governance-lifecycle.md](governance-lifecycle.md) and [organization-scale.md](organization-scale.md).
 
 ## Detection and overrides
 
@@ -136,6 +136,8 @@ Use generic `--type sql` only for a table dependency overview. Use `--type sql-e
 - Use `--github-checks` only when CI supplies a full SCM revision and repository, then send only the nested `request` object.
 - Sign `reports/attestation.json` locally with `attest-review`, or use a trusted CI attestation provider.
 - Verify signed reviewer quorum with `verify-approval-ledger` before promotion.
+- Verify organization role/team authority with `verify-delegated-approvals` and preserve the applicable signer epoch.
+- Verify published governance evidence with `verify-transparency-log` before consuming a catalog or historical snapshot.
 - Generate organization-rule requests locally, execute providers only in a separate sandbox, and retain the validated result report.
 - Run `verify-export <artifact>` when checking a native export produced on another machine.
 - If YAML fails, use JSON or install PyYAML. No third-party package is required for JSON.

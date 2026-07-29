@@ -2,6 +2,16 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 1.7.0 — 2026-07-29
+
+- Add date-scoped delegated reviewer trust with digest-pinned OpenSSH signer epochs, organization role/team mapping, and quorum verification.
+- Add append-only SHA-256 Merkle transparency logs with baseline-prefix preservation and per-entry inclusion proofs.
+- Generate atomic, dependency-free searchable architecture portals from federated evidence catalogs.
+- Export governance trends as Prometheus gauges and OpenTelemetry OTLP JSON without sending network traffic.
+- Add bounded Structurizr/C4 and stable-ID Markdown ADR import/export adapters.
+- Publish seven schemas, interoperability examples, organization-scale guidance, public portal/metrics/proof artifacts, and end-to-end regression coverage.
+- Complete the v1.7 organization-scale trust and discovery roadmap.
+
 ## 1.6.0 — 2026-07-29
 
 - Add OpenSSH-signed, hash-chained approval ledgers with immutable quorum, required roles, reviewer identity, and same-reviewer revocation evidence.

@@ -6,9 +6,16 @@
       "tool": {
         "driver": {
           "name": "drawio-diagram-engineer",
-          "version": "1.6.0",
+          "version": "1.7.0",
           "informationUri": "https://github.com/uulab-official/drawio-skills",
           "rules": [
+            {
+              "id": "policy.production.approved-baseline",
+              "name": "policy_production_approved_baseline",
+              "shortDescription": {
+                "text": "Policy Production Approved Baseline"
+              }
+            },
             {
               "id": "review.annotation-open",
               "name": "review_annotation_open",
@@ -20,6 +27,43 @@
         }
       },
       "results": [
+        {
+          "ruleId": "policy.production.approved-baseline",
+          "level": "warning",
+          "message": {
+            "text": "visual baseline is not configured"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "reports/policy.json"
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "production/approved-baseline",
+                  "fullyQualifiedName": "production/approved-baseline"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "stableFinding": "8b49e509aa3633fa3f3e0f7971af4a7840fbaefcc0a00d80b0e12aab68be3420"
+          },
+          "properties": {
+            "source": "policy",
+            "policyId": "production",
+            "detail": "visual baseline is not configured",
+            "owners": [
+              "@uulab/architecture"
+            ],
+            "ownerSource": "routes",
+            "ownerRouteIds": [
+              "architecture-policy"
+            ]
+          }
+        },
         {
           "ruleId": "review.annotation-open",
           "level": "warning",

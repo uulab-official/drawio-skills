@@ -1,0 +1,15 @@
+{
+  "format": "drawio-governance-metrics/v1",
+  "source_sha256": "f9580aefe71bd65564ff32a274301a8bdb95e503587d72220c81128c438da9a0",
+  "snapshots": 1,
+  "artifacts": {
+    "prometheus": {
+      "path": "reports/governance.prom",
+      "sha256": "5157059507d77fc7f79a054ad6dda50ecda26bcc6bca9817e3d6fc1d8de1dfb5"
+    },
+    "otlp": {
+      "path": "reports/governance.otlp.json",
+      "sha256": "d8997b1a47dea325ead6b83cacccb5163531bcad46e3415bcc318b908343fefc"
+    }
+  }
+}

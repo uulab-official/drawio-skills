@@ -1,0 +1,21 @@
+{
+  "format": "drawio-review-trust/v1",
+  "organization": "Example Organization",
+  "requirements": {
+    "minimum_approvals": 1,
+    "required_roles": ["architecture"],
+    "required_teams": ["architecture-platform"]
+  },
+  "delegations": [
+    {
+      "id": "architecture-2026",
+      "principals": ["architecture@example.com"],
+      "roles": ["architecture"],
+      "teams": ["architecture-platform"],
+      "valid_from": "2026-01-01T00:00:00Z",
+      "valid_until": "2099-01-01T00:00:00Z",
+      "allowed_signers": "example.allowed-signers",
+      "allowed_signers_sha256": "29f58cec8e2394451fd38e0ac9740d8754cecb726bb680d02c2109bf4011128d"
+    }
+  ]
+}

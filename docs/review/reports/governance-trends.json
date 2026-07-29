@@ -7,18 +7,18 @@
   "snapshots": [
     {
       "date": "2026-07-29",
-      "review_sha256": "43f17c7398d5fc5c55b730348e1adafb766b1278d62e2f3eb7683cb362a8c120",
-      "revision": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
+      "review_sha256": "4e033384506a72d29cb0217ab74f6a305fcf9848cc78b63b2509dd1ac043f00c",
+      "revision": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318",
       "metrics": {
         "audit_score": 100,
         "audit_errors": 0,
         "audit_warnings": 0,
         "policy_errors": 0,
-        "policy_warnings": 0,
+        "policy_warnings": 1,
         "ownership_coverage_percent": 100,
         "unassigned_findings": 0,
         "open_annotations": 1,
-        "sarif_findings": 1,
+        "sarif_findings": 2,
         "exceptions_total": 1,
         "exceptions_applied": 1,
         "exceptions_expired": 0

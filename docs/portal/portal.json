@@ -1,0 +1,14 @@
+{
+  "format": "drawio-architecture-portal/v1",
+  "generator": "drawio-diagram-engineer",
+  "tool_version": "1.7.0",
+  "catalog_sha256": "6ba9a53889097ad76fe74ce963439c728569c58e71f2d3b104b60045c03be1a0",
+  "reviews": 1,
+  "artifacts": {
+    "index": "index.html",
+    "script": "portal.js",
+    "catalog": "catalog.json",
+    "favicon": "favicon.svg",
+    "social_preview": "og-image.svg"
+  }
+}

@@ -204,10 +204,20 @@ Exit criteria: organizations can trace approval history across repositories, mea
 
 ## v1.7 — Organization-scale trust and discovery
 
-- [ ] Delegated reviewer trust policies with key rotation and organization/team identity mapping
-- [ ] Append-only transparency proofs for catalogs, approval ledgers, and historical governance snapshots
-- [ ] Static searchable architecture portal generated from federated evidence catalogs
-- [ ] OpenTelemetry and Prometheus-compatible governance metric exports
-- [ ] Interoperability adapters for C4/Structurizr and common architecture decision records
+- [x] Delegated reviewer trust policies with key rotation and organization/team identity mapping
+- [x] Append-only transparency proofs for catalogs, approval ledgers, and historical governance snapshots
+- [x] Static searchable architecture portal generated from federated evidence catalogs
+- [x] OpenTelemetry and Prometheus-compatible governance metric exports
+- [x] Interoperability adapters for C4/Structurizr and common architecture decision records
 
 Exit criteria: large organizations can rotate trust safely, discover current architecture evidence without repository knowledge, integrate governance telemetry, and exchange models with adjacent architecture tools.
+
+## v1.8 — Federated automation and model intelligence
+
+- [ ] Signed catalog federation with consistency checkpoints across independently operated portals
+- [ ] Declarative organization policy distribution with provenance and compatibility resolution
+- [ ] Queryable architecture graph snapshots for impact analysis without executing repository code
+- [ ] Language-server diagnostics for Diagram IR, Blueprint, ERD, HA, trust, and policy contracts
+- [ ] Incremental portal builds and governed evidence retention policies
+
+Exit criteria: organizations can distribute trusted policy and evidence across boundaries, query architecture relationships at scale, and receive authoring diagnostics before CI while preserving offline deterministic verification.

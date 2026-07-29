@@ -239,12 +239,24 @@
         "governance_trends": {
           "const": "reports/governance-trends.json"
         },
-        "governance_csv": {
-          "const": "reports/governance-trends.csv"
-        },
-        "rule_provider_request": {
-          "const": "reports/rule-provider-request.json"
-        }
+    "governance_csv": {
+      "const": "reports/governance-trends.csv"
+    },
+    "governance_prometheus": {
+      "const": "reports/governance.prom"
+    },
+    "governance_otlp": {
+      "const": "reports/governance.otlp.json"
+    },
+    "governance_metrics": {
+      "const": "reports/governance-metrics.json"
+    },
+    "rule_provider_request": {
+      "const": "reports/rule-provider-request.json"
+    },
+    "transparency_log": {
+      "const": "reports/transparency-log.json"
+    }
       }
     },
     "policy": {

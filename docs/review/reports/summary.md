@@ -1,14 +1,14 @@
 # example-blueprint
 
-Revision `983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c` (bundle) · bundle `983b91d024d7`
+Revision `677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318` (bundle) · bundle `677a6995aea6`
 
 | Gate | Status | Detail |
 | --- | --- | --- |
 | Audit | PASS | 100/100 |
 | Security | PASS | 0 error(s) |
 | Round trip | PASS | lossless and aligned |
-| Policy | PASS | 0 error(s), 0 warning(s) |
-| Ownership | PASS | 1/1 assigned |
+| Policy | PASS | 0 error(s), 1 warning(s) |
+| Ownership | PASS | 2/2 assigned |
 
 ## Changed pages
 
@@ -20,6 +20,7 @@ Revision `983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c` (bun
 
 ## Findings
 
+- [policy\.production\.approved-baseline](reports/policy.json): visual baseline is not configured — @uulab/architecture
 - [review\.annotation-open](pages/logical.svg#node-events): Confirm the long-term owning team for the order event stream\. — @uulab/platform
 
 ## Evidence

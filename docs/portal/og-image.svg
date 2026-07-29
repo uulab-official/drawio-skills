@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<rect width="1200" height="630" fill="#10182b"/>
+<circle cx="1040" cy="105" r="260" fill="#3157d5" opacity=".28"/>
+<circle cx="1060" cy="570" r="220" fill="#20a66a" opacity=".2"/>
+<g transform="translate(88 108)">
+  <rect width="92" height="92" rx="22" fill="#8ea8ff"/>
+  <rect x="116" y="116" width="92" height="92" rx="22" fill="#5fd0a0"/>
+  <path d="M92 46h48c39 0 68 29 68 68v2M46 92v48c0 39 29 68 68 68h2" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+</g>
+<text x="88" y="405" fill="#fff" font-family="system-ui,sans-serif" font-size="58" font-weight="700">Draw.io Architecture Evidence</text>
+<text x="90" y="472" fill="#c4d0e8" font-family="system-ui,sans-serif" font-size="30">Verified architecture evidence, searchable anywhere.</text>
+</svg>

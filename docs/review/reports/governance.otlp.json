@@ -1,0 +1,410 @@
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "drawio-diagram-engineer"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {
+            "name": "drawio-diagram-engineer.governance",
+            "version": "1.7.0"
+          },
+          "metrics": [
+            {
+              "name": "drawio.governance.audit_errors",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "0"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.audit_score",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "100"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.audit_warnings",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "0"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.exceptions_applied",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "1"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.exceptions_expired",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "0"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.exceptions_total",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "1"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.open_annotations",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "1"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.ownership_coverage_percent",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "100"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.policy_errors",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "0"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.policy_warnings",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "1"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.sarif_findings",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "2"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "drawio.governance.unassigned_findings",
+              "unit": "1",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "repository",
+                        "value": {
+                          "stringValue": "local"
+                        }
+                      },
+                      {
+                        "key": "source_path",
+                        "value": {
+                          "stringValue": "architecture/commerce-platform.json"
+                        }
+                      },
+                      {
+                        "key": "revision",
+                        "value": {
+                          "stringValue": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1785283200000000000",
+                    "asInt": "0"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "version": "1",
+  "blueprint": {
+    "title": "Commerce Platform",
+    "direction": "LR",
+    "theme": "light"
+  },
+  "views": [
+    "context",
+    "logical"
+  ],
+  "elements": [
+    {
+      "id": "customer",
+      "label": "Customer",
+      "scope": "actor",
+      "description": "Places and tracks orders"
+    },
+    {
+      "id": "commerce-platform",
+      "label": "Commerce Platform",
+      "scope": "system",
+      "description": "Ordering and checkout"
+    },
+    {
+      "id": "api-gateway",
+      "label": "API Gateway",
+      "scope": "container",
+      "parent": "commerce-platform",
+      "description": "Receives order commands",
+      "technology": "Kotlin"
+    },
+    {
+      "id": "order-service",
+      "label": "Order Service",
+      "scope": "component",
+      "parent": "api-gateway",
+      "description": "Owns the order lifecycle",
+      "technology": "Kotlin"
+    }
+  ],
+  "relations": [
+    {
+      "id": "customer-to-api",
+      "from": "customer",
+      "to": "api-gateway",
+      "label": "Places orders",
+      "kind": "sync"
+    },
+    {
+      "id": "api-to-orders",
+      "from": "api-gateway",
+      "to": "order-service",
+      "label": "Delegates order commands",
+      "kind": "sync"
+    }
+  ],
+  "decisions": []
+}

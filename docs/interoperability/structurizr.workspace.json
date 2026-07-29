@@ -1,0 +1,63 @@
+{
+  "name": "Commerce Platform",
+  "description": "Exported by drawio-diagram-engineer",
+  "model": {
+    "people": [
+      {
+        "id": "customer",
+        "name": "Customer",
+        "description": "Places and tracks orders"
+      }
+    ],
+    "softwareSystems": [
+      {
+        "id": "commerce-platform",
+        "name": "Commerce Platform",
+        "description": "Ordering and checkout",
+        "containers": [
+          {
+            "id": "api-gateway",
+            "name": "API Gateway",
+            "description": "Receives order commands",
+            "technology": "Kotlin",
+            "components": [
+              {
+                "id": "order-service",
+                "name": "Order Service",
+                "description": "Owns the order lifecycle",
+                "technology": "Kotlin"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "id": "customer-to-api",
+        "sourceId": "customer",
+        "destinationId": "api-gateway",
+        "description": "Places orders"
+      },
+      {
+        "id": "api-to-orders",
+        "sourceId": "api-gateway",
+        "destinationId": "order-service",
+        "description": "Delegates order commands"
+      }
+    ]
+  },
+  "views": {
+    "systemLandscapeViews": [
+      {
+        "key": "context",
+        "description": "Commerce Platform system context"
+      }
+    ]
+  },
+  "drawioAdapter": {
+    "format": "drawio-structurizr-adapter/v1",
+    "tool_version": "1.7.0",
+    "source_sha256": "2448c477dfb3d7538ee2106a94384abb42cc860fcbcbfa273b733a7dbde20483"
+  }
+}

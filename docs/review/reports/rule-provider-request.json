@@ -1,13 +1,13 @@
 {
   "format": "drawio-rule-provider-request/v1",
   "subject": {
-    "review_sha256": "43f17c7398d5fc5c55b730348e1adafb766b1278d62e2f3eb7683cb362a8c120",
-    "attestation_sha256": "c84ff9480056eb421cca132f1e299878ec427edd02f6496e908a795f96e424d3",
+    "review_sha256": "4e033384506a72d29cb0217ab74f6a305fcf9848cc78b63b2509dd1ac043f00c",
+    "attestation_sha256": "663398078a79f6227b34d2cd0675c0dea741e86ffb710d0ba3d8dfeb7dc9dd7f",
     "repository": null,
     "source_path": "architecture/commerce-platform.json",
-    "revision": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
+    "revision": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318",
     "revision_type": "bundle",
-    "bundle_sha256": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c"
+    "bundle_sha256": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"
   },
   "facts": {
     "status": {
@@ -32,59 +32,22 @@
         "reports": []
       },
       "visual_regression": {
-        "status": "passed",
+        "status": "not-configured",
         "changed": false,
         "summary": {
           "added": 0,
           "removed": 0,
           "changed": 0,
-          "unchanged": 6
+          "unchanged": 0
         },
-        "pages": [
-          {
-            "id": "context",
-            "status": "unchanged",
-            "baseline_sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
-            "current_sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0"
-          },
-          {
-            "id": "data",
-            "status": "unchanged",
-            "baseline_sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
-            "current_sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63"
-          },
-          {
-            "id": "decisions",
-            "status": "unchanged",
-            "baseline_sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
-            "current_sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09"
-          },
-          {
-            "id": "deployment",
-            "status": "unchanged",
-            "baseline_sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891",
-            "current_sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891"
-          },
-          {
-            "id": "logical",
-            "status": "unchanged",
-            "baseline_sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2",
-            "current_sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2"
-          },
-          {
-            "id": "security",
-            "status": "unchanged",
-            "baseline_sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb",
-            "current_sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb"
-          }
-        ]
+        "pages": []
       },
       "annotations": {
-        "base": 3,
+        "base": 0,
         "updates": 3,
         "carried": 0,
-        "updated": 3,
-        "added": 0,
+        "updated": 0,
+        "added": 3,
         "total": 3,
         "open": 1,
         "accepted": 1,
@@ -96,16 +59,16 @@
         "status": "passed",
         "passed": true,
         "errors": 0,
-        "warnings": 0,
+        "warnings": 1,
         "report": "reports/policy.json"
       },
       "ownership": {
         "status": "passed",
         "configured": true,
         "passed": true,
-        "assigned": 1,
+        "assigned": 2,
         "unassigned": 0,
-        "total_findings": 1,
+        "total_findings": 2,
         "coverage_percent": 100,
         "report": "reports/ownership.json"
       }
@@ -594,8 +557,8 @@
         "key": "production/approved-baseline",
         "type": "require-visual-baseline",
         "level": "warning",
-        "passed": true,
-        "compliant": true,
+        "passed": false,
+        "compliant": false,
         "waived": false
       },
       {

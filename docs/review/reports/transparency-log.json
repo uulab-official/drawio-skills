@@ -1,0 +1,63 @@
+{
+  "format": "drawio-transparency-log/v1",
+  "hash_algorithm": "sha256",
+  "entries": [
+    {
+      "sequence": 1,
+      "name": "evidence-catalog.json",
+      "format": "drawio-evidence-catalog/v1",
+      "document_sha256": "6ba9a53889097ad76fe74ce963439c728569c58e71f2d3b104b60045c03be1a0",
+      "leaf_sha256": "2fd78f24acc6b3f4802438ac657b5114492a16c346ff80d6150288c5b1f22320",
+      "proof": [
+        {
+          "position": "right",
+          "sha256": "35eb13e4fe09f62067ccca650d4ab36826ab2398ad242c9d06e1fbf5dad18e34"
+        },
+        {
+          "position": "right",
+          "sha256": "5e2c663ca2fe7069953d79d16ba0da4ce8156da1112f3d3c7c2400c7c76c2e38"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "name": "governance-trends.json",
+      "format": "drawio-governance-trends/v1",
+      "document_sha256": "f9580aefe71bd65564ff32a274301a8bdb95e503587d72220c81128c438da9a0",
+      "leaf_sha256": "35eb13e4fe09f62067ccca650d4ab36826ab2398ad242c9d06e1fbf5dad18e34",
+      "proof": [
+        {
+          "position": "left",
+          "sha256": "2fd78f24acc6b3f4802438ac657b5114492a16c346ff80d6150288c5b1f22320"
+        },
+        {
+          "position": "right",
+          "sha256": "5e2c663ca2fe7069953d79d16ba0da4ce8156da1112f3d3c7c2400c7c76c2e38"
+        }
+      ]
+    },
+    {
+      "sequence": 3,
+      "name": "rule-provider-request.json",
+      "format": "drawio-rule-provider-request/v1",
+      "document_sha256": "2ecb6aa51964973e1fd81622d2ea75469ae6fd284ac3cd23d69bcecb6ae7be8f",
+      "leaf_sha256": "3ea2e3082983f057edec3f0600df9105c9ad3b549f11c0e887dafd182e7a5eed",
+      "proof": [
+        {
+          "position": "right",
+          "sha256": "3ea2e3082983f057edec3f0600df9105c9ad3b549f11c0e887dafd182e7a5eed"
+        },
+        {
+          "position": "left",
+          "sha256": "3dc985c6e548b7b8ec669ee44759789826f997511fd1202115211b48c115a56b"
+        }
+      ]
+    }
+  ],
+  "merkle_root": "22d8a4ba97bf4946c3f87ea9fd569968589dd99e75721b34af0585ab33906afe",
+  "append_only": {
+    "baseline_root": null,
+    "baseline_entries": 0,
+    "added_entries": 3
+  }
+}

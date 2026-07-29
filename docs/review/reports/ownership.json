@@ -15,8 +15,8 @@
     ]
   },
   "passed": true,
-  "total_findings": 1,
-  "assigned": 1,
+  "total_findings": 2,
+  "assigned": 2,
   "unassigned": 0,
   "coverage_percent": 100,
   "routes": [
@@ -53,6 +53,19 @@
     }
   ],
   "assignments": [
+    {
+      "fingerprint": "8b49e509aa3633fa3f3e0f7971af4a7840fbaefcc0a00d80b0e12aab68be3420",
+      "rule_id": "policy.production.approved-baseline",
+      "page": null,
+      "cell": null,
+      "owners": [
+        "@uulab/architecture"
+      ],
+      "routes": [
+        "architecture-policy"
+      ],
+      "source": "routes"
+    },
     {
       "fingerprint": "0604decbc23b1989a034109f3827d10a6f47fe1fef35dc54e78c9c1c8f00dbba",
       "rule_id": "review.annotation-open",

@@ -28,7 +28,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.6.0"
+VERSION = "1.7.0"
 IR_VERSION = "1"
 IR_METADATA_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
@@ -46,6 +46,12 @@ GOVERNANCE_TRENDS_FORMAT = "drawio-governance-trends/v1"
 RULE_PROVIDER_REQUEST_FORMAT = "drawio-rule-provider-request/v1"
 RULE_PROVIDER_RESULT_FORMAT = "drawio-rule-provider-result/v1"
 RULE_PROVIDER_REPORT_FORMAT = "drawio-rule-provider-report/v1"
+TRUST_POLICY_FORMAT = "drawio-review-trust/v1"
+TRANSPARENCY_LOG_FORMAT = "drawio-transparency-log/v1"
+ARCHITECTURE_PORTAL_FORMAT = "drawio-architecture-portal/v1"
+GOVERNANCE_METRICS_FORMAT = "drawio-governance-metrics/v1"
+STRUCTURIZR_ADAPTER_FORMAT = "drawio-structurizr-adapter/v1"
+ADR_ADAPTER_FORMAT = "drawio-adr-adapter/v1"
 REVIEW_ATTESTATION_PREDICATE = (
     "https://github.com/uulab-official/drawio-skills/"
     "attestations/review/v1"
@@ -7643,6 +7649,34 @@ def write_json_output(
         raise
 
 
+def write_text_output(
+    output: Path,
+    content: str,
+    force: bool = False,
+) -> None:
+    if output.exists():
+        if output.is_dir():
+            raise ValueError(f"text output must be a file: {output}")
+        if not force:
+            raise ValueError(
+                f"{output} already exists; choose another file or pass --force"
+            )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output.name}.",
+        suffix=".tmp",
+        dir=output.parent,
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        temporary.write_text(content, encoding="utf-8")
+        temporary.replace(output)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
 def review_evidence_subject(review_directory: Path) -> dict[str, Any]:
     review, _, errors = validate_review_attestation(review_directory)
     if errors:
@@ -7880,9 +7914,9 @@ def approval_ledger_state(
     ]
     active_by_identity: dict[str, dict[str, Any]] = {}
     for event in active_events:
-        active_by_identity[str(event["identity"])] = event
+        active_by_identity[str(event.get("identity", ""))] = event
     active = list(active_by_identity.values())
-    active_roles = sorted({str(event["role"]) for event in active})
+    active_roles = sorted({str(event.get("role", "")) for event in active})
     missing_roles = sorted(set(map(str, required_roles)) - set(active_roles))
     quorum_met = len(active) >= int(minimum) and not missing_roles
     return {
@@ -8441,6 +8475,1364 @@ def command_verify_rule_provider_result(args: argparse.Namespace) -> int:
     return 0 if report["passed"] else 13
 
 
+def load_review_trust_policy(path: Path, trust_root: Path) -> dict[str, Any]:
+    policy = load_data(path)
+    if not isinstance(policy, dict):
+        raise ValueError("trust policy must be an object")
+    if policy.get("format") != TRUST_POLICY_FORMAT:
+        raise ValueError(f"trust policy must be {TRUST_POLICY_FORMAT}")
+    organization = validate_optional_text(
+        str(policy.get("organization", "")),
+        "trust organization",
+        256,
+    )
+    if organization is None:
+        raise ValueError("trust policy organization is required")
+    requirements = policy.get("requirements", {})
+    minimum = requirements.get("minimum_approvals")
+    required_roles = requirements.get("required_roles", [])
+    required_teams = requirements.get("required_teams", [])
+    if (
+        not isinstance(minimum, int)
+        or isinstance(minimum, bool)
+        or minimum < 1
+        or minimum > 100
+    ):
+        raise ValueError("trust minimum_approvals must be between 1 and 100")
+    for label, values in (
+        ("required roles", required_roles),
+        ("required teams", required_teams),
+    ):
+        if (
+            not isinstance(values, list)
+            or len(values) != len(set(map(str, values)))
+            or any(
+                validate_optional_text(str(value), label, 128) is None
+                for value in values
+            )
+        ):
+            raise ValueError(f"trust {label} must contain unique values")
+    delegations = policy.get("delegations", [])
+    if not isinstance(delegations, list) or not delegations or len(delegations) > 500:
+        raise ValueError("trust policy requires 1 to 500 delegations")
+    seen = set()
+    normalized = []
+    for index, delegation in enumerate(delegations, start=1):
+        if not isinstance(delegation, dict):
+            raise ValueError(f"trust delegation {index} must be an object")
+        delegation_id = str(delegation.get("id", ""))
+        if not valid_semantic_id(delegation_id) or delegation_id in seen:
+            raise ValueError(f"trust delegation {index} id is invalid or duplicated")
+        seen.add(delegation_id)
+        principals = delegation.get("principals", [])
+        roles = delegation.get("roles", [])
+        teams = delegation.get("teams", [])
+        for label, values, limit in (
+            ("principals", principals, 256),
+            ("roles", roles, 128),
+            ("teams", teams, 128),
+        ):
+            if (
+                not isinstance(values, list)
+                or not values
+                or len(values) != len(set(map(str, values)))
+                or any(
+                    validate_optional_text(
+                        str(value),
+                        f"delegation {delegation_id} {label}",
+                        limit,
+                    ) is None
+                    for value in values
+                )
+            ):
+                raise ValueError(
+                    f"delegation {delegation_id} requires unique {label}"
+                )
+        valid_from = parse_utc_timestamp(str(delegation.get("valid_from", "")))
+        valid_until = parse_utc_timestamp(str(delegation.get("valid_until", "")))
+        if valid_until <= valid_from:
+            raise ValueError(
+                f"delegation {delegation_id} validity window is invalid"
+            )
+        relative_signers = normalize_repository_path(
+            str(delegation.get("allowed_signers", "")),
+            "delegation allowed_signers",
+        )
+        signers_path = safe_artifact_path(trust_root, relative_signers)
+        if not signers_path.is_file():
+            raise ValueError(
+                f"delegation {delegation_id} allowed signers file is missing"
+            )
+        if signers_path.stat().st_size > 5 * 1024 * 1024:
+            raise ValueError(
+                f"delegation {delegation_id} allowed signers file is too large"
+            )
+        digest = hashlib.sha256(signers_path.read_bytes()).hexdigest()
+        if digest != str(delegation.get("allowed_signers_sha256", "")):
+            raise ValueError(
+                f"delegation {delegation_id} allowed signers digest changed"
+            )
+        normalized.append({
+            "id": delegation_id,
+            "principals": list(map(str, principals)),
+            "roles": list(map(str, roles)),
+            "teams": list(map(str, teams)),
+            "valid_from": valid_from,
+            "valid_until": valid_until,
+            "allowed_signers": relative_signers,
+            "allowed_signers_path": signers_path,
+            "allowed_signers_sha256": digest,
+        })
+    return {
+        "format": TRUST_POLICY_FORMAT,
+        "organization": organization,
+        "requirements": {
+            "minimum_approvals": minimum,
+            "required_roles": list(map(str, required_roles)),
+            "required_teams": list(map(str, required_teams)),
+        },
+        "delegations": normalized,
+        "source": path.name,
+        "sha256": canonical_sha256(policy),
+    }
+
+
+def command_verify_delegated_approvals(args: argparse.Namespace) -> int:
+    review_directory = Path(args.input)
+    subject = review_evidence_subject(review_directory)
+    ledger_path = Path(args.ledger)
+    if not ledger_path.is_file():
+        raise ValueError(f"approval ledger not found: {ledger_path}")
+    ledger = load_data(ledger_path)
+    if not isinstance(ledger, dict):
+        raise ValueError("approval ledger must be an object")
+    namespace = validate_optional_text(args.namespace, "signature namespace", 128)
+    if namespace is None or any(character.isspace() for character in namespace):
+        raise ValueError("signature namespace must not contain whitespace")
+    policy = load_review_trust_policy(
+        Path(args.trust_policy),
+        Path(args.trust_root),
+    )
+    structural = approval_ledger_state(ledger, subject)
+    errors = list(structural["errors"])
+    approvals: dict[str, dict[str, Any]] = {}
+    revoked: set[str] = set()
+    event_delegations = {}
+    for event in ledger.get("events", []):
+        event_id = str(event.get("id", ""))
+        identity = str(event.get("identity", ""))
+        role = str(event.get("role", ""))
+        timestamp = str(event.get("timestamp", ""))
+        matches = [
+            delegation
+            for delegation in policy["delegations"]
+            if identity in delegation["principals"]
+            and role in delegation["roles"]
+            and delegation["valid_from"] <= timestamp < delegation["valid_until"]
+        ]
+        if len(matches) != 1:
+            errors.append(
+                f"event {event_id} resolves to {len(matches)} active trust delegations"
+            )
+        else:
+            delegation = matches[0]
+            event_delegations[event_id] = delegation
+            signed_event = {
+                key: value for key, value in event.items() if key != "signature"
+            }
+            signature_error = ssh_verify_payload(
+                canonical_json_bytes(signed_event),
+                str(event.get("signature", "")),
+                delegation["allowed_signers_path"],
+                identity,
+                namespace,
+            )
+            if signature_error:
+                errors.append(f"event {event_id}: {signature_error}")
+        if event.get("action") == "approve":
+            approvals[event_id] = event
+        elif event.get("action") == "revoke":
+            revoked.add(str(event.get("revokes", "")))
+    active_by_identity = {}
+    for event_id, event in approvals.items():
+        if event_id not in revoked:
+            active_by_identity[str(event.get("identity", ""))] = (
+                event_id,
+                event,
+            )
+    active_roles = {
+        str(event.get("role", ""))
+        for _, event in active_by_identity.values()
+    }
+    active_teams = set()
+    active_evidence = []
+    for identity, (event_id, event) in sorted(active_by_identity.items()):
+        delegation = event_delegations.get(event_id)
+        teams = list(delegation["teams"]) if delegation else []
+        active_teams.update(teams)
+        active_evidence.append({
+            "event": event_id,
+            "identity": identity,
+            "role": event.get("role", ""),
+            "teams": teams,
+            "delegation": delegation["id"] if delegation else None,
+        })
+    requirements = policy["requirements"]
+    missing_roles = sorted(set(requirements["required_roles"]) - active_roles)
+    missing_teams = sorted(set(requirements["required_teams"]) - active_teams)
+    quorum_met = (
+        len(active_by_identity) >= requirements["minimum_approvals"]
+        and not missing_roles
+        and not missing_teams
+    )
+    report = {
+        "format": "drawio-delegated-approval-verification/v1",
+        "organization": policy["organization"],
+        "trust_policy_sha256": policy["sha256"],
+        "passed": not errors and quorum_met,
+        "integrity_passed": not errors,
+        "quorum_met": quorum_met,
+        "minimum_approvals": requirements["minimum_approvals"],
+        "active_approvals": active_evidence,
+        "missing_roles": missing_roles,
+        "missing_teams": missing_teams,
+        "errors": errors,
+    }
+    if args.output:
+        write_json_output(Path(args.output), report, args.force)
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["passed"] else 15
+
+
+def merkle_leaf_hash(entry: dict[str, Any]) -> str:
+    return hashlib.sha256(b"\x00" + canonical_json_bytes(entry)).hexdigest()
+
+
+def merkle_parent_hash(left: str, right: str) -> str:
+    return hashlib.sha256(
+        b"\x01" + bytes.fromhex(left) + bytes.fromhex(right)
+    ).hexdigest()
+
+
+def merkle_tree(leaves: list[str]) -> tuple[str, list[list[dict[str, str]]]]:
+    if not leaves:
+        return hashlib.sha256(b"").hexdigest(), []
+    proofs: list[list[dict[str, str]]] = [[] for _ in leaves]
+    level = list(leaves)
+    indexes = [[index] for index in range(len(leaves))]
+    while len(level) > 1:
+        next_level = []
+        next_indexes = []
+        for offset in range(0, len(level), 2):
+            left = level[offset]
+            right = level[offset + 1] if offset + 1 < len(level) else left
+            left_indexes = indexes[offset]
+            right_indexes = (
+                indexes[offset + 1] if offset + 1 < len(indexes) else left_indexes
+            )
+            for index in left_indexes:
+                proofs[index].append({"position": "right", "sha256": right})
+            if offset + 1 < len(level):
+                for index in right_indexes:
+                    proofs[index].append({"position": "left", "sha256": left})
+            next_level.append(merkle_parent_hash(left, right))
+            next_indexes.append(left_indexes + (
+                right_indexes if offset + 1 < len(indexes) else []
+            ))
+        level = next_level
+        indexes = next_indexes
+    return level[0], proofs
+
+
+def verify_merkle_proof(
+    leaf_hash: str,
+    proof: list[dict[str, Any]],
+    root: str,
+) -> bool:
+    current = leaf_hash
+    for sibling in proof:
+        if not isinstance(sibling, dict):
+            return False
+        digest = str(sibling.get("sha256", ""))
+        position = sibling.get("position")
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            return False
+        if position == "left":
+            current = merkle_parent_hash(digest, current)
+        elif position == "right":
+            current = merkle_parent_hash(current, digest)
+        else:
+            return False
+    return current == root
+
+
+def transparency_entry(path: Path) -> dict[str, Any]:
+    document = load_data(path)
+    if not isinstance(document, dict):
+        raise ValueError(f"transparency input must be an object: {path}")
+    document_format = validate_optional_text(
+        str(document.get("format", "")),
+        "transparency document format",
+        256,
+    )
+    if document_format is None:
+        raise ValueError(f"transparency input has no format: {path}")
+    digest = canonical_sha256(document)
+    return {
+        "name": path.name,
+        "format": document_format,
+        "document_sha256": digest,
+    }
+
+
+def build_transparency_log(
+    paths: list[Path],
+    baseline_path: Path | None,
+) -> dict[str, Any]:
+    if not paths or len(paths) > 100000:
+        raise ValueError("transparency inputs must contain 1 to 100000 files")
+    baseline_entries = []
+    baseline_root = None
+    if baseline_path:
+        baseline = load_data(baseline_path)
+        verification = validate_transparency_log(baseline)
+        if not verification["passed"]:
+            raise ValueError("transparency baseline is invalid")
+        baseline_entries = [
+            {
+                key: entry[key]
+                for key in ("name", "format", "document_sha256")
+            }
+            for entry in baseline["entries"]
+        ]
+        baseline_root = baseline["merkle_root"]
+    current_entries = [transparency_entry(path) for path in paths]
+    existing_coordinates = {
+        (entry["name"], entry["format"]): entry["document_sha256"]
+        for entry in baseline_entries
+    }
+    additions = []
+    for entry in sorted(
+        current_entries,
+        key=lambda item: (item["format"], item["name"], item["document_sha256"]),
+    ):
+        coordinate = (entry["name"], entry["format"])
+        prior_digest = existing_coordinates.get(coordinate)
+        if prior_digest and prior_digest != entry["document_sha256"]:
+            raise ValueError(
+                "append-only transparency coordinate changed: "
+                f"{entry['format']}:{entry['name']}"
+            )
+        if prior_digest is None:
+            existing_coordinates[coordinate] = entry["document_sha256"]
+            additions.append(entry)
+    entries = baseline_entries + additions
+    sequenced = [
+        {"sequence": index, **entry}
+        for index, entry in enumerate(entries, start=1)
+    ]
+    leaf_hashes = [merkle_leaf_hash(entry) for entry in sequenced]
+    root, proofs = merkle_tree(leaf_hashes)
+    for entry, leaf_hash, proof in zip(sequenced, leaf_hashes, proofs):
+        entry["leaf_sha256"] = leaf_hash
+        entry["proof"] = proof
+    return {
+        "format": TRANSPARENCY_LOG_FORMAT,
+        "hash_algorithm": "sha256",
+        "entries": sequenced,
+        "merkle_root": root,
+        "append_only": {
+            "baseline_root": baseline_root,
+            "baseline_entries": len(baseline_entries),
+            "added_entries": len(additions),
+        },
+    }
+
+
+def validate_transparency_log(log: dict[str, Any]) -> dict[str, Any]:
+    errors = []
+    if not isinstance(log, dict):
+        return {
+            "format": "drawio-transparency-verification/v1",
+            "passed": False,
+            "entries": 0,
+            "merkle_root": "",
+            "errors": ["transparency log must be an object"],
+        }
+    if log.get("format") != TRANSPARENCY_LOG_FORMAT:
+        errors.append(f"log format must be {TRANSPARENCY_LOG_FORMAT}")
+    if log.get("hash_algorithm") != "sha256":
+        errors.append("transparency hash_algorithm must be sha256")
+    root = str(log.get("merkle_root", ""))
+    if not re.fullmatch(r"[0-9a-f]{64}", root):
+        errors.append("transparency Merkle root must be a SHA-256 digest")
+    entries = log.get("entries", [])
+    if not isinstance(entries, list) or len(entries) > 100000:
+        errors.append("transparency entries must be a bounded list")
+        entries = []
+    bare_entries = []
+    coordinates = set()
+    for index, entry in enumerate(entries, start=1):
+        if not isinstance(entry, dict) or entry.get("sequence") != index:
+            errors.append(f"transparency entry {index} sequence is invalid")
+            continue
+        bare = {
+            key: entry.get(key)
+            for key in ("sequence", "name", "format", "document_sha256")
+        }
+        coordinate = (bare["name"], bare["format"])
+        if (
+            not isinstance(bare["name"], str)
+            or not bare["name"]
+            or not isinstance(bare["format"], str)
+            or not bare["format"]
+            or not re.fullmatch(r"[0-9a-f]{64}", str(bare["document_sha256"]))
+        ):
+            errors.append(f"transparency entry {index} metadata is invalid")
+        if coordinate in coordinates:
+            errors.append(f"transparency entry {index} coordinate is duplicated")
+        coordinates.add(coordinate)
+        expected_leaf = merkle_leaf_hash(bare)
+        if entry.get("leaf_sha256") != expected_leaf:
+            errors.append(f"transparency entry {index} leaf hash is invalid")
+        proof = entry.get("proof", [])
+        if not isinstance(proof, list):
+            errors.append(f"transparency entry {index} proof must be a list")
+            proof = []
+        if not verify_merkle_proof(
+            expected_leaf,
+            proof,
+            root,
+        ):
+            errors.append(f"transparency entry {index} proof is invalid")
+        bare_entries.append(bare)
+    expected_root, _ = merkle_tree([
+        merkle_leaf_hash(entry) for entry in bare_entries
+    ])
+    if root != expected_root:
+        errors.append("transparency Merkle root is invalid")
+    append_only = log.get("append_only", {})
+    if not isinstance(append_only, dict):
+        errors.append("transparency append_only metadata must be an object")
+    else:
+        baseline_count = append_only.get("baseline_entries")
+        added_count = append_only.get("added_entries")
+        baseline_root = append_only.get("baseline_root")
+        if (
+            not isinstance(baseline_count, int)
+            or isinstance(baseline_count, bool)
+            or baseline_count < 0
+            or baseline_count > len(bare_entries)
+        ):
+            errors.append("transparency baseline_entries is invalid")
+        elif (
+            not isinstance(added_count, int)
+            or isinstance(added_count, bool)
+            or added_count != len(bare_entries) - baseline_count
+        ):
+            errors.append("transparency added_entries is invalid")
+        elif baseline_count == 0:
+            if baseline_root is not None:
+                errors.append("initial transparency log cannot name a baseline root")
+        else:
+            prior_root, _ = merkle_tree([
+                merkle_leaf_hash(entry)
+                for entry in bare_entries[:baseline_count]
+            ])
+            if baseline_root != prior_root:
+                errors.append(
+                    "transparency baseline root does not match its retained prefix"
+                )
+    return {
+        "format": "drawio-transparency-verification/v1",
+        "passed": not errors,
+        "entries": len(entries),
+        "merkle_root": root,
+        "errors": errors,
+    }
+
+
+def command_transparency_log(args: argparse.Namespace) -> int:
+    log = build_transparency_log(
+        [Path(path) for path in args.inputs],
+        Path(args.baseline) if args.baseline else None,
+    )
+    write_json_output(Path(args.output), log, args.force)
+    print(json.dumps({
+        "output": args.output,
+        "entries": len(log["entries"]),
+        "merkle_root": log["merkle_root"],
+        "append_only": log["append_only"],
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def command_verify_transparency_log(args: argparse.Namespace) -> int:
+    report = validate_transparency_log(load_data(Path(args.input)))
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["passed"] else 16
+
+
+def validate_portal_catalog(catalog: dict[str, Any]) -> None:
+    if catalog.get("format") != EVIDENCE_CATALOG_FORMAT:
+        raise ValueError(f"portal input must be {EVIDENCE_CATALOG_FORMAT}")
+    reviews = catalog.get("reviews")
+    if not isinstance(reviews, list) or len(reviews) > 10000:
+        raise ValueError("portal catalog reviews must be a bounded list")
+    for index, entry in enumerate(reviews, start=1):
+        if not isinstance(entry, dict):
+            raise ValueError(f"portal review {index} must be an object")
+        for field, limit in (
+            ("title", 256),
+            ("source_path", 2048),
+            ("revision", 256),
+        ):
+            if validate_optional_text(
+                str(entry.get(field, "")),
+                f"portal review {index} {field}",
+                limit,
+            ) is None:
+                raise ValueError(f"portal review {index} requires {field}")
+        repository = entry.get("repository")
+        if repository is not None:
+            validate_optional_text(
+                str(repository),
+                f"portal review {index} repository",
+                512,
+            )
+        if entry.get("source_url") is not None:
+            validate_web_url(
+                str(entry["source_url"]),
+                f"portal review {index} source_url",
+            )
+        gates = entry.get("gates")
+        if (
+            not isinstance(gates, dict)
+            or any(
+                not isinstance(name, str) or not isinstance(passed, bool)
+                for name, passed in gates.items()
+            )
+        ):
+            raise ValueError(f"portal review {index} gates are invalid")
+        if not isinstance(entry.get("passed"), bool):
+            raise ValueError(f"portal review {index} passed must be boolean")
+
+
+def architecture_portal_html(
+    catalog: dict[str, Any],
+    title: str,
+) -> str:
+    cards = []
+    for entry in catalog["reviews"]:
+        searchable = " ".join([
+            str(entry.get("title", "")),
+            str(entry.get("repository") or ""),
+            str(entry.get("source_path", "")),
+            str(entry.get("revision", "")),
+        ]).lower()
+        source_link = (
+            f'<a href="{html.escape(str(entry["source_url"]))}" '
+            'rel="noreferrer">Open source evidence</a>'
+            if entry.get("source_url") else "<span>Local evidence</span>"
+        )
+        gates = "".join(
+            f'<li class="{"pass" if passed else "fail"}">'
+            f'{html.escape(str(name))}: {"PASS" if passed else "REVIEW"}</li>'
+            for name, passed in sorted(entry["gates"].items())
+        )
+        cards.append(
+            f'<article class="portal-card" data-search="{html.escape(searchable)}">'
+            f'<div class="card-head"><div><p>{html.escape(str(entry.get("repository") or "local"))}</p>'
+            f'<h2>{html.escape(str(entry["title"]))}</h2></div>'
+            f'<strong class="{"pass" if entry["passed"] else "fail"}">'
+            f'{"PASS" if entry["passed"] else "REVIEW"}</strong></div>'
+            f'<dl><dt>Path</dt><dd>{html.escape(str(entry["source_path"]))}</dd>'
+            f'<dt>Revision</dt><dd>{html.escape(str(entry["revision"])[:16])}</dd></dl>'
+            f'<ul>{gates}</ul><footer>{source_link}</footer></article>'
+        )
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{html.escape(title)}</title>
+  <meta name="description" content="Searchable architecture evidence catalog">
+  <meta property="og:title" content="{html.escape(title)}">
+  <meta property="og:description" content="Searchable architecture evidence catalog">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="og-image.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{html.escape(title)}">
+  <meta name="twitter:description" content="Searchable architecture evidence catalog">
+  <meta name="twitter:image" content="og-image.svg">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self';">
+  <style>
+    :root{{--ink:#14213d;--muted:#667085;--line:#dbe3ef;--paper:#fff;--wash:#f4f7fb;--accent:#3157d5;--pass:#16794b;--fail:#a15c00}}
+    *{{box-sizing:border-box}} body{{margin:0;background:var(--wash);color:var(--ink);font:14px/1.5 ui-sans-serif,system-ui,sans-serif}}
+    header{{padding:34px clamp(18px,5vw,72px);background:#10182b;color:white}} header p{{margin:5px 0 0;color:#c4d0e8}}
+    h1{{margin:0;font-size:clamp(25px,4vw,38px)}} main{{padding:24px clamp(18px,5vw,72px) 50px}}
+    .search{{position:sticky;top:0;z-index:2;padding:12px 0;background:var(--wash)}} input{{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:10px;font:inherit;background:white}}
+    input:focus-visible,a:focus-visible{{outline:3px solid #8ea8ff;outline-offset:2px}}
+    .summary{{color:var(--muted);margin:3px 0 16px}} .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:15px}}
+    article{{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 4px 18px #182a4a0d}}
+    .card-head{{display:flex;justify-content:space-between;gap:12px}} .card-head p{{margin:0;color:var(--muted)}} h2{{margin:2px 0 0;font-size:18px}}
+    strong.pass,li.pass{{color:var(--pass)}} strong.fail,li.fail{{color:var(--fail)}} dl{{display:grid;grid-template-columns:max-content 1fr;gap:5px 10px}}
+    dt{{color:var(--muted)}} dd{{margin:0;overflow-wrap:anywhere}} ul{{display:flex;flex-wrap:wrap;gap:6px;list-style:none;padding:0}}
+    li{{border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-size:12px}} footer{{border-top:1px solid var(--line);padding-top:12px}}
+    a{{color:var(--accent);font-weight:650;text-decoration:none}} .empty{{display:none;padding:35px;text-align:center;color:var(--muted)}}
+    @media(max-width:540px){{.grid{{grid-template-columns:1fr}}}}
+  </style>
+  <script src="portal.js" defer></script>
+</head>
+<body>
+  <header><h1>{html.escape(title)}</h1><p>Verified, repository-independent architecture evidence discovery.</p></header>
+  <main>
+    <div class="search"><label for="catalog-search">Search title, repository, path, or revision</label><input id="catalog-search" type="search" autocomplete="off" placeholder="Search architecture evidence"></div>
+    <p class="summary"><span id="count">{len(cards)}</span> of {len(cards)} review(s)</p>
+    <section class="grid" aria-live="polite">{''.join(cards)}</section>
+    <p class="empty" id="empty">No matching architecture evidence.</p>
+  </main>
+</body>
+</html>
+"""
+
+
+PORTAL_FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<rect width="64" height="64" rx="14" fill="#14213d"/>
+<rect x="12" y="12" width="16" height="16" rx="4" fill="#8ea8ff"/>
+<rect x="36" y="36" width="16" height="16" rx="4" fill="#5fd0a0"/>
+<path d="M28 20h8c5 0 8 3 8 8v8M20 28v8c0 5 3 8 8 8h8" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+</svg>
+"""
+
+
+def architecture_portal_social_svg(title: str) -> str:
+    safe_title = html.escape(title)
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<rect width="1200" height="630" fill="#10182b"/>
+<circle cx="1040" cy="105" r="260" fill="#3157d5" opacity=".28"/>
+<circle cx="1060" cy="570" r="220" fill="#20a66a" opacity=".2"/>
+<g transform="translate(88 108)">
+  <rect width="92" height="92" rx="22" fill="#8ea8ff"/>
+  <rect x="116" y="116" width="92" height="92" rx="22" fill="#5fd0a0"/>
+  <path d="M92 46h48c39 0 68 29 68 68v2M46 92v48c0 39 29 68 68 68h2" fill="none" stroke="#fff" stroke-width="16" stroke-linecap="round"/>
+</g>
+<text x="88" y="405" fill="#fff" font-family="system-ui,sans-serif" font-size="58" font-weight="700">{safe_title}</text>
+<text x="90" y="472" fill="#c4d0e8" font-family="system-ui,sans-serif" font-size="30">Verified architecture evidence, searchable anywhere.</text>
+</svg>
+"""
+
+
+PORTAL_JAVASCRIPT = """(() => {
+  const input = document.querySelector('#catalog-search');
+  const cards = [...document.querySelectorAll('.portal-card')];
+  const count = document.querySelector('#count');
+  const empty = document.querySelector('#empty');
+  const filter = () => {
+    const query = input.value.trim().toLowerCase();
+    let visible = 0;
+    for (const card of cards) {
+      const match = !query || card.dataset.search.includes(query);
+      card.hidden = !match;
+      if (match) visible += 1;
+    }
+    count.textContent = String(visible);
+    empty.style.display = visible ? 'none' : 'block';
+  };
+  input.addEventListener('input', filter);
+})();
+"""
+
+
+def command_catalog_portal(args: argparse.Namespace) -> int:
+    catalog_path = Path(args.input)
+    catalog = load_data(catalog_path)
+    if not isinstance(catalog, dict):
+        raise ValueError("portal input must be an object")
+    validate_portal_catalog(catalog)
+    output = Path(args.output)
+    if output.exists() and not output.is_dir():
+        raise ValueError("portal output must be a directory")
+    if output.exists() and any(output.iterdir()):
+        marker = output / "portal.json"
+        if not args.force or not marker.is_file():
+            raise ValueError(
+                f"{output} is not an owned empty portal; use another directory"
+            )
+        marker_data = load_data(marker)
+        if marker_data.get("format") != ARCHITECTURE_PORTAL_FORMAT:
+            raise ValueError("refusing to replace an unrecognized portal")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(
+        prefix=f".{slugify(output.name)}-portal-",
+        dir=output.parent,
+    ))
+    try:
+        title = validate_optional_text(
+            args.title or "Architecture Evidence Portal",
+            "portal title",
+            256,
+        )
+        if title is None:
+            raise ValueError("portal title is required")
+        (staging / "index.html").write_text(
+            architecture_portal_html(catalog, title),
+            encoding="utf-8",
+        )
+        (staging / "portal.js").write_text(
+            PORTAL_JAVASCRIPT,
+            encoding="utf-8",
+        )
+        (staging / "catalog.json").write_text(
+            json.dumps(catalog, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        (staging / "favicon.svg").write_text(
+            PORTAL_FAVICON_SVG,
+            encoding="utf-8",
+        )
+        (staging / "og-image.svg").write_text(
+            architecture_portal_social_svg(title),
+            encoding="utf-8",
+        )
+        manifest = {
+            "format": ARCHITECTURE_PORTAL_FORMAT,
+            "generator": "drawio-diagram-engineer",
+            "tool_version": VERSION,
+            "catalog_sha256": canonical_sha256(catalog),
+            "reviews": len(catalog["reviews"]),
+            "artifacts": {
+                "index": "index.html",
+                "script": "portal.js",
+                "catalog": "catalog.json",
+                "favicon": "favicon.svg",
+                "social_preview": "og-image.svg",
+            },
+        }
+        (staging / "portal.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        if output.exists():
+            if any(output.iterdir()):
+                shutil.rmtree(output)
+            else:
+                output.rmdir()
+        staging.replace(output)
+    except Exception:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise
+    print(json.dumps({
+        "output": str(output),
+        "index": str(output / "index.html"),
+        "reviews": len(catalog["reviews"]),
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def prometheus_label(value: Any) -> str:
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace('"', '\\"')
+    )
+
+
+def validate_governance_trends_export(report: dict[str, Any]) -> None:
+    if not isinstance(report, dict) or report.get("format") != GOVERNANCE_TRENDS_FORMAT:
+        raise ValueError(f"metrics input must be {GOVERNANCE_TRENDS_FORMAT}")
+    subject = report.get("subject")
+    if (
+        not isinstance(subject, dict)
+        or not isinstance(subject.get("source_path"), str)
+        or not subject["source_path"]
+    ):
+        raise ValueError("metrics input requires a subject source_path")
+    snapshots = report.get("snapshots")
+    if (
+        not isinstance(snapshots, list)
+        or not snapshots
+        or len(snapshots) > 10000
+    ):
+        raise ValueError("metrics input requires 1 to 10000 snapshots")
+    previous_date = None
+    for index, snapshot in enumerate(snapshots, start=1):
+        if not isinstance(snapshot, dict):
+            raise ValueError(f"metrics snapshot {index} must be an object")
+        try:
+            snapshot_date = date.fromisoformat(str(snapshot.get("date", "")))
+        except ValueError as error:
+            raise ValueError(
+                f"metrics snapshot {index} date must be YYYY-MM-DD"
+            ) from error
+        if previous_date is not None and snapshot_date <= previous_date:
+            raise ValueError("metrics snapshots must be in increasing date order")
+        previous_date = snapshot_date
+        if not validate_optional_text(
+            str(snapshot.get("revision", "")),
+            f"metrics snapshot {index} revision",
+            256,
+        ):
+            raise ValueError(f"metrics snapshot {index} revision is required")
+        metrics = snapshot.get("metrics")
+        if not isinstance(metrics, dict) or not metrics:
+            raise ValueError(f"metrics snapshot {index} requires metrics")
+        for metric, value in metrics.items():
+            if not re.fullmatch(r"[a-z][a-z0-9_]{0,127}", str(metric)):
+                raise ValueError(
+                    f"metrics snapshot {index} has an invalid metric name"
+                )
+            if not isinstance(value, int) or isinstance(value, bool):
+                raise ValueError(
+                    f"metrics snapshot {index} values must be integers"
+                )
+
+
+def governance_prometheus(report: dict[str, Any]) -> str:
+    latest = report["snapshots"][-1]
+    subject = report["subject"]
+    labels = (
+        f'repository="{prometheus_label(subject.get("repository") or "local")}",'
+        f'source_path="{prometheus_label(subject["source_path"])}",'
+        f'revision="{prometheus_label(latest["revision"])}"'
+    )
+    lines = []
+    for metric, value in sorted(latest["metrics"].items()):
+        metric_name = "drawio_governance_" + re.sub(
+            r"[^a-zA-Z0-9_:]",
+            "_",
+            metric,
+        )
+        lines.extend([
+            f"# HELP {metric_name} Architecture governance metric {metric}.",
+            f"# TYPE {metric_name} gauge",
+            f"{metric_name}{{{labels}}} {value}",
+        ])
+    return "\n".join(lines) + "\n"
+
+
+def governance_otlp(report: dict[str, Any]) -> dict[str, Any]:
+    subject = report["subject"]
+    metrics_by_name = {}
+    for snapshot in report["snapshots"]:
+        timestamp = int(
+            datetime.combine(
+                date.fromisoformat(snapshot["date"]),
+                datetime.min.time(),
+                tzinfo=timezone.utc,
+            ).timestamp() * 1_000_000_000
+        )
+        attributes = [
+            {
+                "key": "repository",
+                "value": {"stringValue": str(subject.get("repository") or "local")},
+            },
+            {
+                "key": "source_path",
+                "value": {"stringValue": str(subject["source_path"])},
+            },
+            {
+                "key": "revision",
+                "value": {"stringValue": str(snapshot["revision"])},
+            },
+        ]
+        for metric, value in sorted(snapshot["metrics"].items()):
+            name = f"drawio.governance.{metric}"
+            metric_record = metrics_by_name.setdefault(name, {
+                "name": name,
+                "unit": "1",
+                "gauge": {"dataPoints": []},
+            })
+            metric_record["gauge"]["dataPoints"].append({
+                "attributes": copy.deepcopy(attributes),
+                "timeUnixNano": str(timestamp),
+                "asInt": str(value),
+            })
+    metrics = [
+        metrics_by_name[name]
+        for name in sorted(metrics_by_name)
+    ]
+    return {
+        "resourceMetrics": [{
+            "resource": {
+                "attributes": [{
+                    "key": "service.name",
+                    "value": {"stringValue": "drawio-diagram-engineer"},
+                }],
+            },
+            "scopeMetrics": [{
+                "scope": {
+                    "name": "drawio-diagram-engineer.governance",
+                    "version": VERSION,
+                },
+                "metrics": metrics,
+            }],
+        }],
+    }
+
+
+def command_export_governance_metrics(args: argparse.Namespace) -> int:
+    report = load_data(Path(args.input))
+    validate_governance_trends_export(report)
+    if not args.prometheus and not args.otlp:
+        raise ValueError("provide --prometheus and/or --otlp")
+    artifacts = {}
+    if args.prometheus:
+        path = Path(args.prometheus)
+        content = governance_prometheus(report)
+        write_text_output(path, content, args.force)
+        artifacts["prometheus"] = {
+            "path": str(path),
+            "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+        }
+    if args.otlp:
+        path = Path(args.otlp)
+        otlp = governance_otlp(report)
+        write_json_output(path, otlp, args.force)
+        artifacts["otlp"] = {
+            "path": str(path),
+            "sha256": canonical_sha256(otlp),
+        }
+    metrics_report = {
+        "format": GOVERNANCE_METRICS_FORMAT,
+        "source_sha256": canonical_sha256(report),
+        "snapshots": len(report["snapshots"]),
+        "artifacts": artifacts,
+    }
+    if args.report:
+        write_json_output(Path(args.report), metrics_report, args.force)
+    print(json.dumps(metrics_report, indent=2, ensure_ascii=False))
+    return 0
+
+
+def structurizr_to_blueprint(workspace: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(workspace, dict):
+        raise ValueError("Structurizr workspace must be an object")
+    model = workspace.get("model", {})
+    if not isinstance(model, dict):
+        raise ValueError("Structurizr workspace requires a model object")
+
+    def object_list(value: Any, label: str) -> list[dict[str, Any]]:
+        if (
+            not isinstance(value, list)
+            or len(value) > 10000
+            or any(not isinstance(item, dict) for item in value)
+        ):
+            raise ValueError(f"Structurizr {label} must be a bounded object list")
+        return value
+
+    used_ids = set()
+    source_ids = {}
+
+    def element_id(source: dict[str, Any], prefix: str) -> str:
+        source_id = str(source.get("id", ""))
+        base = slugify(str(source.get("name") or source_id or prefix))
+        if not base:
+            base = prefix
+        candidate = base
+        suffix = 2
+        while candidate in used_ids:
+            candidate = f"{base}-{suffix}"
+            suffix += 1
+        used_ids.add(candidate)
+        if source_id:
+            source_ids[source_id] = candidate
+        return candidate
+
+    elements = []
+    element_sources = []
+    for person in object_list(model.get("people", []), "people"):
+        identifier = element_id(person, "person")
+        elements.append({
+            "id": identifier,
+            "label": str(person.get("name", identifier)),
+            "scope": "actor",
+            "description": str(person.get("description", "")),
+        })
+        element_sources.append((person, identifier))
+    for system in object_list(
+        model.get("softwareSystems", []),
+        "softwareSystems",
+    ):
+        system_id = element_id(system, "system")
+        elements.append({
+            "id": system_id,
+            "label": str(system.get("name", system_id)),
+            "scope": "system",
+            "description": str(system.get("description", "")),
+        })
+        element_sources.append((system, system_id))
+        for container in object_list(
+            system.get("containers", []),
+            f"containers for {system_id}",
+        ):
+            container_id = element_id(container, "container")
+            elements.append({
+                "id": container_id,
+                "label": str(container.get("name", container_id)),
+                "scope": "container",
+                "parent": system_id,
+                "description": str(container.get("description", "")),
+                "technology": str(container.get("technology", "")),
+            })
+            element_sources.append((container, container_id))
+            for component in object_list(
+                container.get("components", []),
+                f"components for {container_id}",
+            ):
+                component_id = element_id(component, "component")
+                elements.append({
+                    "id": component_id,
+                    "label": str(component.get("name", component_id)),
+                    "scope": "component",
+                    "parent": container_id,
+                    "description": str(component.get("description", "")),
+                    "technology": str(component.get("technology", "")),
+                })
+                element_sources.append((component, component_id))
+    raw_relationships = [
+        (relationship, None)
+        for relationship in object_list(
+            model.get("relationships", []),
+            "model relationships",
+        )
+    ]
+    for source_element, source_identifier in element_sources:
+        raw_relationships.extend(
+            (relationship, source_identifier)
+            for relationship in object_list(
+                source_element.get("relationships", []),
+                f"relationships for {source_identifier}",
+            )
+        )
+    if len(raw_relationships) > 100000:
+        raise ValueError("Structurizr relationships exceed the adapter limit")
+    relations = []
+    seen_relations = set()
+    for index, (relationship, source_hint) in enumerate(
+        raw_relationships,
+        start=1,
+    ):
+        source = (
+            source_ids.get(str(relationship.get("sourceId", "")))
+            or source_hint
+        )
+        destination = source_ids.get(str(relationship.get("destinationId", "")))
+        if not source or not destination:
+            continue
+        relation_id = str(relationship.get("id", "")) or (
+            f"{source}-to-{destination}-{index}"
+        )
+        relation_id = slugify(relation_id)
+        if relation_id in seen_relations:
+            continue
+        seen_relations.add(relation_id)
+        relations.append({
+            "id": relation_id,
+            "from": source,
+            "to": destination,
+            "label": str(
+                relationship.get("description")
+                or relationship.get("technology")
+                or "uses"
+            ),
+            "kind": "sync",
+        })
+    blueprint = {
+        "version": "1",
+        "blueprint": {
+            "title": str(workspace.get("name") or "Structurizr Workspace"),
+            "direction": "LR",
+            "theme": "light",
+        },
+        "views": ["context", "logical"],
+        "elements": elements,
+        "relations": relations,
+        "decisions": [],
+    }
+    issues = validate_blueprint(blueprint)
+    errors = [item for item in issues if item["level"] == "error"]
+    if errors:
+        raise ValueError(errors[0]["message"])
+    return blueprint
+
+
+def blueprint_to_structurizr(blueprint: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(blueprint, dict):
+        raise ValueError("architecture blueprint must be an object")
+    issues = validate_blueprint(blueprint)
+    errors = [item for item in issues if item["level"] == "error"]
+    if errors:
+        raise ValueError(errors[0]["message"])
+    by_parent = defaultdict(list)
+    by_id = {}
+    people = []
+    systems = []
+    for element in blueprint["elements"]:
+        by_id[str(element["id"])] = element
+        by_parent[str(element.get("parent", ""))].append(element)
+    for element in blueprint["elements"]:
+        scope = element["scope"]
+        item = {
+            "id": str(element["id"]),
+            "name": str(element["label"]),
+            "description": str(element.get("description", "")),
+        }
+        if scope == "actor":
+            people.append(item)
+        elif scope == "system":
+            containers = []
+            for container in by_parent[str(element["id"])]:
+                if container["scope"] != "container":
+                    continue
+                components = [{
+                    "id": str(component["id"]),
+                    "name": str(component["label"]),
+                    "description": str(component.get("description", "")),
+                    "technology": str(component.get("technology", "")),
+                } for component in by_parent[str(container["id"])]
+                    if component["scope"] == "component"]
+                containers.append({
+                    "id": str(container["id"]),
+                    "name": str(container["label"]),
+                    "description": str(container.get("description", "")),
+                    "technology": str(container.get("technology", "")),
+                    "components": components,
+                })
+            item["containers"] = containers
+            systems.append(item)
+    relationships = [{
+        "id": str(relation["id"]),
+        "sourceId": str(relation["from"]),
+        "destinationId": str(relation["to"]),
+        "description": str(relation.get("label", "")),
+    } for relation in blueprint.get("relations", [])]
+    title = str(blueprint["blueprint"]["title"])
+    return {
+        "name": title,
+        "description": "Exported by drawio-diagram-engineer",
+        "model": {
+            "people": people,
+            "softwareSystems": systems,
+            "relationships": relationships,
+        },
+        "views": {
+            "systemLandscapeViews": [{
+                "key": "context",
+                "description": f"{title} system context",
+            }],
+        },
+        "drawioAdapter": {
+            "format": STRUCTURIZR_ADAPTER_FORMAT,
+            "tool_version": VERSION,
+            "source_sha256": canonical_sha256(blueprint),
+        },
+    }
+
+
+def command_import_structurizr(args: argparse.Namespace) -> int:
+    blueprint = structurizr_to_blueprint(load_data(Path(args.input)))
+    write_json_output(Path(args.output), blueprint, args.force)
+    print(json.dumps({
+        "format": STRUCTURIZR_ADAPTER_FORMAT,
+        "output": args.output,
+        "elements": len(blueprint["elements"]),
+        "relations": len(blueprint["relations"]),
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def command_export_structurizr(args: argparse.Namespace) -> int:
+    workspace = blueprint_to_structurizr(load_data(Path(args.input)))
+    write_json_output(Path(args.output), workspace, args.force)
+    print(json.dumps({
+        "format": STRUCTURIZR_ADAPTER_FORMAT,
+        "output": args.output,
+        "systems": len(workspace["model"]["softwareSystems"]),
+        "people": len(workspace["model"]["people"]),
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def parse_adr_markdown(path: Path) -> dict[str, Any]:
+    if path.stat().st_size > MAX_STRUCTURED_INPUT_BYTES:
+        raise ValueError(f"ADR exceeds the structured input limit: {path.name}")
+    text = path.read_text(encoding="utf-8")
+    title_match = re.search(r"(?m)^#\s+(.+?)\s*$", text)
+    title = (
+        title_match.group(1).strip()
+        if title_match else path.stem.replace("-", " ").title()
+    )
+    status_match = re.search(
+        r"(?ims)^##\s+Status\s*$\s*([^#\n][^\n]*)",
+        text,
+    )
+    status_text = status_match.group(1).strip().lower() if status_match else "proposed"
+    status = {
+        "decided": "accepted",
+        "approved": "accepted",
+        "rejected": "deprecated",
+    }.get(status_text, status_text)
+    if status not in ALLOWED_DECISION_STATUS:
+        status = "proposed"
+    decision_match = re.search(
+        r"(?ims)^##\s+Decision\s*$\s*(.+?)(?=^##\s+|^Affects:\s*|\Z)",
+        text,
+    )
+    decision = (
+        decision_match.group(1).strip()
+        if decision_match else "See the source ADR for the complete decision."
+    )
+    affects_match = re.search(r"(?im)^Affects:\s*(.+?)\s*$", text)
+    affects = (
+        [
+            slugify(value.strip())
+            for value in affects_match.group(1).split(",")
+            if value.strip()
+        ]
+        if affects_match else []
+    )
+    explicit_id = re.search(r"(?im)^ADR-ID:\s*(.+?)\s*$", text)
+    inferred_id = re.sub(r"^\d{4}-", "", path.stem)
+    return {
+        "id": slugify(
+            explicit_id.group(1).strip() if explicit_id else inferred_id
+        ),
+        "title": title,
+        "status": status,
+        "decision": decision,
+        "affects": affects,
+        "source": path.name,
+    }
+
+
+def command_import_adrs(args: argparse.Namespace) -> int:
+    source = Path(args.input)
+    if source.is_dir():
+        paths = sorted(source.glob("*.md"))
+    elif source.is_file():
+        paths = [source]
+    else:
+        raise ValueError("ADR input must be a Markdown file or directory")
+    if not paths or len(paths) > args.max_files:
+        raise ValueError("ADR input count is empty or exceeds --max-files")
+    decisions = [parse_adr_markdown(path) for path in paths]
+    if len({decision["id"] for decision in decisions}) != len(decisions):
+        raise ValueError("ADR semantic IDs must be unique")
+    if args.blueprint:
+        result = load_data(Path(args.blueprint))
+        if not isinstance(result, dict):
+            raise ValueError("architecture blueprint must be an object")
+        element_ids = {str(element["id"]) for element in result.get("elements", [])}
+        for decision in decisions:
+            unknown = set(decision["affects"]) - element_ids
+            if unknown:
+                raise ValueError(
+                    f"ADR {decision['id']} references unknown elements: "
+                    + ", ".join(sorted(unknown))
+                )
+            if not decision["affects"]:
+                raise ValueError(
+                    f"ADR {decision['id']} requires an Affects line"
+                )
+        result = copy.deepcopy(result)
+        result["decisions"] = decisions
+        errors = [
+            item for item in validate_blueprint(result)
+            if item["level"] == "error"
+        ]
+        if errors:
+            raise ValueError(errors[0]["message"])
+    else:
+        result = {
+            "format": ADR_ADAPTER_FORMAT,
+            "decisions": decisions,
+        }
+    write_json_output(Path(args.output), result, args.force)
+    print(json.dumps({
+        "format": ADR_ADAPTER_FORMAT,
+        "output": args.output,
+        "decisions": len(decisions),
+        "blueprint": bool(args.blueprint),
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def command_export_adrs(args: argparse.Namespace) -> int:
+    blueprint = load_data(Path(args.input))
+    if not isinstance(blueprint, dict):
+        raise ValueError("architecture blueprint must be an object")
+    errors = [
+        item for item in validate_blueprint(blueprint)
+        if item["level"] == "error"
+    ]
+    if errors:
+        raise ValueError(errors[0]["message"])
+    if len(blueprint.get("decisions", [])) > 500:
+        raise ValueError("ADR export supports at most 500 decisions")
+    output = Path(args.output)
+    if output.exists() and not output.is_dir():
+        raise ValueError("ADR output must be a directory")
+    if output.exists() and any(output.iterdir()):
+        marker = output / "adr-index.json"
+        if not args.force or not marker.is_file():
+            raise ValueError("refusing to replace an unrecognized ADR directory")
+        if load_data(marker).get("format") != ADR_ADAPTER_FORMAT:
+            raise ValueError("ADR output marker is invalid")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(
+        prefix=f".{slugify(output.name)}-adrs-",
+        dir=output.parent,
+    ))
+    try:
+        index = []
+        for number, decision in enumerate(blueprint.get("decisions", []), start=1):
+            filename = f"{number:04d}-{decision['id']}.md"
+            affects = ", ".join(map(str, decision.get("affects", [])))
+            content = (
+                f"# {decision['title']}\n\n"
+                f"ADR-ID: {decision['id']}\n\n"
+                f"## Status\n\n{decision.get('status', 'proposed')}\n\n"
+                f"## Decision\n\n{decision.get('decision', '')}\n\n"
+                f"Affects: {affects}\n"
+            )
+            (staging / filename).write_text(content, encoding="utf-8")
+            index.append({
+                "id": decision["id"],
+                "path": filename,
+                "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            })
+        manifest = {
+            "format": ADR_ADAPTER_FORMAT,
+            "tool_version": VERSION,
+            "source_sha256": canonical_sha256(blueprint),
+            "decisions": index,
+        }
+        (staging / "adr-index.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        if output.exists():
+            if any(output.iterdir()):
+                shutil.rmtree(output)
+            else:
+                output.rmdir()
+        staging.replace(output)
+    except Exception:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise
+    print(json.dumps({
+        "format": ADR_ADAPTER_FORMAT,
+        "output": str(output),
+        "decisions": len(blueprint.get("decisions", [])),
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
 def status_badge(label: str, passed: bool, detail: str) -> str:
     state = "pass" if passed else "fail"
     return (
@@ -8896,7 +10288,11 @@ def publish_review_site(
                 "evidence_catalog": "reports/evidence-catalog.json",
                 "governance_trends": "reports/governance-trends.json",
                 "governance_csv": "reports/governance-trends.csv",
+                "governance_prometheus": "reports/governance.prom",
+                "governance_otlp": "reports/governance.otlp.json",
+                "governance_metrics": "reports/governance-metrics.json",
                 "rule_provider_request": "reports/rule-provider-request.json",
+                "transparency_log": "reports/transparency-log.json",
             },
         }
         if github_checks:
@@ -9016,9 +10412,60 @@ def publish_review_site(
             governance_trends_csv(governance_report),
             encoding="utf-8",
         )
+        prometheus_content = governance_prometheus(governance_report)
+        (reports_dir / "governance.prom").write_text(
+            prometheus_content,
+            encoding="utf-8",
+        )
+        otlp_report = governance_otlp(governance_report)
+        (reports_dir / "governance.otlp.json").write_text(
+            json.dumps(otlp_report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        governance_metrics_report = {
+            "format": GOVERNANCE_METRICS_FORMAT,
+            "source_sha256": canonical_sha256(governance_report),
+            "snapshots": len(governance_report["snapshots"]),
+            "artifacts": {
+                "prometheus": {
+                    "path": "reports/governance.prom",
+                    "sha256": hashlib.sha256(
+                        prometheus_content.encode("utf-8")
+                    ).hexdigest(),
+                },
+                "otlp": {
+                    "path": "reports/governance.otlp.json",
+                    "sha256": canonical_sha256(otlp_report),
+                },
+            },
+        }
+        (reports_dir / "governance-metrics.json").write_text(
+            json.dumps(
+                governance_metrics_report,
+                indent=2,
+                ensure_ascii=False,
+            ) + "\n",
+            encoding="utf-8",
+        )
         provider_request = rule_provider_request(staging)
         (reports_dir / "rule-provider-request.json").write_text(
             json.dumps(provider_request, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        transparency_log = build_transparency_log(
+            [
+                reports_dir / "evidence-catalog.json",
+                reports_dir / "governance-trends.json",
+                reports_dir / "rule-provider-request.json",
+            ],
+            None,
+        )
+        (reports_dir / "transparency-log.json").write_text(
+            json.dumps(
+                transparency_log,
+                indent=2,
+                ensure_ascii=False,
+            ) + "\n",
             encoding="utf-8",
         )
         (staging / "index.html").write_text(
@@ -10152,6 +11599,115 @@ def build_parser() -> argparse.ArgumentParser:
     provider_result_parser.set_defaults(
         func=command_verify_rule_provider_result
     )
+
+    delegated_approvals_parser = subparsers.add_parser(
+        "verify-delegated-approvals",
+        help="verify approval signatures against date-scoped delegated trust roots",
+    )
+    delegated_approvals_parser.add_argument(
+        "input",
+        help="published review directory",
+    )
+    delegated_approvals_parser.add_argument("--ledger", required=True)
+    delegated_approvals_parser.add_argument("--trust-policy", required=True)
+    delegated_approvals_parser.add_argument("--trust-root", required=True)
+    delegated_approvals_parser.add_argument(
+        "--namespace",
+        default="drawio-approval",
+    )
+    delegated_approvals_parser.add_argument("-o", "--output")
+    delegated_approvals_parser.add_argument("--force", action="store_true")
+    delegated_approvals_parser.set_defaults(
+        func=command_verify_delegated_approvals
+    )
+
+    transparency_log_parser = subparsers.add_parser(
+        "transparency-log",
+        help="build an append-only Merkle transparency log for governance artifacts",
+    )
+    transparency_log_parser.add_argument(
+        "inputs",
+        nargs="+",
+        help="one or more canonical JSON governance artifacts",
+    )
+    transparency_log_parser.add_argument("-o", "--output", required=True)
+    transparency_log_parser.add_argument(
+        "--baseline",
+        help="prior transparency log whose entries must remain an exact prefix",
+    )
+    transparency_log_parser.add_argument("--force", action="store_true")
+    transparency_log_parser.set_defaults(func=command_transparency_log)
+
+    verify_transparency_parser = subparsers.add_parser(
+        "verify-transparency-log",
+        help="verify transparency-log entry digests, inclusion proofs, and Merkle root",
+    )
+    verify_transparency_parser.add_argument("input")
+    verify_transparency_parser.set_defaults(
+        func=command_verify_transparency_log
+    )
+
+    portal_parser = subparsers.add_parser(
+        "catalog-portal",
+        help="build a portable searchable architecture portal from an evidence catalog",
+    )
+    portal_parser.add_argument("input", help="drawio-evidence-catalog/v1 JSON")
+    portal_parser.add_argument("-o", "--output", required=True)
+    portal_parser.add_argument("--title")
+    portal_parser.add_argument("--force", action="store_true")
+    portal_parser.set_defaults(func=command_catalog_portal)
+
+    metrics_parser = subparsers.add_parser(
+        "export-governance-metrics",
+        help="export governance trends as Prometheus text and OTLP JSON metrics",
+    )
+    metrics_parser.add_argument("input", help="drawio-governance-trends/v1 JSON")
+    metrics_parser.add_argument("--prometheus")
+    metrics_parser.add_argument("--otlp")
+    metrics_parser.add_argument("--report")
+    metrics_parser.add_argument("--force", action="store_true")
+    metrics_parser.set_defaults(func=command_export_governance_metrics)
+
+    import_structurizr_parser = subparsers.add_parser(
+        "import-structurizr",
+        help="convert a Structurizr workspace JSON document to an architecture blueprint",
+    )
+    import_structurizr_parser.add_argument("input")
+    import_structurizr_parser.add_argument("-o", "--output", required=True)
+    import_structurizr_parser.add_argument("--force", action="store_true")
+    import_structurizr_parser.set_defaults(func=command_import_structurizr)
+
+    export_structurizr_parser = subparsers.add_parser(
+        "export-structurizr",
+        help="convert an architecture blueprint to Structurizr workspace JSON",
+    )
+    export_structurizr_parser.add_argument("input")
+    export_structurizr_parser.add_argument("-o", "--output", required=True)
+    export_structurizr_parser.add_argument("--force", action="store_true")
+    export_structurizr_parser.set_defaults(func=command_export_structurizr)
+
+    import_adrs_parser = subparsers.add_parser(
+        "import-adrs",
+        help="import Markdown ADRs and optionally merge them into a blueprint",
+    )
+    import_adrs_parser.add_argument("input", help="ADR Markdown file or directory")
+    import_adrs_parser.add_argument("-o", "--output", required=True)
+    import_adrs_parser.add_argument(
+        "--blueprint",
+        help="blueprint whose decisions are replaced by the imported ADRs",
+    )
+    import_adrs_parser.add_argument("--max-files", type=int, default=500)
+    import_adrs_parser.add_argument("--force", action="store_true")
+    import_adrs_parser.set_defaults(func=command_import_adrs)
+
+    export_adrs_parser = subparsers.add_parser(
+        "export-adrs",
+        help="export blueprint decisions as a portable Markdown ADR collection",
+    )
+    export_adrs_parser.add_argument("input", help="architecture blueprint")
+    export_adrs_parser.add_argument("-o", "--output", required=True)
+    export_adrs_parser.add_argument("--force", action="store_true")
+    export_adrs_parser.set_defaults(func=command_export_adrs)
 
     publish_parser = subparsers.add_parser(
         "publish",

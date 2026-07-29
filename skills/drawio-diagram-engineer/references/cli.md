@@ -43,6 +43,21 @@ governance-trends --snapshot <YYYY-MM-DD=review-dir>... -o <trends.json>
 rule-provider-request <review-dir> -o <request.json> [--force]
 verify-rule-provider-result <request.json> <result.json>
                             [-o <report.json>] [--force]
+verify-delegated-approvals <review-dir> --ledger <ledger.json>
+                           --trust-policy <trust.json> --trust-root <dir>
+                           [--namespace <name>] [-o <report.json>] [--force]
+transparency-log <artifact.json>... -o <log.json>
+                 [--baseline <log.json>] [--force]
+verify-transparency-log <log.json>
+catalog-portal <catalog.json> -o <portal-dir> [--title <title>] [--force]
+export-governance-metrics <trends.json>
+                          [--prometheus <metrics.prom>] [--otlp <metrics.json>]
+                          [--report <report.json>] [--force]
+import-structurizr <workspace.json> -o <blueprint.json> [--force]
+export-structurizr <blueprint.json> -o <workspace.json> [--force]
+import-adrs <adr.md|directory> -o <decisions.json>
+            [--blueprint <blueprint.json>] [--max-files 500] [--force]
+export-adrs <blueprint.json> -o <adr-directory> [--force]
 ```
 
 `init` profiles: `architecture`, `blueprint`, `erd`, `ha`, `routing`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
@@ -64,6 +79,14 @@ Every site includes an unsigned in-toto statement. `attest-review` signs it as `
 `governance-trends` exports dated audit, policy, ownership, exception, annotation, and SARIF metrics for one repository path. Dates are explicit so JSON and optional CSV remain deterministic.
 
 The rule-provider protocol never executes provider code. `rule-provider-request` emits bounded review facts. Run an organization provider in a separately configured sandbox, then pass only its `drawio-rule-provider-result/v1` JSON to `verify-rule-provider-result`. The verifier checks the request digest, provider identity, bounds, page/cell selectors, result levels, and emits normalized SARIF; error-level rule failures exit `13`.
+
+`verify-delegated-approvals` resolves each signed event to exactly one principal/role/time delegation, verifies the pinned allowed-signers epoch, maps active approvals to organization teams, and applies organization quorum. It exits `15` on any integrity, role, team, or quorum failure.
+
+`transparency-log` records canonical governance-document digests as SHA-256 Merkle leaves. A baseline is retained as an exact prefix; an existing name/format coordinate cannot change digest. `verify-transparency-log` recomputes the entry leaves, inclusion proofs, and root and exits `16` on tampering.
+
+`catalog-portal` atomically builds a local searchable static site from an evidence catalog. `export-governance-metrics` writes the latest snapshot as Prometheus gauges and all snapshots as OTLP JSON; at least one transport output is required.
+
+`import-structurizr` maps people, systems, containers, components, and relationships into a Blueprint. `export-structurizr` creates a bounded Structurizr workspace with adapter provenance. `export-adrs` writes Markdown decisions plus a digest index; `import-adrs --blueprint` replaces decisions only after every `Affects` semantic ID validates. See [organization-scale.md](organization-scale.md).
 
 ## Contract and security
 
@@ -137,3 +160,5 @@ verify-export <output.png|svg|pdf|jpg> [-f <format>] [-o <export-report.json>]
 | `12` | Approval-ledger integrity, signature, revocation, or quorum verification failed |
 | `13` | Rule-provider result integrity or error-level organization rule failed |
 | `14` | Evidence-catalog discovery changed with `catalog-reviews --fail-on-change` |
+| `15` | Delegated trust integrity, organization mapping, or quorum verification failed |
+| `16` | Transparency-log leaf, inclusion proof, or Merkle-root verification failed |

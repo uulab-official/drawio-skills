@@ -1,0 +1,17 @@
+{
+  "format": "drawio-adr-adapter/v1",
+  "tool_version": "1.7.0",
+  "source_sha256": "2f89ee0819e6f0ffad0fd99c79779cd92a29f2c02ffecc48b9a389e77617f897",
+  "decisions": [
+    {
+      "id": "event-driven-orders",
+      "path": "0001-event-driven-orders.md",
+      "sha256": "43872d2273566627944f4969d5ad8c2bd402b8fc56a56401e527d18fbc57279b"
+    },
+    {
+      "id": "isolated-data-zone",
+      "path": "0002-isolated-data-zone.md",
+      "sha256": "af3b4561670cf35e3a2411758a9bada588ec41b9be003fc246e14e937b552d9a"
+    }
+  ]
+}

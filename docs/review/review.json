@@ -1,21 +1,21 @@
 {
   "format": "drawio-review-site/v1",
   "generator": "drawio-diagram-engineer",
-  "tool_version": "1.6.0",
+  "tool_version": "1.7.0",
   "title": "example-blueprint",
-  "source_bundle": "public-bundle",
+  "source_bundle": "example-blueprint",
   "provenance": {
-    "revision": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
+    "revision": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318",
     "revision_type": "bundle",
     "repository": null,
     "source_url": null,
     "source_path": "architecture/commerce-platform.json",
-    "bundle_sha256": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
+    "bundle_sha256": "677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318",
     "artifacts": {
       "audit.json": "af6d7d92b0510e5696133f66e1c9208754d24c360b3d0c240b74f69631af55ca",
-      "bundle.json": "f64b7c763e001f8a697745e21980a20346907792e46a79d615b2ceeb7da552a3",
+      "bundle.json": "8355c2f0cd9ad6994985dc5c717c20817dd326b1e0402451259bf31797a630f4",
       "diagram.json": "087fca45c9f73420f9e29f0cb4463c9350d3c4857c45f44f19c4ee38b322321b",
-      "example-blueprint.drawio": "45ebeeefbf46bcd1ea80e3abed99deea367a258a7e8a41465400b5813e7c071e",
+      "example-blueprint.drawio": "19c9836475d00e7c0d6e0694a495c8a3b0ecac9d728b90cac9bf16eb62b3e1a9",
       "previews/context.svg": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
       "previews/data.svg": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
       "previews/decisions.svg": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
@@ -654,7 +654,7 @@
       "href": "pages/context.svg#node-commerce",
       "author": "Architecture Review Board",
       "source": "reviewer",
-      "lifecycle": "updated"
+      "lifecycle": "added"
     },
     {
       "id": "accept-data-ownership",
@@ -665,7 +665,7 @@
       "href": "pages/data.svg#node-orders-db",
       "author": "Data Governance",
       "source": "reviewer",
-      "lifecycle": "updated"
+      "lifecycle": "added"
     },
     {
       "id": "assign-event-stream-owner",
@@ -676,7 +676,7 @@
       "href": "pages/logical.svg#node-events",
       "author": "Architecture Review Board",
       "source": "reviewer",
-      "lifecycle": "updated"
+      "lifecycle": "added"
     }
   ],
   "status": {
@@ -701,59 +701,22 @@
       "reports": []
     },
     "visual_regression": {
-      "status": "passed",
+      "status": "not-configured",
       "changed": false,
       "summary": {
         "added": 0,
         "removed": 0,
         "changed": 0,
-        "unchanged": 6
+        "unchanged": 0
       },
-      "pages": [
-        {
-          "id": "context",
-          "status": "unchanged",
-          "baseline_sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
-          "current_sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0"
-        },
-        {
-          "id": "data",
-          "status": "unchanged",
-          "baseline_sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
-          "current_sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63"
-        },
-        {
-          "id": "decisions",
-          "status": "unchanged",
-          "baseline_sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
-          "current_sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09"
-        },
-        {
-          "id": "deployment",
-          "status": "unchanged",
-          "baseline_sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891",
-          "current_sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891"
-        },
-        {
-          "id": "logical",
-          "status": "unchanged",
-          "baseline_sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2",
-          "current_sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2"
-        },
-        {
-          "id": "security",
-          "status": "unchanged",
-          "baseline_sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb",
-          "current_sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb"
-        }
-      ]
+      "pages": []
     },
     "annotations": {
-      "base": 3,
+      "base": 0,
       "updates": 3,
       "carried": 0,
-      "updated": 3,
-      "added": 0,
+      "updated": 0,
+      "added": 3,
       "total": 3,
       "open": 1,
       "accepted": 1,
@@ -765,16 +728,16 @@
       "status": "passed",
       "passed": true,
       "errors": 0,
-      "warnings": 0,
+      "warnings": 1,
       "report": "reports/policy.json"
     },
     "ownership": {
       "status": "passed",
       "configured": true,
       "passed": true,
-      "assigned": 1,
+      "assigned": 2,
       "unassigned": 0,
-      "total_findings": 1,
+      "total_findings": 2,
       "coverage_percent": 100,
       "report": "reports/ownership.json"
     }
@@ -793,7 +756,11 @@
     "evidence_catalog": "reports/evidence-catalog.json",
     "governance_trends": "reports/governance-trends.json",
     "governance_csv": "reports/governance-trends.csv",
-    "rule_provider_request": "reports/rule-provider-request.json"
+    "governance_prometheus": "reports/governance.prom",
+    "governance_otlp": "reports/governance.otlp.json",
+    "governance_metrics": "reports/governance-metrics.json",
+    "rule_provider_request": "reports/rule-provider-request.json",
+    "transparency_log": "reports/transparency-log.json"
   },
   "policy": {
     "format": "drawio-architecture-policy-report/v1",
@@ -816,7 +783,7 @@
     ],
     "passed": true,
     "errors": 0,
-    "warnings": 0,
+    "warnings": 1,
     "results": [
       {
         "policy_id": "production",
@@ -889,12 +856,12 @@
         "key": "production/approved-baseline",
         "type": "require-visual-baseline",
         "level": "warning",
-        "passed": true,
-        "compliant": true,
+        "passed": false,
+        "compliant": false,
         "waived": false,
         "exceptions": [],
-        "message": "visual baseline status: passed",
-        "detail": "visual baseline status: passed"
+        "message": "visual baseline is not configured",
+        "detail": "visual baseline is not configured"
       },
       {
         "policy_id": "production",
@@ -967,8 +934,8 @@
       ]
     },
     "passed": true,
-    "total_findings": 1,
-    "assigned": 1,
+    "total_findings": 2,
+    "assigned": 2,
     "unassigned": 0,
     "coverage_percent": 100,
     "routes": [
@@ -1005,6 +972,19 @@
       }
     ],
     "assignments": [
+      {
+        "fingerprint": "8b49e509aa3633fa3f3e0f7971af4a7840fbaefcc0a00d80b0e12aab68be3420",
+        "rule_id": "policy.production.approved-baseline",
+        "page": null,
+        "cell": null,
+        "owners": [
+          "@uulab/architecture"
+        ],
+        "routes": [
+          "architecture-policy"
+        ],
+        "source": "routes"
+      },
       {
         "fingerprint": "0604decbc23b1989a034109f3827d10a6f47fe1fef35dc54e78c9c1c8f00dbba",
         "rule_id": "review.annotation-open",

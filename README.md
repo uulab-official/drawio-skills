@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v1.6**. The stable Diagram IR v1 contract now includes signed approval quorum and revocation, multi-repository evidence catalogs, governance trend exports, and sandboxed JSON rule providers, while retaining ERD, HA, CODEOWNERS and Checks integration, composable governance, round-trip editing, and signed attestations.
+> Status: **v1.7**. The stable Diagram IR v1 contract now adds date-scoped delegated reviewer trust, append-only Merkle evidence, a searchable static architecture portal, Prometheus/OTLP governance metrics, and Structurizr/ADR exchange while retaining ERD, HA, federated review, round-trip editing, and signed attestations.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -204,6 +204,56 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
 ```
 
 See the [governance lifecycle and federation contract](skills/drawio-diagram-engineer/references/governance-lifecycle.md).
+
+## Organization-scale trust and discovery
+
+Every `publish` site now carries a one-review evidence catalog, governance JSON/CSV, Prometheus text, OTLP JSON, a metrics manifest, a bounded rule-provider request, and a verified Merkle transparency log. The following commands extend those portable defaults across repositories and organization trust roots.
+
+Pin reviewer authority to organization roles, teams, trust epochs, and exact OpenSSH trust-root files:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  verify-delegated-approvals build/my-system-review \
+  --ledger build/my-system-approvals.json \
+  --trust-policy architecture/review-trust.json \
+  --trust-root .github/review-trust \
+  -o build/delegated-approval-report.json
+```
+
+Create independently verifiable, append-only evidence and a searchable static catalog:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  transparency-log build/architecture-catalog.json \
+  build/my-system-approvals.json \
+  -o build/transparency-log.json
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  catalog-portal build/architecture-catalog.json \
+  -o build/architecture-portal
+```
+
+Export governance telemetry without embedding a network client:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  export-governance-metrics build/governance-trends.json \
+  --prometheus build/governance.prom \
+  --otlp build/governance.otlp.json \
+  --report build/governance-metrics.json
+```
+
+Exchange bounded C4 hierarchy and architecture decisions with adjacent tools:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  import-structurizr workspace.json -o architecture.blueprint.json
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  export-adrs architecture.blueprint.json -o docs/decisions
+```
+
+See the [organization-scale contract](skills/drawio-diagram-engineer/references/organization-scale.md), [trust policy example](skills/drawio-diagram-engineer/assets/example.review-trust.json), [Structurizr example](skills/drawio-diagram-engineer/assets/example.structurizr.json), and checked-in [architecture portal](docs/portal/index.html).
 
 Use an approved review site or bundle as a deterministic visual baseline:
 
@@ -455,6 +505,15 @@ drawio_tool.py catalog-reviews <review-dir>... -o <catalog.json>
 drawio_tool.py governance-trends --snapshot <date=review-dir>... -o <trends.json> [--csv-output <csv>]
 drawio_tool.py rule-provider-request <review-dir> -o <request.json>
 drawio_tool.py verify-rule-provider-result <request.json> <result.json> [-o <report.json>]
+drawio_tool.py verify-delegated-approvals <review-dir> --ledger <json> --trust-policy <json> --trust-root <dir>
+drawio_tool.py transparency-log <artifact.json>... -o <log.json> [--baseline <log.json>]
+drawio_tool.py verify-transparency-log <log.json>
+drawio_tool.py catalog-portal <catalog.json> -o <portal-dir>
+drawio_tool.py export-governance-metrics <trends.json> [--prometheus <text>] [--otlp <json>]
+drawio_tool.py import-structurizr <workspace.json> -o <blueprint.json>
+drawio_tool.py export-structurizr <blueprint.json> -o <workspace.json>
+drawio_tool.py import-adrs <file|dir> -o <json> [--blueprint <blueprint.json>]
+drawio_tool.py export-adrs <blueprint.json> -o <directory>
 drawio_tool.py migrate <legacy-ir.json> [-o <v1-ir.json>] [--report <report.json>] [--check]
 drawio_tool.py security <model|diagram.drawio|bundle-dir> [-o <report.json>] [--strict]
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
@@ -481,7 +540,7 @@ For every command and exit code, see the [CLI reference](skills/drawio-diagram-e
 
 ## Roadmap
 
-The v0.1–v1.0 roadmap is complete. v1.1–v1.5 added round trips, review publication, policy lifecycle, team governance, and enterprise repository integrations. v1.6 completes signed approval lifecycle, multi-repository evidence federation, governance trend exports, and a data-only organization rule protocol. v1.7 tracks organizational scale, discovery, and interoperability. See [ROADMAP.md](ROADMAP.md).
+The v0.1–v1.0 roadmap is complete. v1.1–v1.5 added round trips, review publication, policy lifecycle, team governance, and enterprise repository integrations. v1.6 completed signed approval lifecycle and evidence federation. v1.7 completes organization-scale delegated trust, transparency proofs, searchable discovery, observability exports, and C4/ADR interoperability. v1.8 tracks federated automation and model intelligence. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

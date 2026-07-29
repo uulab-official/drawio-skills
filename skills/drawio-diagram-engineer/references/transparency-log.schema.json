@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/transparency-log.schema.json",
+  "title": "Append-only governance transparency log",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "hash_algorithm", "entries", "merkle_root", "append_only"],
+  "properties": {
+    "format": {"const": "drawio-transparency-log/v1"},
+    "hash_algorithm": {"const": "sha256"},
+    "entries": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {"$ref": "#/$defs/entry"}
+    },
+    "merkle_root": {"$ref": "#/$defs/sha256"},
+    "append_only": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_root", "baseline_entries", "added_entries"],
+      "properties": {
+        "baseline_root": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "baseline_entries": {"type": "integer", "minimum": 0},
+        "added_entries": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence", "name", "format", "document_sha256",
+        "leaf_sha256", "proof"
+      ],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 1},
+        "name": {"type": "string", "minLength": 1},
+        "format": {"type": "string", "minLength": 1},
+        "document_sha256": {"$ref": "#/$defs/sha256"},
+        "leaf_sha256": {"$ref": "#/$defs/sha256"},
+        "proof": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["position", "sha256"],
+            "properties": {
+              "position": {"enum": ["left", "right"]},
+              "sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

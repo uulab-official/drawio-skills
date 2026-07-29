@@ -27,6 +27,13 @@ The following identifiers are independent versioned contracts:
 - Rule-provider request: `drawio-rule-provider-request/v1`
 - Rule-provider result: `drawio-rule-provider-result/v1`
 - Validated rule-provider report: `drawio-rule-provider-report/v1`
+- Delegated reviewer trust policy: `drawio-review-trust/v1`
+- Delegated approval verification: `drawio-delegated-approval-verification/v1`
+- Governance transparency log: `drawio-transparency-log/v1`
+- Static architecture portal manifest: `drawio-architecture-portal/v1`
+- Governance metrics export report: `drawio-governance-metrics/v1`
+- Structurizr adapter provenance: `drawio-structurizr-adapter/v1`
+- ADR adapter and index: `drawio-adr-adapter/v1`
 - Review attestation predicate: `https://github.com/uulab-official/drawio-skills/attestations/review/v1`
 - Review findings: SARIF `2.1.0`
 
@@ -86,4 +93,4 @@ Conflicting old and new fields fail instead of guessing. Unsupported versions fa
 
 Bundle v1 may gain optional artifacts. Existing artifact paths retain their meaning. Inputs are never copied into a bundle. Consumers must ignore unknown manifest properties and locate files through `artifacts`, not hard-coded directory scans.
 
-Review site v1 may gain optional evidence, catalog, annotation-lifecycle, policy, ownership, provenance, summary, attestation, adapter, and SARIF fields. v1.3 added policy and SARIF; v1.4 added ownership, summary, and provenance; v1.5 added `reports/attestation.json`, optional `reports/github-checks.json`, and CODEOWNERS evidence without changing existing paths. v1.6 adds optional catalog, governance trend, and rule-provider request artifacts; approval ledgers remain separately stored and bind the immutable review digest. Existing required paths are unchanged. Consumers should ignore unknown fields, follow paths from `review.json`, and never scrape `index.html`.
+Review site v1 may gain optional evidence, catalog, annotation-lifecycle, policy, ownership, provenance, summary, attestation, adapter, and SARIF fields. v1.3 added policy and SARIF; v1.4 added ownership, summary, and provenance; v1.5 added `reports/attestation.json`, optional `reports/github-checks.json`, and CODEOWNERS evidence without changing existing paths. v1.6 added optional catalog, governance trend, and rule-provider request artifacts; approval ledgers remain separately stored and bind the immutable review digest. v1.7 keeps delegated trust, transparency logs, static portals, metrics transports, and interoperability adapters as separate contracts over those stable artifacts. Existing required paths are unchanged. Consumers should ignore unknown fields, follow paths from manifests, and never scrape generated HTML.

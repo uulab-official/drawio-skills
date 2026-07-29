@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/architecture-portal.schema.json",
+  "title": "Static architecture evidence portal manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format", "generator", "tool_version", "catalog_sha256",
+    "reviews", "artifacts"
+  ],
+  "properties": {
+    "format": {"const": "drawio-architecture-portal/v1"},
+    "generator": {"const": "drawio-diagram-engineer"},
+    "tool_version": {"type": "string", "minLength": 1},
+    "catalog_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "reviews": {"type": "integer", "minimum": 0},
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "script", "catalog", "favicon", "social_preview"],
+      "properties": {
+        "index": {"const": "index.html"},
+        "script": {"const": "portal.js"},
+        "catalog": {"const": "catalog.json"},
+        "favicon": {"const": "favicon.svg"},
+        "social_preview": {"const": "og-image.svg"}
+      }
+    }
+  }
+}

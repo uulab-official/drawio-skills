@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1256" height="580" viewBox="0 0 1256 580" role="img" aria-label="Commerce Platform — Logical Architecture">
+  <rect width="100%" height="100%" fill="#ffffff" />
+  <defs>
+    <style>.semantic-cell:target&gt;*{filter:drop-shadow(0 0 5px #f59e0b);stroke-width:4px!important}.semantic-cell:target text{filter:none;font-weight:700}</style>
+    <marker id="arrow-475569" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
+    </marker>
+  </defs>
+  <g id="edge-customer-to-api" class="semantic-cell semantic-edge" data-semantic-id="customer-to-api">
+    <title>Places orders</title>
+    <polyline points="324,136.0 484,136.0" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow-475569)" />
+    <text x="404.0" y="128.0" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">Places orders</text>
+  </g>
+  <g id="edge-api-to-orders" class="semantic-cell semantic-edge" data-semantic-id="api-to-orders">
+    <title>Delegates order commands</title>
+    <polyline points="750,136.0 910,136.0" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#arrow-475569)" />
+    <text x="830.0" y="128.0" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">Delegates order commands</text>
+  </g>
+  <g id="node-customer" class="semantic-cell semantic-node" data-semantic-id="customer">
+    <title>Customer</title>
+    <rect x="100" y="100" width="224" height="72" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" />
+    <text x="212.0" y="129.0" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Customer</text>
+    <text x="212.0" y="149.0" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Places and tracks orders</text>
+  </g>
+  <g id="node-api-gateway" class="semantic-cell semantic-node" data-semantic-id="api-gateway">
+    <title>API Gateway</title>
+    <rect x="484" y="100" width="266" height="72" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
+    <text x="617.0" y="129.0" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">API Gateway</text>
+    <text x="617.0" y="149.0" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Receives order commands · Kotlin</text>
+  </g>
+  <g id="node-order-service" class="semantic-cell semantic-node" data-semantic-id="order-service">
+    <title>Order Service</title>
+    <rect x="910" y="100" width="266" height="72" rx="12" fill="#ede9fe" stroke="#7c3aed" stroke-width="2" />
+    <text x="1043.0" y="129.0" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Order Service</text>
+    <text x="1043.0" y="149.0" fill="#0f172a" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Owns the order lifecycle · Kotlin</text>
+  </g>
+</svg>

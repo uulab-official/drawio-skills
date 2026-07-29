@@ -63,6 +63,13 @@ class SkillContractTests(unittest.TestCase):
             "rule-provider-request.schema.json",
             "rule-provider-result.schema.json",
             "rule-provider-report.schema.json",
+            "review-trust.schema.json",
+            "delegated-approval-report.schema.json",
+            "transparency-log.schema.json",
+            "architecture-portal.schema.json",
+            "governance-metrics.schema.json",
+            "structurizr-adapter.schema.json",
+            "adr-adapter.schema.json",
         ):
             schema = SKILL / f"references/{filename}"
             self.assertIn('"$schema"', schema.read_text(encoding="utf-8"))
@@ -119,6 +126,15 @@ class SkillContractTests(unittest.TestCase):
             "governance-trends",
             "rule-provider-request",
             "verify-rule-provider-result",
+            "verify-delegated-approvals",
+            "transparency-log",
+            "verify-transparency-log",
+            "catalog-portal",
+            "export-governance-metrics",
+            "import-structurizr",
+            "export-structurizr",
+            "import-adrs",
+            "export-adrs",
         }
         for command in commands:
             self.assertRegex(reference, rf"\b{re.escape(command)}\b", command)

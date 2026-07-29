@@ -1,0 +1,36 @@
+# HELP drawio_governance_audit_errors Architecture governance metric audit_errors.
+# TYPE drawio_governance_audit_errors gauge
+drawio_governance_audit_errors{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 0
+# HELP drawio_governance_audit_score Architecture governance metric audit_score.
+# TYPE drawio_governance_audit_score gauge
+drawio_governance_audit_score{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 100
+# HELP drawio_governance_audit_warnings Architecture governance metric audit_warnings.
+# TYPE drawio_governance_audit_warnings gauge
+drawio_governance_audit_warnings{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 0
+# HELP drawio_governance_exceptions_applied Architecture governance metric exceptions_applied.
+# TYPE drawio_governance_exceptions_applied gauge
+drawio_governance_exceptions_applied{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 1
+# HELP drawio_governance_exceptions_expired Architecture governance metric exceptions_expired.
+# TYPE drawio_governance_exceptions_expired gauge
+drawio_governance_exceptions_expired{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 0
+# HELP drawio_governance_exceptions_total Architecture governance metric exceptions_total.
+# TYPE drawio_governance_exceptions_total gauge
+drawio_governance_exceptions_total{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 1
+# HELP drawio_governance_open_annotations Architecture governance metric open_annotations.
+# TYPE drawio_governance_open_annotations gauge
+drawio_governance_open_annotations{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 1
+# HELP drawio_governance_ownership_coverage_percent Architecture governance metric ownership_coverage_percent.
+# TYPE drawio_governance_ownership_coverage_percent gauge
+drawio_governance_ownership_coverage_percent{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 100
+# HELP drawio_governance_policy_errors Architecture governance metric policy_errors.
+# TYPE drawio_governance_policy_errors gauge
+drawio_governance_policy_errors{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 0
+# HELP drawio_governance_policy_warnings Architecture governance metric policy_warnings.
+# TYPE drawio_governance_policy_warnings gauge
+drawio_governance_policy_warnings{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 1
+# HELP drawio_governance_sarif_findings Architecture governance metric sarif_findings.
+# TYPE drawio_governance_sarif_findings gauge
+drawio_governance_sarif_findings{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 2
+# HELP drawio_governance_unassigned_findings Architecture governance metric unassigned_findings.
+# TYPE drawio_governance_unassigned_findings gauge
+drawio_governance_unassigned_findings{repository="local",source_path="architecture/commerce-platform.json",revision="677a6995aea61597be8c20021d58a2e2b26c63dd0dc130db270bdc4494918318"} 0

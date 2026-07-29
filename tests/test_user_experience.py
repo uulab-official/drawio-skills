@@ -232,7 +232,16 @@ class UserExperienceTests(unittest.TestCase):
             self.assertTrue((review / "reports/extraction.json").is_file())
             self.assertTrue((review / "reports/evidence-catalog.json").is_file())
             self.assertTrue((review / "reports/governance-trends.csv").is_file())
+            self.assertTrue((review / "reports/governance.prom").is_file())
+            self.assertTrue((review / "reports/governance.otlp.json").is_file())
+            self.assertTrue((review / "reports/governance-metrics.json").is_file())
             self.assertTrue((review / "reports/rule-provider-request.json").is_file())
+            transparency = run(
+                TOOL,
+                "verify-transparency-log",
+                review / "reports/transparency-log.json",
+            )
+            self.assertTrue(json.loads(transparency.stdout)["passed"])
 
             same_review = temp / "same-review"
             run(
@@ -1104,6 +1113,382 @@ class UserExperienceTests(unittest.TestCase):
             self.assertEqual(
                 "provider.organization-guardrails.ownership.api",
                 validated["sarif"]["runs"][0]["results"][0]["ruleId"],
+            )
+
+    def test_delegated_trust_and_append_only_transparency(self):
+        if not shutil.which("ssh-keygen"):
+            self.skipTest("ssh-keygen is required")
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            ledger = temp / "approvals.json"
+            trust_root = temp / "trust"
+            trust_root.mkdir()
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.architecture.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            run(TOOL, "publish", bundle, "-o", review, "--strict")
+            keys = {}
+            combined_lines = []
+            delegations = []
+            signer_definitions = (
+                (
+                    "architecture@example.com",
+                    "architecture",
+                    "architecture-platform",
+                    "2026-01-01T00:00:00Z",
+                    "2026-07-29T01:00:30Z",
+                ),
+                (
+                    "security@example.com",
+                    "security",
+                    "security-assurance",
+                    "2026-07-29T01:00:30Z",
+                    "2027-01-01T00:00:00Z",
+                ),
+            )
+            for index, (
+                identity,
+                role,
+                team,
+                valid_from,
+                valid_until,
+            ) in enumerate(signer_definitions, start=1):
+                key = temp / f"reviewer-{index}"
+                subprocess.run(
+                    [
+                        "ssh-keygen", "-q", "-t", "ed25519", "-N", "",
+                        "-f", str(key),
+                    ],
+                    check=True,
+                )
+                keys[identity] = key
+                signer_line = (
+                    f'{identity} namespaces="drawio-approval" '
+                    + key.with_suffix(".pub").read_text(encoding="utf-8")
+                )
+                combined_lines.append(signer_line)
+                signers = trust_root / f"epoch-{index}.allowed-signers"
+                signers.write_text(signer_line, encoding="utf-8")
+                delegations.append({
+                    "id": f"epoch-{index}",
+                    "principals": [identity],
+                    "roles": [role],
+                    "teams": [team],
+                    "valid_from": valid_from,
+                    "valid_until": valid_until,
+                    "allowed_signers": signers.name,
+                    "allowed_signers_sha256": hashlib.sha256(
+                        signers.read_bytes()
+                    ).hexdigest(),
+                })
+            combined = temp / "combined.allowed-signers"
+            combined.write_text("".join(combined_lines), encoding="utf-8")
+            first = run(
+                TOOL,
+                "record-approval",
+                review,
+                "--ledger",
+                ledger,
+                "--identity",
+                "architecture@example.com",
+                "--role",
+                "architecture",
+                "--timestamp",
+                "2026-07-29T01:00:00Z",
+                "--reason",
+                "Architecture approved",
+                "--signing-key",
+                keys["architecture@example.com"],
+                "--minimum-approvals",
+                "2",
+                "--required-role",
+                "architecture",
+                "--required-role",
+                "security",
+            )
+            self.assertFalse(json.loads(first.stdout)["quorum"]["quorum_met"])
+            run(
+                TOOL,
+                "record-approval",
+                review,
+                "--ledger",
+                ledger,
+                "--identity",
+                "security@example.com",
+                "--role",
+                "security",
+                "--timestamp",
+                "2026-07-29T01:01:00Z",
+                "--reason",
+                "Security approved",
+                "--signing-key",
+                keys["security@example.com"],
+                "--allowed-signers",
+                combined,
+            )
+            trust_policy = temp / "review-trust.json"
+            trust_policy.write_text(
+                json.dumps({
+                    "format": "drawio-review-trust/v1",
+                    "organization": "UULAB",
+                    "requirements": {
+                        "minimum_approvals": 2,
+                        "required_roles": ["architecture", "security"],
+                        "required_teams": [
+                            "architecture-platform",
+                            "security-assurance",
+                        ],
+                    },
+                    "delegations": delegations,
+                }),
+                encoding="utf-8",
+            )
+            trust_report = temp / "trust-report.json"
+            verified = run(
+                TOOL,
+                "verify-delegated-approvals",
+                review,
+                "--ledger",
+                ledger,
+                "--trust-policy",
+                trust_policy,
+                "--trust-root",
+                trust_root,
+                "-o",
+                trust_report,
+            )
+            self.assertTrue(json.loads(verified.stdout)["passed"])
+            self.assertEqual(
+                2,
+                len(json.loads(trust_report.read_text(encoding="utf-8"))[
+                    "active_approvals"
+                ]),
+            )
+            catalog = temp / "catalog.json"
+            trends = temp / "trends.json"
+            run(TOOL, "catalog-reviews", review, "-o", catalog)
+            run(
+                TOOL,
+                "governance-trends",
+                "--snapshot",
+                f"2026-07-28={review}",
+                "--snapshot",
+                f"2026-07-29={review}",
+                "-o",
+                trends,
+            )
+            first_log = temp / "transparency-1.json"
+            second_log = temp / "transparency-2.json"
+            run(TOOL, "transparency-log", catalog, "-o", first_log)
+            run(
+                TOOL,
+                "transparency-log",
+                trends,
+                "--baseline",
+                first_log,
+                "-o",
+                second_log,
+            )
+            transparency = json.loads(second_log.read_text(encoding="utf-8"))
+            self.assertEqual(2, len(transparency["entries"]))
+            self.assertEqual(1, transparency["append_only"]["added_entries"])
+            verified_log = run(TOOL, "verify-transparency-log", second_log)
+            self.assertTrue(json.loads(verified_log.stdout)["passed"])
+            transparency["entries"][0]["document_sha256"] = "0" * 64
+            second_log.write_text(json.dumps(transparency), encoding="utf-8")
+            tampered = run(
+                TOOL,
+                "verify-transparency-log",
+                second_log,
+                check=False,
+            )
+            self.assertEqual(16, tampered.returncode)
+
+    def test_portal_metrics_structurizr_and_adr_interoperability(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            catalog = temp / "catalog.json"
+            trends = temp / "trends.json"
+            portal = temp / "portal"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.architecture.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                review,
+                "--source-repository",
+                "uulab/commerce",
+                "--source-revision",
+                "c" * 40,
+                "--source-path",
+                "architecture/commerce.json",
+                "--strict",
+            )
+            run(TOOL, "catalog-reviews", review, "-o", catalog)
+            run(
+                TOOL,
+                "catalog-portal",
+                catalog,
+                "-o",
+                portal,
+                "--title",
+                "UULAB Architecture",
+            )
+            portal_html = (portal / "index.html").read_text(encoding="utf-8")
+            self.assertIn('id="catalog-search"', portal_html)
+            self.assertIn("uulab/commerce", portal_html)
+            self.assertNotIn("https://", portal_html)
+            self.assertTrue((portal / "portal.js").is_file())
+            self.assertTrue((portal / "favicon.svg").is_file())
+            self.assertTrue((portal / "og-image.svg").is_file())
+            unsafe_catalog = temp / "unsafe-catalog.json"
+            unsafe = json.loads(catalog.read_text(encoding="utf-8"))
+            unsafe["reviews"][0]["source_url"] = "javascript:alert(1)"
+            unsafe_catalog.write_text(json.dumps(unsafe), encoding="utf-8")
+            unsafe_portal = run(
+                TOOL,
+                "catalog-portal",
+                unsafe_catalog,
+                "-o",
+                temp / "unsafe-portal",
+                check=False,
+            )
+            self.assertEqual(2, unsafe_portal.returncode)
+            self.assertIn("HTTP(S)", unsafe_portal.stderr)
+            run(
+                TOOL,
+                "governance-trends",
+                "--snapshot",
+                f"2026-07-28={review}",
+                "--snapshot",
+                f"2026-07-29={review}",
+                "-o",
+                trends,
+            )
+            prometheus = temp / "governance.prom"
+            otlp = temp / "governance.otlp.json"
+            metrics_report = temp / "governance-metrics.json"
+            run(
+                TOOL,
+                "export-governance-metrics",
+                trends,
+                "--prometheus",
+                prometheus,
+                "--otlp",
+                otlp,
+                "--report",
+                metrics_report,
+            )
+            self.assertIn(
+                "drawio_governance_audit_score",
+                prometheus.read_text(encoding="utf-8"),
+            )
+            otlp_metrics = json.loads(
+                otlp.read_text(encoding="utf-8")
+            )["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]
+            self.assertTrue(otlp_metrics)
+            self.assertTrue(all(
+                len(metric["gauge"]["dataPoints"]) == 2
+                for metric in otlp_metrics
+            ))
+            self.assertEqual(
+                "drawio-governance-metrics/v1",
+                json.loads(metrics_report.read_text(encoding="utf-8"))["format"],
+            )
+            structurizr = temp / "workspace.json"
+            structurizr.write_text(
+                json.dumps({
+                    "name": "Checkout",
+                    "model": {
+                        "people": [{"id": "1", "name": "Customer"}],
+                        "softwareSystems": [{
+                            "id": "2",
+                            "name": "Checkout",
+                            "containers": [{
+                                "id": "3",
+                                "name": "API",
+                                "technology": "Python",
+                                "components": [{
+                                    "id": "4",
+                                    "name": "Payment Adapter",
+                                    "technology": "HTTP",
+                                }],
+                            }],
+                        }],
+                        "relationships": [{
+                            "id": "5",
+                            "sourceId": "1",
+                            "destinationId": "3",
+                            "description": "places order",
+                        }, {
+                            "id": "6",
+                            "sourceId": "3",
+                            "destinationId": "4",
+                            "description": "delegates payment",
+                        }],
+                    },
+                }),
+                encoding="utf-8",
+            )
+            blueprint = temp / "structurizr.blueprint.json"
+            exported_structurizr = temp / "round-trip.structurizr.json"
+            run(TOOL, "import-structurizr", structurizr, "-o", blueprint)
+            imported = json.loads(blueprint.read_text(encoding="utf-8"))
+            self.assertEqual(4, len(imported["elements"]))
+            self.assertEqual(2, len(imported["relations"]))
+            run(
+                TOOL,
+                "export-structurizr",
+                blueprint,
+                "-o",
+                exported_structurizr,
+            )
+            self.assertEqual(
+                "drawio-structurizr-adapter/v1",
+                json.loads(exported_structurizr.read_text(encoding="utf-8"))[
+                    "drawioAdapter"
+                ]["format"],
+            )
+            adrs = temp / "adrs"
+            merged_blueprint = temp / "blueprint-with-adrs.json"
+            run(
+                TOOL,
+                "export-adrs",
+                ASSETS / "example.blueprint.json",
+                "-o",
+                adrs,
+            )
+            run(
+                TOOL,
+                "import-adrs",
+                adrs,
+                "--blueprint",
+                ASSETS / "example.blueprint.json",
+                "-o",
+                merged_blueprint,
+            )
+            merged = json.loads(merged_blueprint.read_text(encoding="utf-8"))
+            self.assertEqual(2, len(merged["decisions"]))
+            self.assertEqual(
+                {"event-driven-orders", "isolated-data-zone"},
+                {decision["id"] for decision in merged["decisions"]},
             )
 
     def test_migrate_check_and_write_workflow(self):

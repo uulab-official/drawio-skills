@@ -19,7 +19,7 @@
   ],
   "passed": true,
   "errors": 0,
-  "warnings": 0,
+  "warnings": 1,
   "results": [
     {
       "policy_id": "production",
@@ -92,12 +92,12 @@
       "key": "production/approved-baseline",
       "type": "require-visual-baseline",
       "level": "warning",
-      "passed": true,
-      "compliant": true,
+      "passed": false,
+      "compliant": false,
       "waived": false,
       "exceptions": [],
-      "message": "visual baseline status: passed",
-      "detail": "visual baseline status: passed"
+      "message": "visual baseline is not configured",
+      "detail": "visual baseline is not configured"
     },
     {
       "policy_id": "production",

@@ -35,6 +35,7 @@ HTTP, HTTPS, and mail links are listed in `external_links` for human review but 
 - Security reports name locations and rule codes but never echo suspected secret values.
 - Rendering invokes draw.io Desktop without a shell.
 - JSON workflows require no third-party runtime package.
+- Published review sites contain no scripts or remote assets and apply a restrictive Content Security Policy.
 
 ## Boundaries
 

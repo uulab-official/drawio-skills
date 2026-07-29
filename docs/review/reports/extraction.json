@@ -1,0 +1,18 @@
+{
+  "format": "drawio-extraction-report/v1",
+  "source": "example-blueprint.drawio",
+  "passed": true,
+  "lossless": true,
+  "summary": {
+    "pages": 6,
+    "groups": 14,
+    "nodes": 35,
+    "edges": 26,
+    "metadata_cells": 75,
+    "inferred_cells": 0,
+    "inferred_pages": 0,
+    "metadata_version": "1"
+  },
+  "findings": [],
+  "semantic_match": true
+}

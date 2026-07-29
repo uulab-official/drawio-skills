@@ -2,33 +2,64 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2180" height="580" viewBox="0 0 2180 580" role="img" aria-label="Commerce AWS Infrastructure">
   <rect width="100%" height="100%" fill="#ffffff" />
   <defs>
+    <style>.semantic-cell:target&gt;*{filter:drop-shadow(0 0 5px #f59e0b);stroke-width:4px!important}.semantic-cell:target text{filter:none;font-weight:700}</style>
     <marker id="arrow-4d4d4d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#4d4d4d" />
     </marker>
   </defs>
-  <rect x="70" y="45" width="2030" height="157" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
-  <text x="86" y="69" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">example.terraform.tf</text>
-  <polyline points="792,136.0 952,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
-  <text x="872.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">depends on</text>
-  <polyline points="1218,136.0 1378,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
-  <text x="1298.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">depends on</text>
-  <polyline points="366,136.0 526,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
-  <text x="446.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">depends on</text>
-  <polyline points="1644,136.0 1804,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
-  <text x="1724.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">depends on</text>
-  <rect x="526" y="100" width="266" height="72" rx="12" fill="#d6e5f3" stroke="#0072b2" stroke-width="2" />
-  <text x="659.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">aws_eip.api</text>
-  <text x="659.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">resource · example.terraform.tf · aws_e…</text>
-  <rect x="952" y="100" width="266" height="72" rx="12" fill="#d6e5f3" stroke="#0072b2" stroke-width="2" />
-  <text x="1085.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">aws_instance.api</text>
-  <text x="1085.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">resource · example.terraform.tf · aws_i…</text>
-  <rect x="100" y="100" width="266" height="72" rx="12" fill="#d6e5f3" stroke="#0072b2" stroke-width="2" />
-  <text x="233.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">aws_route53_record.api</text>
-  <text x="233.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">resource · example.terraform.tf · aws_r…</text>
-  <rect x="1378" y="100" width="266" height="72" rx="12" fill="#d6e5f3" stroke="#0072b2" stroke-width="2" />
-  <text x="1511.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">aws_security_group.api</text>
-  <text x="1511.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">resource · example.terraform.tf · aws_s…</text>
-  <rect x="1804" y="100" width="266" height="72" rx="12" fill="#eeeeee" stroke="#666666" stroke-width="2" stroke-dasharray="7 5" />
-  <text x="1937.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">network</text>
-  <text x="1937.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">module · example.terraform.tf · module.…</text>
+  <g id="group-terraform-example-terraform-tf" class="semantic-cell semantic-group" data-semantic-id="terraform-example-terraform-tf">
+    <title>example.terraform.tf</title>
+    <rect x="70" y="45" width="2030" height="157" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
+    <text x="86" y="69" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">example.terraform.tf</text>
+  </g>
+  <g id="edge-module-aws-eip-api-depends-module-aws-instance-api" class="semantic-cell semantic-edge" data-semantic-id="module-aws-eip-api-depends-module-aws-instance-api">
+    <title>depends on</title>
+    <polyline points="792,136.0 952,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
+    <text x="872.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">depends on</text>
+  </g>
+  <g id="edge-module-aws-instance-api-depends-module-aws-security-group-api" class="semantic-cell semantic-edge" data-semantic-id="module-aws-instance-api-depends-module-aws-security-group-api">
+    <title>depends on</title>
+    <polyline points="1218,136.0 1378,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
+    <text x="1298.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">depends on</text>
+  </g>
+  <g id="edge-module-aws-route53-record-api-depends-module-aws-eip-api" class="semantic-cell semantic-edge" data-semantic-id="module-aws-route53-record-api-depends-module-aws-eip-api">
+    <title>depends on</title>
+    <polyline points="366,136.0 526,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
+    <text x="446.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">depends on</text>
+  </g>
+  <g id="edge-module-aws-security-group-api-depends-module-module-network" class="semantic-cell semantic-edge" data-semantic-id="module-aws-security-group-api-depends-module-module-network">
+    <title>depends on</title>
+    <polyline points="1644,136.0 1804,136.0" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
+    <text x="1724.0" y="128.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">depends on</text>
+  </g>
+  <g id="node-module-aws-eip-api" class="semantic-cell semantic-node" data-semantic-id="module-aws-eip-api">
+    <title>aws_eip.api</title>
+    <rect x="526" y="100" width="266" height="72" rx="12" fill="#d6e5f3" stroke="#0072b2" stroke-width="2" />
+    <text x="659.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">aws_eip.api</text>
+    <text x="659.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">resource · example.terraform.tf · aws_e…</text>
+  </g>
+  <g id="node-module-aws-instance-api" class="semantic-cell semantic-node" data-semantic-id="module-aws-instance-api">
+    <title>aws_instance.api</title>
+    <rect x="952" y="100" width="266" height="72" rx="12" fill="#d6e5f3" stroke="#0072b2" stroke-width="2" />
+    <text x="1085.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">aws_instance.api</text>
+    <text x="1085.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">resource · example.terraform.tf · aws_i…</text>
+  </g>
+  <g id="node-module-aws-route53-record-api" class="semantic-cell semantic-node" data-semantic-id="module-aws-route53-record-api">
+    <title>aws_route53_record.api</title>
+    <rect x="100" y="100" width="266" height="72" rx="12" fill="#d6e5f3" stroke="#0072b2" stroke-width="2" />
+    <text x="233.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">aws_route53_record.api</text>
+    <text x="233.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">resource · example.terraform.tf · aws_r…</text>
+  </g>
+  <g id="node-module-aws-security-group-api" class="semantic-cell semantic-node" data-semantic-id="module-aws-security-group-api">
+    <title>aws_security_group.api</title>
+    <rect x="1378" y="100" width="266" height="72" rx="12" fill="#d6e5f3" stroke="#0072b2" stroke-width="2" />
+    <text x="1511.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">aws_security_group.api</text>
+    <text x="1511.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">resource · example.terraform.tf · aws_s…</text>
+  </g>
+  <g id="node-module-module-network" class="semantic-cell semantic-node" data-semantic-id="module-module-network">
+    <title>network</title>
+    <rect x="1804" y="100" width="266" height="72" rx="12" fill="#eeeeee" stroke="#666666" stroke-width="2" stroke-dasharray="7 5" />
+    <text x="1937.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">network</text>
+    <text x="1937.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">module · example.terraform.tf · module.…</text>
+  </g>
 </svg>

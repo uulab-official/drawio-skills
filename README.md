@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v1.1**. The stable Diagram IR v1 contract now includes compiler-backed `.drawio` round-trip extraction, while retaining native export verification, security gates, and signed-release controls.
+> Status: **v1.2**. The stable Diagram IR v1 contract now includes compiler-backed round trips and portable collaborative review sites, while retaining native export verification, security gates, and signed-release controls.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -81,6 +81,33 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
 ```
 
 `lossless: true` means every semantic page and cell was recovered from supported compiler metadata. Older or hand-authored files are still converted using deterministic shape, style, geometry, and containment inference; strict mode exits `3` so those assumptions cannot silently enter source control. See the [round-trip editing contract](skills/drawio-diagram-engineer/references/round-trip.md).
+
+## Portable collaborative review
+
+Turn any complete bundle into a script-free HTML/SVG review site:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  publish build/my-system \
+  -o build/my-system-review \
+  --strict
+```
+
+The site provides multi-page navigation, stable semantic links such as `#node-api-gateway`, audit/security/extraction/export status, machine-readable evidence, and optional reviewer annotations. It opens locally and requires neither draw.io Desktop nor a web service.
+
+Use an approved review site or bundle as a deterministic visual baseline:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  publish build/my-system \
+  -o build/my-system-review \
+  --baseline approved-review \
+  --fail-on-visual-change
+```
+
+Exit code `7` means at least one page was added, removed, or changed; the diagnostic site is still written for CI retention. See the [collaborative review contract](skills/drawio-diagram-engineer/references/collaborative-review.md) and [annotation example](skills/drawio-diagram-engineer/assets/example.review-annotations.json).
+
+Open the checked-in [Commerce Platform review site](docs/review/index.html) or inspect its [machine-readable review manifest](docs/review/review.json).
 
 ## Architecture blueprint pack
 
@@ -307,6 +334,7 @@ See [the IR reference](skills/drawio-diagram-engineer/references/ir-format.md) f
 drawio_tool.py doctor [--format human|json]
 drawio_tool.py init <architecture|blueprint|erd|ha|routing|terraform|kubernetes|github-actions|gitlab-ci> [-o <starter>]
 drawio_tool.py build <model|source> [-o <bundle-dir>] [--type auto|...] [--strict]
+drawio_tool.py publish <bundle-dir> -o <review-dir> [--annotations <json>] [--baseline <review|bundle>] [--fail-on-visual-change] [--strict]
 drawio_tool.py migrate <legacy-ir.json> [-o <v1-ir.json>] [--report <report.json>] [--check]
 drawio_tool.py security <model|diagram.drawio|bundle-dir> [-o <report.json>] [--strict]
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
@@ -333,7 +361,7 @@ For every command and exit code, see the [CLI reference](skills/drawio-diagram-e
 
 ## Roadmap
 
-The v0.1–v1.0 roadmap is complete. v1.1 adds round-trip editing and legacy draw.io recovery while keeping the stable Diagram IR contract, signed release tags, checksums, provenance attestations, and immutable releases. See [ROADMAP.md](ROADMAP.md).
+The v0.1–v1.0 roadmap is complete. v1.1 added round-trip editing, and v1.2 adds portable collaborative publication and deterministic visual baselines while keeping the stable Diagram IR contract and release trust chain. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

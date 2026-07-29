@@ -1,0 +1,14 @@
+{
+  "format": "drawio-security-report/v1",
+  "source": "example.blueprint.json",
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "findings": [],
+  "external_links": [],
+  "limits": {
+    "structured_input_bytes": 52428800,
+    "xml_input_bytes": 52428800,
+    "decompressed_page_bytes": 104857600
+  }
+}

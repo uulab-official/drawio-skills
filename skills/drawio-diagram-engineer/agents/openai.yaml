@@ -1,4 +1,4 @@
 interface:
   display_name: "Draw.io Diagram Engineer"
-  short_description: "Build, extract, and secure editable draw.io diagrams"
-  default_prompt: "Use $drawio-diagram-engineer to create, extract, or review a validated editable draw.io architecture, ERD, HA pack, infrastructure topology, or CI/CD pipeline."
+  short_description: "Build, extract, publish, and secure draw.io diagrams"
+  default_prompt: "Use $drawio-diagram-engineer to create, extract, publish, or review a validated editable draw.io architecture, ERD, HA pack, infrastructure topology, or CI/CD pipeline."

@@ -7,6 +7,7 @@ import argparse
 import ast
 import base64
 import copy
+import hashlib
 import html
 import importlib.util
 import json
@@ -24,10 +25,11 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 IR_VERSION = "1"
 IR_METADATA_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
+REVIEW_FORMAT = "drawio-review-site/v1"
 MAX_STRUCTURED_INPUT_BYTES = 50 * 1024 * 1024
 MAX_XML_INPUT_BYTES = 50 * 1024 * 1024
 MAX_DECOMPRESSED_PAGE_BYTES = 100 * 1024 * 1024
@@ -1278,6 +1280,12 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
         "fill": str(diagram.get("background", theme["background"])),
     })
     defs = ET.SubElement(svg, "defs")
+    target_style = ET.SubElement(defs, "style")
+    target_style.text = (
+        ".semantic-cell:target>*{filter:drop-shadow(0 0 5px #f59e0b);"
+        "stroke-width:4px!important}.semantic-cell:target text{"
+        "filter:none;font-weight:700}"
+    )
     edge_colors = {
         str(
             edge.get("style", {}).get("color", theme["edge"])
@@ -1299,12 +1307,19 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
         })
 
     for group, x, y, width, height in group_boxes:
-        ET.SubElement(svg, "rect", {
+        group_element = ET.SubElement(svg, "g", {
+            "id": f"group-{group['id']}",
+            "class": "semantic-cell semantic-group",
+            "data-semantic-id": str(group["id"]),
+        })
+        group_title = ET.SubElement(group_element, "title")
+        group_title.text = str(group["label"])
+        ET.SubElement(group_element, "rect", {
             "x": str(x), "y": str(y), "width": str(width), "height": str(height),
             "rx": "14", "fill": theme["group_fill"], "stroke": theme["group_stroke"],
             "stroke-width": "2",
         })
-        label = ET.SubElement(svg, "text", {
+        label = ET.SubElement(group_element, "text", {
             "x": str(x + 16), "y": str(y + 24), "fill": theme["font"],
             "font-family": "Inter, Arial, sans-serif", "font-size": "14", "font-weight": "700",
         })
@@ -1313,6 +1328,14 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
     node_map = {str(node["id"]): node for node in data.get("nodes", [])}
     for edge_index, edge in enumerate(data.get("edges", [])):
         source_id, target_id = str(edge["from"]), str(edge["to"])
+        edge_id = str(edge.get("id", f"{source_id}-to-{target_id}-{edge_index + 1}"))
+        edge_element = ET.SubElement(svg, "g", {
+            "id": f"edge-{edge_id}",
+            "class": "semantic-cell semantic-edge",
+            "data-semantic-id": edge_id,
+        })
+        edge_title = ET.SubElement(edge_element, "title")
+        edge_title.text = str(edge.get("label") or f"{source_id} to {target_id}")
         route_plan = route_plans[edge_index]
         points = route_plan["points"]
         start, end = points[0], points[-1]
@@ -1334,18 +1357,18 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
             or edge_custom.get("end_cardinality") in CARDINALITY_LABELS
         ):
             attrs.pop("marker-end", None)
-        ET.SubElement(svg, "polyline", attrs)
+        ET.SubElement(edge_element, "polyline", attrs)
         edge_label = str(edge.get("label", "")).strip()
         if edge_label:
             label_x, label_y = route_label_position(points)
-            label = ET.SubElement(svg, "text", {
+            label = ET.SubElement(edge_element, "text", {
                 "x": str(label_x), "y": str(label_y),
                 "fill": theme["font"], "font-family": "Inter, Arial, sans-serif",
                 "font-size": "11", "text-anchor": "middle",
             })
             label.text = edge_label
         if edge_custom.get("start_cardinality") in CARDINALITY_LABELS:
-            cardinality = ET.SubElement(svg, "text", {
+            cardinality = ET.SubElement(edge_element, "text", {
                 "x": str(start[0] + (18 if direction == "LR" else 12)),
                 "y": str(start[1] - (8 if direction == "LR" else -18)),
                 "fill": theme["font"], "font-family": "Inter, Arial, sans-serif",
@@ -1353,7 +1376,7 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
             })
             cardinality.text = CARDINALITY_LABELS[str(edge_custom["start_cardinality"])]
         if edge_custom.get("end_cardinality") in CARDINALITY_LABELS:
-            cardinality = ET.SubElement(svg, "text", {
+            cardinality = ET.SubElement(edge_element, "text", {
                 "x": str(end[0] - (34 if direction == "LR" else -12)),
                 "y": str(end[1] - (8 if direction == "LR" else 10)),
                 "fill": theme["font"], "font-family": "Inter, Arial, sans-serif",
@@ -1363,20 +1386,27 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
 
     for node_id, node in node_map.items():
         x, y, width, height = layout[node_id]
+        node_element = ET.SubElement(svg, "g", {
+            "id": f"node-{node_id}",
+            "class": "semantic-cell semantic-node",
+            "data-semantic-id": node_id,
+        })
+        node_title = ET.SubElement(node_element, "title")
+        node_title.text = str(node["label"])
         kind = str(node.get("kind", "service"))
         fill, stroke = theme.get(kind, theme["service"])
         custom = node.get("style", {}) if isinstance(node.get("style"), dict) else {}
         fill, stroke = custom.get("fill", fill), custom.get("stroke", stroke)
         if kind == "entity":
-            ET.SubElement(svg, "rect", {
+            ET.SubElement(node_element, "rect", {
                 "x": str(x), "y": str(y), "width": str(width), "height": str(height),
                 "rx": "0", "fill": fill, "stroke": stroke, "stroke-width": "2",
             })
-            ET.SubElement(svg, "rect", {
+            ET.SubElement(node_element, "rect", {
                 "x": str(x), "y": str(y), "width": str(width), "height": "48",
                 "fill": theme["group_fill"], "stroke": stroke, "stroke-width": "2",
             })
-            header = ET.SubElement(svg, "text", {
+            header = ET.SubElement(node_element, "text", {
                 "x": str(x + 12), "y": str(y + 30), "fill": theme["font"],
                 "font-family": "Inter, Arial, sans-serif", "font-size": "14",
                 "font-weight": "700",
@@ -1387,24 +1417,24 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
                     continue
                 row_y = y + 48 + field_index * 28
                 if field_index:
-                    ET.SubElement(svg, "line", {
+                    ET.SubElement(node_element, "line", {
                         "x1": str(x), "x2": str(x + width), "y1": str(row_y),
                         "y2": str(row_y), "stroke": theme["group_stroke"],
                         "stroke-width": "1", "opacity": "0.45",
                     })
-                marker_text = ET.SubElement(svg, "text", {
+                marker_text = ET.SubElement(node_element, "text", {
                     "x": str(x + 8), "y": str(row_y + 19), "fill": theme["edge"],
                     "font-family": "Inter, Arial, sans-serif", "font-size": "9",
                     "font-weight": "700",
                 })
                 marker_text.text = entity_field_markers(field)
-                name_text = ET.SubElement(svg, "text", {
+                name_text = ET.SubElement(node_element, "text", {
                     "x": str(x + 52), "y": str(row_y + 19), "fill": theme["font"],
                     "font-family": "Inter, Arial, sans-serif", "font-size": "11",
                     "font-weight": "700" if field.get("primary_key") else "400",
                 })
                 name_text.text = str(field.get("name", ""))
-                type_text = ET.SubElement(svg, "text", {
+                type_text = ET.SubElement(node_element, "text", {
                     "x": str(x + width - 8), "y": str(row_y + 19),
                     "fill": theme["edge"], "font-family": "Inter, Arial, sans-serif",
                     "font-size": "10", "text-anchor": "end",
@@ -1413,11 +1443,11 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
             continue
         if kind == "decision":
             points = f"{x + width / 2},{y} {x + width},{y + height / 2} {x + width / 2},{y + height} {x},{y + height / 2}"
-            ET.SubElement(svg, "polygon", {
+            ET.SubElement(node_element, "polygon", {
                 "points": points, "fill": fill, "stroke": stroke, "stroke-width": "2",
             })
         else:
-            ET.SubElement(svg, "rect", {
+            ET.SubElement(node_element, "rect", {
                 "x": str(x), "y": str(y), "width": str(width), "height": str(height),
                 "rx": "12", "fill": fill, "stroke": stroke, "stroke-width": "2",
                 **(
@@ -1426,18 +1456,18 @@ def compile_svg(data: dict[str, Any]) -> ET.ElementTree:
                 ),
             })
             if kind == "database":
-                ET.SubElement(svg, "ellipse", {
+                ET.SubElement(node_element, "ellipse", {
                     "cx": str(x + width / 2), "cy": str(y + 10), "rx": str(width / 2),
                     "ry": "10", "fill": fill, "stroke": stroke, "stroke-width": "2",
                 })
-        label = ET.SubElement(svg, "text", {
+        label = ET.SubElement(node_element, "text", {
             "x": str(x + width / 2), "y": str(y + height / 2 - (7 if node.get("description") else 0)),
             "fill": custom.get("font", theme["font"]), "font-family": "Inter, Arial, sans-serif",
             "font-size": "13", "font-weight": "700", "text-anchor": "middle",
         })
         label.text = str(node["label"])
         if node.get("description"):
-            description = ET.SubElement(svg, "text", {
+            description = ET.SubElement(node_element, "text", {
                 "x": str(x + width / 2), "y": str(y + height / 2 + 13),
                 "fill": custom.get("font", theme["font"]), "font-family": "Inter, Arial, sans-serif",
                 "font-size": "10", "text-anchor": "middle",
@@ -1551,12 +1581,18 @@ def extracted_number(value: float) -> int | float:
     return int(value) if value.is_integer() else round(value, 3)
 
 
-def unique_extracted_id(raw: str, used: set[str], prefix: str) -> str:
+def unique_extracted_id(
+    raw: str,
+    used: set[str],
+    prefix: str,
+    strip_drawio_prefix: bool = True,
+) -> str:
     candidate = raw
-    for known_prefix in ("node-", "group-", "edge-", "page-"):
-        if candidate.startswith(known_prefix):
-            candidate = candidate[len(known_prefix):]
-            break
+    if strip_drawio_prefix:
+        for known_prefix in ("node-", "group-", "edge-", "page-"):
+            if candidate.startswith(known_prefix):
+                candidate = candidate[len(known_prefix):]
+                break
     candidate = slugify(candidate or prefix)
     if candidate in {"0", "1"}:
         candidate = f"{prefix}-{candidate}"
@@ -1734,7 +1770,12 @@ def extract_drawio(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
                 or f"page-{page_index}"
             )
         )
-        page_id = unique_extracted_id(raw_page_id, used_page_ids, "page")
+        page_id = unique_extracted_id(
+            raw_page_id,
+            used_page_ids,
+            "page",
+            strip_drawio_prefix=page_metadata is None,
+        )
         page_title = str(
             (diagram_element.get("name", "") if diagram_element is not None else "")
             or (
@@ -1781,7 +1822,12 @@ def extract_drawio(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
                 summary["inferred_cells"] += 1
                 raw_id = cell.get("id", "") or "group"
                 group = {}
-            group_id = unique_extracted_id(raw_id, used_ids, "group")
+            group_id = unique_extracted_id(
+                raw_id,
+                used_ids,
+                "group",
+                strip_drawio_prefix=metadata is None,
+            )
             label_lines = extraction_text_lines(cell.get("value", ""))
             group.update({
                 "id": group_id,
@@ -1802,7 +1848,12 @@ def extract_drawio(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
                 summary["inferred_cells"] += 1
                 raw_id = cell.get("id", "") or "node"
                 node = {}
-            node_id = unique_extracted_id(raw_id, used_ids, "node")
+            node_id = unique_extracted_id(
+                raw_id,
+                used_ids,
+                "node",
+                strip_drawio_prefix=metadata is None,
+            )
             node_id_by_cell[cell.get("id", "")] = node_id
             box = absolute_cell_box(cell, cell_map, box_cache)
             styles = parse_style_values(cell.get("style", ""))
@@ -1905,7 +1956,12 @@ def extract_drawio(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
                 summary["inferred_cells"] += 1
                 raw_id = cell.get("id", "") or f"{source}-to-{target}"
                 edge = {}
-            edge_id = unique_extracted_id(raw_id, used_ids, "edge")
+            edge_id = unique_extracted_id(
+                raw_id,
+                used_ids,
+                "edge",
+                strip_drawio_prefix=metadata is None,
+            )
             styles = parse_style_values(cell.get("style", ""))
             label_lines = extraction_text_lines(cell.get("value", ""))
             edge.update({
@@ -3466,11 +3522,17 @@ def semantic_value(category: str, value: dict[str, Any]) -> dict[str, Any]:
         "edges": {"style"},
         "groups": set(),
     }[category]
-    return {
+    normalized = {
         key: copy.deepcopy(value[key])
         for key in sorted(value)
         if key not in ignored
     }
+    if category == "nodes":
+        normalized.setdefault("kind", "service")
+    elif category == "edges":
+        normalized.setdefault("kind", "sync")
+        normalized.setdefault("label", "")
+    return normalized
 
 
 def architecture_diff(
@@ -5616,6 +5678,636 @@ def command_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def safe_artifact_path(root: Path, relative: str) -> Path:
+    candidate = Path(relative)
+    if candidate.is_absolute() or ".." in candidate.parts:
+        raise ValueError(f"unsafe artifact path: {relative}")
+    resolved_root = root.resolve()
+    resolved = (root / candidate).resolve()
+    if resolved != resolved_root and resolved_root not in resolved.parents:
+        raise ValueError(f"artifact escapes bundle directory: {relative}")
+    return resolved
+
+
+def load_bundle_for_publish(
+    bundle: Path,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], Path]:
+    manifest_path = bundle / "bundle.json"
+    if not bundle.is_dir() or not manifest_path.is_file():
+        raise ValueError("publish input must be a drawio-diagram bundle directory")
+    manifest = load_data(manifest_path)
+    if (
+        manifest.get("format") != BUNDLE_FORMAT
+        or manifest.get("generator") != "drawio-diagram-engineer"
+    ):
+        raise ValueError("publish input has an unsupported bundle contract")
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, dict):
+        raise ValueError("bundle manifest requires artifacts")
+    required = {
+        key: artifacts.get(key)
+        for key in ("ir", "drawio", "audit", "security")
+    }
+    if not all(isinstance(value, str) and value for value in required.values()):
+        raise ValueError("bundle manifest is missing a required publication artifact")
+    paths = {
+        key: safe_artifact_path(bundle, str(value))
+        for key, value in required.items()
+    }
+    if not all(path.is_file() for path in paths.values()):
+        raise ValueError("bundle publication artifact is missing")
+    diagram_ir = load_data(paths["ir"])
+    ir_errors = [
+        item for item in validate_ir(diagram_ir) if item["level"] == "error"
+    ]
+    if ir_errors:
+        raise ValueError(f"bundle Diagram IR is invalid: {ir_errors[0]['message']}")
+    audit = load_data(paths["audit"])
+    security = load_data(paths["security"])
+    return manifest, diagram_ir, audit, security, paths["drawio"]
+
+
+def svg_page_bytes(page: dict[str, Any]) -> bytes:
+    return ET.tostring(
+        compile_svg(page).getroot(),
+        encoding="utf-8",
+        xml_declaration=True,
+    )
+
+
+def visual_baseline_hashes(path: Path) -> dict[str, str]:
+    review_path = path / "review.json"
+    if review_path.is_file():
+        review = load_data(review_path)
+        if review.get("format") != REVIEW_FORMAT:
+            raise ValueError("baseline review site has an unsupported contract")
+        hashes = {}
+        for page in review.get("pages", []):
+            if not isinstance(page, dict) or not page.get("id") or not page.get("sha256"):
+                raise ValueError("baseline review site contains an invalid page record")
+            hashes[str(page["id"])] = str(page["sha256"])
+        return hashes
+    _, diagram_ir, _, _, _ = load_bundle_for_publish(path)
+    return {
+        page_id: hashlib.sha256(svg_page_bytes(page)).hexdigest()
+        for page_id, page in page_documents(diagram_ir)
+    }
+
+
+def visual_regression_report(
+    current: dict[str, str],
+    baseline: Path | None,
+) -> dict[str, Any]:
+    if baseline is None:
+        return {
+            "status": "not-configured",
+            "changed": False,
+            "summary": {"added": 0, "removed": 0, "changed": 0, "unchanged": 0},
+            "pages": [],
+        }
+    before = visual_baseline_hashes(baseline)
+    pages = []
+    counts = {"added": 0, "removed": 0, "changed": 0, "unchanged": 0}
+    for page_id in sorted(set(before) | set(current)):
+        if page_id not in before:
+            status = "added"
+        elif page_id not in current:
+            status = "removed"
+        elif before[page_id] != current[page_id]:
+            status = "changed"
+        else:
+            status = "unchanged"
+        counts[status] += 1
+        pages.append({
+            "id": page_id,
+            "status": status,
+            "baseline_sha256": before.get(page_id),
+            "current_sha256": current.get(page_id),
+        })
+    changed = any(counts[key] for key in ("added", "removed", "changed"))
+    return {
+        "status": "changed" if changed else "passed",
+        "changed": changed,
+        "summary": counts,
+        "pages": pages,
+    }
+
+
+def semantic_cell_catalog(
+    diagram_ir: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, set[str]]]:
+    catalog = []
+    allowed: dict[str, set[str]] = {}
+    for page_id, page in page_documents(diagram_ir):
+        cells: list[dict[str, Any]] = []
+        cell_ids: set[str] = set()
+        for category, prefix in (
+            ("groups", "group"),
+            ("nodes", "node"),
+            ("edges", "edge"),
+        ):
+            for index, item in enumerate(page.get(category, []), start=1):
+                if not isinstance(item, dict):
+                    continue
+                semantic_id = str(
+                    item.get("id")
+                    or (
+                        f"{item.get('from')}-to-{item.get('to')}-{index}"
+                        if category == "edges" else f"{prefix}-{index}"
+                    )
+                )
+                anchor = f"{prefix}-{semantic_id}"
+                label = str(
+                    item.get("label")
+                    or (
+                        f"{item.get('from')} → {item.get('to')}"
+                        if category == "edges" else semantic_id
+                    )
+                )
+                cells.append({
+                    "id": semantic_id,
+                    "anchor": anchor,
+                    "category": category[:-1],
+                    "label": label,
+                    "href": f"pages/{page_id}.svg#{anchor}",
+                })
+                cell_ids.add(anchor)
+        allowed[page_id] = cell_ids
+        catalog.append({
+            "id": page_id,
+            "title": str(page.get("diagram", {}).get("title", page_id)),
+            "cells": cells,
+        })
+    return catalog, allowed
+
+
+def resolve_annotation_anchor(
+    page_id: str,
+    raw_cell: str,
+    allowed: dict[str, set[str]],
+) -> str:
+    if page_id not in allowed:
+        raise ValueError(f"annotation references unknown page: {page_id}")
+    if raw_cell in allowed[page_id]:
+        return raw_cell
+    matches = [
+        candidate for candidate in allowed[page_id]
+        if candidate.rsplit("-", 1)[-1] == raw_cell
+        or candidate in {
+            f"node-{raw_cell}",
+            f"edge-{raw_cell}",
+            f"group-{raw_cell}",
+        }
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"annotation cell {raw_cell} is unknown or ambiguous on page {page_id}"
+        )
+    return matches[0]
+
+
+def load_review_annotations(
+    path: Path | None,
+    allowed: dict[str, set[str]],
+) -> list[dict[str, Any]]:
+    if path is None:
+        return []
+    data = load_data(path)
+    if str(data.get("version", "")) != "1" or not isinstance(data.get("annotations"), list):
+        raise ValueError("annotation file requires version 1 and an annotations array")
+    annotations = []
+    seen: set[str] = set()
+    for index, annotation in enumerate(data["annotations"], start=1):
+        if not isinstance(annotation, dict):
+            raise ValueError(f"annotation {index} must be an object")
+        annotation_id = str(annotation.get("id", ""))
+        page_id = str(annotation.get("page", ""))
+        raw_cell = str(annotation.get("cell", ""))
+        message = str(annotation.get("message", "")).strip()
+        status = str(annotation.get("status", "open"))
+        if not valid_semantic_id(annotation_id) or annotation_id in seen:
+            raise ValueError(f"annotation {index} requires a unique semantic id")
+        if not message:
+            raise ValueError(f"annotation {annotation_id} requires a message")
+        if status not in {"open", "accepted", "resolved"}:
+            raise ValueError(
+                f"annotation {annotation_id} status must be open, accepted, or resolved"
+            )
+        anchor = resolve_annotation_anchor(page_id, raw_cell, allowed)
+        normalized = {
+            "id": annotation_id,
+            "page": page_id,
+            "cell": anchor,
+            "status": status,
+            "message": message,
+            "href": f"pages/{page_id}.svg#{anchor}",
+        }
+        if annotation.get("author"):
+            normalized["author"] = str(annotation["author"])
+        annotations.append(normalized)
+        seen.add(annotation_id)
+    return annotations
+
+
+def report_annotations(
+    audit: dict[str, Any],
+    extraction: dict[str, Any],
+    page_ids: list[str],
+    allowed: dict[str, set[str]],
+) -> list[dict[str, Any]]:
+    generated = []
+    page_aliases = {
+        f"page-{index}": page_id
+        for index, page_id in enumerate(page_ids, start=1)
+    }
+    for source_name, findings in (
+        ("audit", audit.get("issues", [])),
+        ("extraction", extraction.get("findings", [])),
+    ):
+        for index, finding in enumerate(findings, start=1):
+            if not isinstance(finding, dict) or not finding.get("cell"):
+                continue
+            page_id = str(finding.get("page") or page_ids[0])
+            page_id = page_aliases.get(page_id, page_id)
+            try:
+                anchor = resolve_annotation_anchor(
+                    page_id, str(finding["cell"]), allowed,
+                )
+            except ValueError:
+                continue
+            generated.append({
+                "id": f"{source_name}-{index}",
+                "page": page_id,
+                "cell": anchor,
+                "status": "open",
+                "message": str(finding.get("message", finding.get("code", source_name))),
+                "source": source_name,
+                "level": str(finding.get("level", "warning")),
+                "href": f"pages/{page_id}.svg#{anchor}",
+            })
+    return generated
+
+
+def status_badge(label: str, passed: bool, detail: str) -> str:
+    state = "pass" if passed else "fail"
+    return (
+        f'<article class="status {state}"><span>{html.escape(label)}</span>'
+        f"<strong>{'PASS' if passed else 'REVIEW'}</strong>"
+        f"<small>{html.escape(detail)}</small></article>"
+    )
+
+
+def review_site_html(review: dict[str, Any]) -> str:
+    title = html.escape(str(review["title"]))
+    page_links = "".join(
+        f'<a href="{html.escape(page["artifact"])}" target="diagram-frame">'
+        f'{html.escape(page["title"])}</a>'
+        for page in review["pages"]
+    )
+    first_page = html.escape(review["pages"][0]["artifact"])
+    status = review["status"]
+    statuses = "".join([
+        status_badge(
+            "Audit",
+            bool(status["audit"]["passed"]),
+            f'{status["audit"]["score"]}/100 · {status["audit"]["warnings"]} warning(s)',
+        ),
+        status_badge(
+            "Security",
+            bool(status["security"]["passed"]),
+            f'{status["security"]["errors"]} error(s)',
+        ),
+        status_badge(
+            "Round trip",
+            bool(status["extraction"]["lossless"] and status["extraction"]["semantic_match"]),
+            (
+                "lossless and source-aligned"
+                if status["extraction"]["lossless"] and status["extraction"]["semantic_match"]
+                else "review extraction or source drift"
+            ),
+        ),
+        status_badge(
+            "Native exports",
+            status["exports"]["status"] in {"passed", "not-provided"},
+            status["exports"]["status"],
+        ),
+        status_badge(
+            "Visual baseline",
+            status["visual_regression"]["status"] in {"passed", "not-configured"},
+            status["visual_regression"]["status"],
+        ),
+    ])
+    annotations = "".join(
+        (
+            f'<li class="{html.escape(item["status"])}">'
+            f'<a href="{html.escape(item["href"])}" target="diagram-frame">'
+            f'{html.escape(item["page"])} · {html.escape(item["cell"])}</a>'
+            f'<span>{html.escape(item["message"])}</span>'
+            f'<small>{html.escape(item["status"])}</small></li>'
+        )
+        for item in review["annotations"]
+    ) or "<li class=\"empty\">No open or supplied annotations.</li>"
+    catalogs = "".join(
+        (
+            f"<details><summary>{html.escape(page['title'])} "
+            f"({len(page['cells'])})</summary><div class=\"chips\">"
+            + "".join(
+                f'<a href="{html.escape(cell["href"])}" target="diagram-frame">'
+                f'{html.escape(cell["category"])} · {html.escape(cell["label"])}</a>'
+                for cell in page["cells"]
+            )
+            + "</div></details>"
+        )
+        for page in review["catalog"]
+    )
+    visual_rows = "".join(
+        f"<tr><td>{html.escape(page['id'])}</td>"
+        f"<td><span class=\"pill {html.escape(page['status'])}\">"
+        f"{html.escape(page['status'])}</span></td></tr>"
+        for page in status["visual_regression"]["pages"]
+    ) or '<tr><td colspan="2">No baseline configured.</td></tr>'
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Portable, machine-verifiable architecture diagram review site.">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%233157d5'/%3E%3Cpath d='M17 18h30v10H17zm0 18h30v10H17z' fill='white'/%3E%3C/svg%3E">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; img-src 'self';">
+  <title>{title} · Diagram review</title>
+  <style>
+    :root{{--ink:#172033;--muted:#64748b;--line:#dbe3ef;--paper:#fff;--wash:#f4f7fb;--accent:#3157d5;--pass:#16794b;--warn:#a15c00}}
+    *{{box-sizing:border-box}} body{{margin:0;background:var(--wash);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif}}
+    header{{padding:28px 34px 20px;background:#10182b;color:white}} header p{{color:#b9c6df;margin:4px 0 0}} h1{{margin:0;font-size:28px}}
+    nav{{display:flex;gap:8px;overflow:auto;padding:12px 34px;background:var(--paper);border-bottom:1px solid var(--line)}}
+    nav a,.chips a{{color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:7px 11px;white-space:nowrap}}
+    main{{padding:22px 34px 42px;display:grid;gap:18px}} .status-grid{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}}
+    .status{{background:white;border:1px solid var(--line);border-top:4px solid var(--pass);border-radius:10px;padding:12px;display:grid;gap:3px}}
+    .status.fail{{border-top-color:var(--warn)}} .status strong{{font-size:12px;color:var(--pass)}} .status.fail strong{{color:var(--warn)}} .status small{{color:var(--muted)}}
+    .viewer{{width:100%;height:min(72vh,860px);border:1px solid var(--line);border-radius:12px;background:white}}
+    .panels{{display:grid;grid-template-columns:1fr 1fr;gap:18px}} section{{background:white;border:1px solid var(--line);border-radius:12px;padding:18px}}
+    section h2{{margin:0 0 12px;font-size:17px}} ul{{list-style:none;padding:0;margin:0;display:grid;gap:8px}} li{{display:grid;grid-template-columns:auto 1fr auto;gap:10px;border-bottom:1px solid var(--line);padding:8px 0}}
+    li a{{color:var(--accent);font-weight:650;text-decoration:none}} li small,.empty{{color:var(--muted)}} details{{border-top:1px solid var(--line);padding:10px 0}} summary{{cursor:pointer;font-weight:650}}
+    .chips{{display:flex;flex-wrap:wrap;gap:7px;padding:10px 0}} .chips a{{font-size:12px;padding:5px 8px}} table{{width:100%;border-collapse:collapse}} td{{padding:7px;border-bottom:1px solid var(--line)}}
+    .pill{{padding:3px 7px;border-radius:999px;background:#e8edf5}} .pill.changed,.pill.added,.pill.removed{{background:#fff0d6;color:#7c4600}}
+    footer{{padding:18px 34px;color:var(--muted)}} footer a{{color:var(--accent)}}
+    @media(max-width:900px){{.status-grid{{grid-template-columns:1fr 1fr}}.panels{{grid-template-columns:1fr}}main,nav{{padding-left:16px;padding-right:16px}}}}
+  </style>
+</head>
+<body>
+  <header><h1>{title}</h1><p>Portable architecture review · {len(review["pages"])} page(s) · semantic anchors enabled</p></header>
+  <nav aria-label="Diagram pages">{page_links}</nav>
+  <main>
+    <div class="status-grid">{statuses}</div>
+    <iframe class="viewer" name="diagram-frame" src="{first_page}" title="Diagram preview" sandbox="" referrerpolicy="no-referrer"></iframe>
+    <div class="panels">
+      <section><h2>Review annotations</h2><ul>{annotations}</ul></section>
+      <section><h2>Visual baseline</h2><table>{visual_rows}</table></section>
+      <section><h2>Semantic element index</h2>{catalogs}</section>
+      <section><h2>Machine-readable evidence</h2>
+        <div class="chips">
+          <a href="review.json">Review manifest</a>
+          <a href="reports/audit.json">Audit report</a>
+          <a href="reports/security.json">Security report</a>
+          <a href="reports/extraction.json">Extraction report</a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer>Generated by drawio-diagram-engineer {html.escape(str(review["tool_version"]))}. No scripts, remote assets, telemetry, or network requests.</footer>
+</body>
+</html>
+"""
+
+
+def publish_review_site(
+    bundle: Path,
+    output: Path,
+    title: str | None = None,
+    annotations_path: Path | None = None,
+    baseline: Path | None = None,
+    force: bool = False,
+) -> dict[str, Any]:
+    manifest, diagram_ir, audit, persisted_security, drawio_path = (
+        load_bundle_for_publish(bundle)
+    )
+    if output.exists() and not output.is_dir():
+        raise ValueError(f"review output must be a directory: {output}")
+    if output.exists() and any(output.iterdir()):
+        marker = output / "review.json"
+        if not force:
+            raise ValueError(
+                f"{output} is not empty; choose another directory or pass --force"
+            )
+        if not marker.is_file():
+            raise ValueError(
+                f"refusing to replace unrecognized directory {output}; review.json is missing"
+            )
+        marker_data = load_data(marker)
+        if (
+            marker_data.get("format") != REVIEW_FORMAT
+            or marker_data.get("generator") != "drawio-diagram-engineer"
+        ):
+            raise ValueError("refusing to replace directory not owned by a review site")
+
+    live_ir_security = security_report_for_data(diagram_ir, "diagram.json")
+    live_drawio_security = security_report_for_drawio(drawio_path)
+    security_errors = (
+        int(persisted_security.get("errors", 0))
+        + int(live_ir_security.get("errors", 0))
+        + int(live_drawio_security.get("errors", 0))
+    )
+    if security_errors:
+        raise ValueError("publication blocked by bundle security findings")
+
+    extracted_ir, extraction = extract_drawio(drawio_path)
+    if not extraction["passed"]:
+        raise ValueError("publication blocked because draw.io extraction failed")
+    semantic_match = not architecture_diff(
+        diagram_ir, extracted_ir, "bundle-ir", "drawio-extraction",
+    )["drift"]
+    extraction = copy.deepcopy(extraction)
+    extraction["source"] = str(manifest["artifacts"]["drawio"])
+    extraction.pop("output", None)
+    extraction["semantic_match"] = semantic_match
+
+    catalog, allowed = semantic_cell_catalog(diagram_ir)
+    page_ids = [page["id"] for page in catalog]
+    supplied_annotations = load_review_annotations(annotations_path, allowed)
+    generated_annotations = report_annotations(
+        audit, extraction, page_ids, allowed,
+    )
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(
+        prefix=f".{slugify(output.name)}-review-",
+        dir=str(output.parent),
+    ))
+    try:
+        pages_dir = staging / "pages"
+        reports_dir = staging / "reports"
+        pages_dir.mkdir()
+        reports_dir.mkdir()
+        pages = []
+        current_hashes: dict[str, str] = {}
+        page_lookup = {entry["id"]: entry for entry in catalog}
+        for page_id, page in page_documents(diagram_ir):
+            content = svg_page_bytes(page)
+            artifact = f"pages/{page_id}.svg"
+            (staging / artifact).write_bytes(content)
+            digest = hashlib.sha256(content).hexdigest()
+            current_hashes[page_id] = digest
+            pages.append({
+                "id": page_id,
+                "title": page_lookup[page_id]["title"],
+                "artifact": artifact,
+                "sha256": digest,
+                "nodes": len(page.get("nodes", [])),
+                "edges": len(page.get("edges", [])),
+                "groups": len(page.get("groups", [])),
+            })
+
+        export_reports = []
+        export_candidates = sorted(bundle.glob("*.export.json"))
+        declared_exports = manifest.get("artifacts", {}).get("exports", [])
+        if isinstance(declared_exports, list):
+            for relative in declared_exports:
+                if isinstance(relative, str):
+                    candidate = safe_artifact_path(bundle, relative)
+                    if candidate.is_file() and candidate not in export_candidates:
+                        export_candidates.append(candidate)
+        for candidate in sorted(export_candidates, key=lambda item: item.name):
+            report = load_data(candidate)
+            if report.get("format") != "drawio-export-report/v1":
+                raise ValueError(f"unsupported export report: {candidate.name}")
+            report_name = f"reports/{slugify(candidate.stem)}.json"
+            (staging / report_name).write_text(
+                json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            export_reports.append({
+                "artifact": report_name,
+                "passed": bool(report.get("passed")),
+                "format": report.get("expected_format"),
+                "source": candidate.name,
+            })
+        exports_status = (
+            "not-provided"
+            if not export_reports else (
+                "passed" if all(item["passed"] for item in export_reports) else "failed"
+            )
+        )
+        visual = visual_regression_report(current_hashes, baseline)
+        review = {
+            "format": REVIEW_FORMAT,
+            "generator": "drawio-diagram-engineer",
+            "tool_version": VERSION,
+            "title": title or str(
+                diagram_ir.get("diagram", {}).get("title")
+                or manifest.get("name", "Diagram review")
+            ),
+            "source_bundle": bundle.name,
+            "pages": pages,
+            "catalog": catalog,
+            "annotations": supplied_annotations + generated_annotations,
+            "status": {
+                "audit": {
+                    "passed": int(audit.get("errors", 0)) == 0
+                    and int(audit.get("score", 0)) >= 90,
+                    "score": int(audit.get("score", 0)),
+                    "errors": int(audit.get("errors", 0)),
+                    "warnings": int(audit.get("warnings", 0)),
+                },
+                "security": {
+                    "passed": security_errors == 0,
+                    "errors": security_errors,
+                },
+                "extraction": {
+                    "passed": bool(extraction["passed"]),
+                    "lossless": bool(extraction["lossless"]),
+                    "semantic_match": semantic_match,
+                    "inferred_cells": int(
+                        extraction.get("summary", {}).get("inferred_cells", 0)
+                    ),
+                },
+                "exports": {
+                    "status": exports_status,
+                    "reports": export_reports,
+                },
+                "visual_regression": visual,
+            },
+            "artifacts": {
+                "index": "index.html",
+                "manifest": "review.json",
+                "audit": "reports/audit.json",
+                "security": "reports/security.json",
+                "extraction": "reports/extraction.json",
+            },
+        }
+        for name, report in (
+            ("audit.json", audit),
+            ("security.json", persisted_security),
+            ("extraction.json", extraction),
+        ):
+            (reports_dir / name).write_text(
+                json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        (staging / "review.json").write_text(
+            json.dumps(review, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        (staging / "index.html").write_text(
+            review_site_html(review),
+            encoding="utf-8",
+        )
+        if output.exists():
+            if any(output.iterdir()):
+                shutil.rmtree(output)
+            else:
+                output.rmdir()
+        staging.replace(output)
+    except Exception:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise
+    return review
+
+
+def command_publish(args: argparse.Namespace) -> int:
+    output = Path(args.output)
+    review = publish_review_site(
+        Path(args.input),
+        output,
+        args.title,
+        Path(args.annotations) if args.annotations else None,
+        Path(args.baseline) if args.baseline else None,
+        args.force,
+    )
+    summary = {
+        "output": str(output),
+        "index": str(output / "index.html"),
+        "manifest": str(output / "review.json"),
+        "pages": len(review["pages"]),
+        "annotations": len(review["annotations"]),
+        "status": review["status"],
+    }
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    strict_failed = (
+        not review["status"]["audit"]["passed"]
+        or not review["status"]["security"]["passed"]
+        or not review["status"]["extraction"]["lossless"]
+        or not review["status"]["extraction"]["semantic_match"]
+        or review["status"]["exports"]["status"] == "failed"
+    )
+    if args.fail_on_visual_change and review["status"]["visual_regression"]["changed"]:
+        return 7
+    if args.strict and strict_failed:
+        return 3
+    return 0
+
+
 def command_compile(args: argparse.Namespace) -> int:
     path = Path(args.input)
     data = load_data(path)
@@ -6273,6 +6965,26 @@ def build_parser() -> argparse.ArgumentParser:
     build_one_parser.add_argument("--strict", action="store_true")
     build_one_parser.add_argument("--force", action="store_true")
     build_one_parser.set_defaults(func=command_build)
+
+    publish_parser = subparsers.add_parser(
+        "publish",
+        help="create an atomic portable HTML/SVG review site from a bundle",
+    )
+    publish_parser.add_argument("input", help="drawio-diagram bundle directory")
+    publish_parser.add_argument("-o", "--output", required=True)
+    publish_parser.add_argument("--title")
+    publish_parser.add_argument(
+        "--annotations",
+        help="version 1 JSON annotations linked to semantic cells",
+    )
+    publish_parser.add_argument(
+        "--baseline",
+        help="prior review site or bundle used as the visual baseline",
+    )
+    publish_parser.add_argument("--fail-on-visual-change", action="store_true")
+    publish_parser.add_argument("--strict", action="store_true")
+    publish_parser.add_argument("--force", action="store_true")
+    publish_parser.set_defaults(func=command_publish)
 
     compile_parser = subparsers.add_parser("compile", help="compile Diagram IR to .drawio")
     compile_parser.add_argument("input")

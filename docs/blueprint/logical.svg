@@ -2,48 +2,100 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1154" viewBox="0 0 1600 1154" role="img" aria-label="Commerce Platform — Logical Architecture">
   <rect width="100%" height="100%" fill="#ffffff" />
   <defs>
+    <style>.semantic-cell:target&gt;*{filter:drop-shadow(0 0 5px #f59e0b);stroke-width:4px!important}.semantic-cell:target text{filter:none;font-weight:700}</style>
     <marker id="arrow-334155" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
     </marker>
   </defs>
-  <rect x="1310" y="251" width="210" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
-  <text x="1326" y="275" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Data</text>
-  <rect x="380" y="473" width="210" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
-  <text x="396" y="497" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Experience</text>
-  <rect x="1000" y="695" width="210" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
-  <text x="1016" y="719" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Orders</text>
-  <rect x="690" y="917" width="830" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
-  <text x="706" y="941" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Platform</text>
-  <polyline points="250,128.0 330.0,128.0 330.0,564.0 410,564.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
-  <text x="330.0" y="338.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">HTTPS</text>
-  <polyline points="560,564.0 640.0,564.0 640.0,1008.0 720,1008.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
-  <text x="640.0" y="778.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">JSON/HTTPS</text>
-  <polyline points="870,1008.0 950.0,1008.0 950.0,786.0 1030,786.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
-  <text x="950.0" y="889.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">commands</text>
-  <polyline points="1180,809.04 1260.0,809.04 1260.0,342.0 1340,342.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
-  <text x="1260.0" y="567.52" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">reads/writes</text>
-  <polyline points="1180,762.96 1260.0,762.96 1260.0,1008.0 1340,1008.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" stroke-dasharray="7 5" />
-  <text x="1260.0" y="877.48" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">OrderCreated</text>
-  <polyline points="1180,786.0 1260.0,786.0 1260.0,128.0 1340,128.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
-  <text x="1260.0" y="449.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">charges</text>
-  <rect x="100" y="100" width="150" height="56" rx="12" fill="#ecfeff" stroke="#0e7490" stroke-width="2" />
-  <text x="175.0" y="128.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Customer</text>
-  <rect x="410" y="528" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
-  <text x="485.0" y="557.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Web App</text>
-  <text x="485.0" y="577.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Next.js</text>
-  <rect x="720" y="972" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
-  <text x="795.0" y="1001.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">API Gateway</text>
-  <text x="795.0" y="1021.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kotlin</text>
-  <rect x="1030" y="750" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
-  <text x="1105.0" y="779.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Order Service</text>
-  <text x="1105.0" y="799.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kotlin</text>
-  <rect x="1340" y="972" width="150" height="72" rx="12" fill="#fffbeb" stroke="#b45309" stroke-width="2" />
-  <text x="1415.0" y="1001.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Order Events</text>
-  <text x="1415.0" y="1021.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kafka</text>
-  <rect x="1340" y="306" width="150" height="72" rx="12" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
-  <ellipse cx="1415.0" cy="316" rx="75.0" ry="10" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
-  <text x="1415.0" y="335.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Orders DB</text>
-  <text x="1415.0" y="355.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">PostgreSQL</text>
-  <rect x="1340" y="100" width="168" height="56" rx="12" fill="#f8fafc" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" />
-  <text x="1424.0" y="128.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Payment Provider</text>
+  <g id="group-group-domain-data" class="semantic-cell semantic-group" data-semantic-id="group-domain-data">
+    <title>Data</title>
+    <rect x="1310" y="251" width="210" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+    <text x="1326" y="275" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Data</text>
+  </g>
+  <g id="group-group-domain-experience" class="semantic-cell semantic-group" data-semantic-id="group-domain-experience">
+    <title>Experience</title>
+    <rect x="380" y="473" width="210" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+    <text x="396" y="497" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Experience</text>
+  </g>
+  <g id="group-group-domain-orders" class="semantic-cell semantic-group" data-semantic-id="group-domain-orders">
+    <title>Orders</title>
+    <rect x="1000" y="695" width="210" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+    <text x="1016" y="719" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Orders</text>
+  </g>
+  <g id="group-group-domain-platform" class="semantic-cell semantic-group" data-semantic-id="group-domain-platform">
+    <title>Platform</title>
+    <rect x="690" y="917" width="830" height="157" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+    <text x="706" y="941" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Platform</text>
+  </g>
+  <g id="edge-customer-web" class="semantic-cell semantic-edge" data-semantic-id="customer-web">
+    <title>HTTPS</title>
+    <polyline points="250,128.0 330.0,128.0 330.0,564.0 410,564.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
+    <text x="330.0" y="338.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">HTTPS</text>
+  </g>
+  <g id="edge-web-api" class="semantic-cell semantic-edge" data-semantic-id="web-api">
+    <title>JSON/HTTPS</title>
+    <polyline points="560,564.0 640.0,564.0 640.0,1008.0 720,1008.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
+    <text x="640.0" y="778.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">JSON/HTTPS</text>
+  </g>
+  <g id="edge-api-orders" class="semantic-cell semantic-edge" data-semantic-id="api-orders">
+    <title>commands</title>
+    <polyline points="870,1008.0 950.0,1008.0 950.0,786.0 1030,786.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
+    <text x="950.0" y="889.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">commands</text>
+  </g>
+  <g id="edge-orders-store" class="semantic-cell semantic-edge" data-semantic-id="orders-store">
+    <title>reads/writes</title>
+    <polyline points="1180,809.04 1260.0,809.04 1260.0,342.0 1340,342.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
+    <text x="1260.0" y="567.52" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">reads/writes</text>
+  </g>
+  <g id="edge-orders-events" class="semantic-cell semantic-edge" data-semantic-id="orders-events">
+    <title>OrderCreated</title>
+    <polyline points="1180,762.96 1260.0,762.96 1260.0,1008.0 1340,1008.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" stroke-dasharray="7 5" />
+    <text x="1260.0" y="877.48" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">OrderCreated</text>
+  </g>
+  <g id="edge-orders-payment" class="semantic-cell semantic-edge" data-semantic-id="orders-payment">
+    <title>charges</title>
+    <polyline points="1180,786.0 1260.0,786.0 1260.0,128.0 1340,128.0" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arrow-334155)" />
+    <text x="1260.0" y="449.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">charges</text>
+  </g>
+  <g id="node-customer" class="semantic-cell semantic-node" data-semantic-id="customer">
+    <title>Customer</title>
+    <rect x="100" y="100" width="150" height="56" rx="12" fill="#ecfeff" stroke="#0e7490" stroke-width="2" />
+    <text x="175.0" y="128.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Customer</text>
+  </g>
+  <g id="node-web" class="semantic-cell semantic-node" data-semantic-id="web">
+    <title>Web App</title>
+    <rect x="410" y="528" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
+    <text x="485.0" y="557.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Web App</text>
+    <text x="485.0" y="577.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Next.js</text>
+  </g>
+  <g id="node-api" class="semantic-cell semantic-node" data-semantic-id="api">
+    <title>API Gateway</title>
+    <rect x="720" y="972" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
+    <text x="795.0" y="1001.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">API Gateway</text>
+    <text x="795.0" y="1021.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kotlin</text>
+  </g>
+  <g id="node-orders" class="semantic-cell semantic-node" data-semantic-id="orders">
+    <title>Order Service</title>
+    <rect x="1030" y="750" width="150" height="72" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2" />
+    <text x="1105.0" y="779.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Order Service</text>
+    <text x="1105.0" y="799.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kotlin</text>
+  </g>
+  <g id="node-events" class="semantic-cell semantic-node" data-semantic-id="events">
+    <title>Order Events</title>
+    <rect x="1340" y="972" width="150" height="72" rx="12" fill="#fffbeb" stroke="#b45309" stroke-width="2" />
+    <text x="1415.0" y="1001.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Order Events</text>
+    <text x="1415.0" y="1021.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">Kafka</text>
+  </g>
+  <g id="node-orders-db" class="semantic-cell semantic-node" data-semantic-id="orders-db">
+    <title>Orders DB</title>
+    <rect x="1340" y="306" width="150" height="72" rx="12" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
+    <ellipse cx="1415.0" cy="316" rx="75.0" ry="10" fill="#ecfdf5" stroke="#047857" stroke-width="2" />
+    <text x="1415.0" y="335.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Orders DB</text>
+    <text x="1415.0" y="355.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">PostgreSQL</text>
+  </g>
+  <g id="node-payment" class="semantic-cell semantic-node" data-semantic-id="payment">
+    <title>Payment Provider</title>
+    <rect x="1340" y="100" width="168" height="56" rx="12" fill="#f8fafc" stroke="#475569" stroke-width="2" stroke-dasharray="7 5" />
+    <text x="1424.0" y="128.0" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Payment Provider</text>
+  </g>
 </svg>

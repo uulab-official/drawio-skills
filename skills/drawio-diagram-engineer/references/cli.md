@@ -10,11 +10,16 @@ init <profile> [-o <starter>] [--force]
 build <model|source> [-o <bundle-dir>] [--type <type>] [--name <name>]
       [--title <title>] [--theme-file <theme.json>] [--max-files 500]
       [--strict] [--force]
+publish <bundle-dir> -o <review-dir> [--title <title>]
+        [--annotations <annotations.json>] [--baseline <review|bundle>]
+        [--fail-on-visual-change] [--strict] [--force]
 ```
 
 `init` profiles: `architecture`, `blueprint`, `erd`, `ha`, `routing`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
 
 `build` types: `auto`, `diagram`, `blueprint`, `erd`, `sql-erd`, `ha`, `python`, `typescript`, `openapi`, `sql`, `compose`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
+
+`publish` creates an atomic, script-free HTML/SVG review site from a bundle. It indexes audit, security, round-trip extraction, export, annotation, semantic-cell, and visual-baseline evidence. See [collaborative-review.md](collaborative-review.md).
 
 ## Contract and security
 
@@ -80,3 +85,4 @@ verify-export <output.png|svg|pdf|jpg> [-f <format>] [-o <export-report.json>]
 | `4` | draw.io Desktop unavailable |
 | `5` | Drift found with `--fail-on-drift` |
 | `6` | Migration required with `migrate --check` |
+| `7` | Visual baseline change found with `publish --fail-on-visual-change` |

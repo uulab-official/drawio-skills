@@ -1,0 +1,21 @@
+{
+  "version": "1",
+  "annotations": [
+    {
+      "id": "confirm-platform-boundary",
+      "page": "context",
+      "cell": "commerce",
+      "status": "open",
+      "author": "Architecture Review",
+      "message": "Confirm the platform boundary and external payment-provider responsibility."
+    },
+    {
+      "id": "accept-data-ownership",
+      "page": "data",
+      "cell": "node-orders-db",
+      "status": "accepted",
+      "author": "Data Review",
+      "message": "Order service remains the system of record for order state."
+    }
+  ]
+}

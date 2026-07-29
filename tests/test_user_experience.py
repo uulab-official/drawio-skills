@@ -171,6 +171,169 @@ class UserExperienceTests(unittest.TestCase):
             self.assertEqual("example.blueprint.json", security["source"])
             self.assertEqual(6, len(manifest["artifacts"]["previews"]))
 
+    def test_publish_creates_semantic_review_site_and_visual_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.blueprint.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            (bundle / "architecture.export.json").write_text(
+                json.dumps({
+                    "format": "drawio-export-report/v1",
+                    "source": "architecture.svg",
+                    "expected_format": "svg",
+                    "detected_format": "svg",
+                    "size_bytes": 1024,
+                    "passed": True,
+                    "findings": [],
+                }),
+                encoding="utf-8",
+            )
+            published = run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                review,
+                "--annotations",
+                ASSETS / "example.review-annotations.json",
+                "--strict",
+            )
+            result = json.loads(published.stdout)
+            manifest = json.loads(
+                (review / "review.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual("drawio-review-site/v1", manifest["format"])
+            self.assertEqual(6, result["pages"])
+            self.assertTrue(manifest["status"]["audit"]["passed"])
+            self.assertTrue(manifest["status"]["security"]["passed"])
+            self.assertTrue(manifest["status"]["extraction"]["lossless"])
+            self.assertTrue(manifest["status"]["extraction"]["semantic_match"])
+            self.assertEqual("passed", manifest["status"]["exports"]["status"])
+            self.assertEqual(1, len(manifest["status"]["exports"]["reports"]))
+            self.assertEqual(
+                {
+                    "pages/context.svg#node-commerce",
+                    "pages/data.svg#node-orders-db",
+                },
+                {item["href"] for item in manifest["annotations"]},
+            )
+            html_text = (review / "index.html").read_text(encoding="utf-8")
+            self.assertIn("Content-Security-Policy", html_text)
+            self.assertNotIn("<script", html_text)
+            self.assertIn("Semantic element index", html_text)
+            self.assertTrue((review / "reports/extraction.json").is_file())
+
+            same_review = temp / "same-review"
+            run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                same_review,
+                "--baseline",
+                review,
+                "--fail-on-visual-change",
+            )
+            same_manifest = json.loads(
+                (same_review / "review.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                "passed",
+                same_manifest["status"]["visual_regression"]["status"],
+            )
+            self.assertEqual(
+                6,
+                same_manifest["status"]["visual_regression"]["summary"]["unchanged"],
+            )
+
+            diagram_path = bundle / "diagram.json"
+            diagram = json.loads(diagram_path.read_text(encoding="utf-8"))
+            context = next(
+                page for page in diagram["pages"] if page["id"] == "context"
+            )
+            commerce = next(
+                node for node in context["nodes"] if node["id"] == "commerce"
+            )
+            commerce["label"] = "Commerce Platform v2"
+            diagram_path.write_text(
+                json.dumps(diagram, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            bundle_manifest = json.loads(
+                (bundle / "bundle.json").read_text(encoding="utf-8")
+            )
+            run(
+                TOOL,
+                "compile",
+                diagram_path,
+                "-o",
+                bundle / bundle_manifest["artifacts"]["drawio"],
+            )
+            changed_review = temp / "changed-review"
+            changed = run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                changed_review,
+                "--baseline",
+                review,
+                "--fail-on-visual-change",
+                check=False,
+            )
+            self.assertEqual(7, changed.returncode)
+            changed_manifest = json.loads(
+                (changed_review / "review.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue(
+                changed_manifest["status"]["visual_regression"]["changed"]
+            )
+            context_visual = next(
+                page
+                for page in changed_manifest["status"]["visual_regression"]["pages"]
+                if page["id"] == "context"
+            )
+            self.assertEqual("changed", context_visual["status"])
+
+    def test_publish_force_refuses_unowned_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            output = temp / "review"
+            output.mkdir()
+            (output / "keep.txt").write_text("owned by user", encoding="utf-8")
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.architecture.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            completed = run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                output,
+                "--force",
+                check=False,
+            )
+            self.assertEqual(2, completed.returncode)
+            self.assertIn("unrecognized directory", completed.stderr)
+            self.assertEqual(
+                "owned by user",
+                (output / "keep.txt").read_text(encoding="utf-8"),
+            )
+
     def test_migrate_check_and_write_workflow(self):
         legacy = {
             "title": "Legacy",

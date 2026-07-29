@@ -1,0 +1,686 @@
+{
+  "format": "drawio-review-site/v1",
+  "generator": "drawio-diagram-engineer",
+  "tool_version": "1.2.0",
+  "title": "Commerce Platform Architecture Review",
+  "source_bundle": "blueprint-bundle",
+  "pages": [
+    {
+      "id": "context",
+      "title": "Commerce Platform — System Context",
+      "artifact": "pages/context.svg",
+      "sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
+      "nodes": 3,
+      "edges": 2,
+      "groups": 0
+    },
+    {
+      "id": "logical",
+      "title": "Commerce Platform — Logical Architecture",
+      "artifact": "pages/logical.svg",
+      "sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2",
+      "nodes": 7,
+      "edges": 6,
+      "groups": 4
+    },
+    {
+      "id": "data",
+      "title": "Commerce Platform — Data Flow",
+      "artifact": "pages/data.svg",
+      "sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
+      "nodes": 4,
+      "edges": 3,
+      "groups": 3
+    },
+    {
+      "id": "deployment",
+      "title": "Commerce Platform — Deployment",
+      "artifact": "pages/deployment.svg",
+      "sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891",
+      "nodes": 8,
+      "edges": 5,
+      "groups": 3
+    },
+    {
+      "id": "security",
+      "title": "Commerce Platform — Network & Security Zones",
+      "artifact": "pages/security.svg",
+      "sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb",
+      "nodes": 7,
+      "edges": 6,
+      "groups": 4
+    },
+    {
+      "id": "decisions",
+      "title": "Commerce Platform — Architecture Decisions",
+      "artifact": "pages/decisions.svg",
+      "sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
+      "nodes": 6,
+      "edges": 4,
+      "groups": 0
+    }
+  ],
+  "catalog": [
+    {
+      "id": "context",
+      "title": "Commerce Platform — System Context",
+      "cells": [
+        {
+          "id": "customer",
+          "anchor": "node-customer",
+          "category": "node",
+          "label": "Customer",
+          "href": "pages/context.svg#node-customer"
+        },
+        {
+          "id": "commerce",
+          "anchor": "node-commerce",
+          "category": "node",
+          "label": "Commerce Platform",
+          "href": "pages/context.svg#node-commerce"
+        },
+        {
+          "id": "payment",
+          "anchor": "node-payment",
+          "category": "node",
+          "label": "Payment Provider",
+          "href": "pages/context.svg#node-payment"
+        },
+        {
+          "id": "customer-web",
+          "anchor": "edge-customer-web",
+          "category": "edge",
+          "label": "HTTPS",
+          "href": "pages/context.svg#edge-customer-web"
+        },
+        {
+          "id": "orders-payment",
+          "anchor": "edge-orders-payment",
+          "category": "edge",
+          "label": "charges",
+          "href": "pages/context.svg#edge-orders-payment"
+        }
+      ]
+    },
+    {
+      "id": "logical",
+      "title": "Commerce Platform — Logical Architecture",
+      "cells": [
+        {
+          "id": "group-domain-data",
+          "anchor": "group-group-domain-data",
+          "category": "group",
+          "label": "Data",
+          "href": "pages/logical.svg#group-group-domain-data"
+        },
+        {
+          "id": "group-domain-experience",
+          "anchor": "group-group-domain-experience",
+          "category": "group",
+          "label": "Experience",
+          "href": "pages/logical.svg#group-group-domain-experience"
+        },
+        {
+          "id": "group-domain-orders",
+          "anchor": "group-group-domain-orders",
+          "category": "group",
+          "label": "Orders",
+          "href": "pages/logical.svg#group-group-domain-orders"
+        },
+        {
+          "id": "group-domain-platform",
+          "anchor": "group-group-domain-platform",
+          "category": "group",
+          "label": "Platform",
+          "href": "pages/logical.svg#group-group-domain-platform"
+        },
+        {
+          "id": "customer",
+          "anchor": "node-customer",
+          "category": "node",
+          "label": "Customer",
+          "href": "pages/logical.svg#node-customer"
+        },
+        {
+          "id": "web",
+          "anchor": "node-web",
+          "category": "node",
+          "label": "Web App",
+          "href": "pages/logical.svg#node-web"
+        },
+        {
+          "id": "api",
+          "anchor": "node-api",
+          "category": "node",
+          "label": "API Gateway",
+          "href": "pages/logical.svg#node-api"
+        },
+        {
+          "id": "orders",
+          "anchor": "node-orders",
+          "category": "node",
+          "label": "Order Service",
+          "href": "pages/logical.svg#node-orders"
+        },
+        {
+          "id": "events",
+          "anchor": "node-events",
+          "category": "node",
+          "label": "Order Events",
+          "href": "pages/logical.svg#node-events"
+        },
+        {
+          "id": "orders-db",
+          "anchor": "node-orders-db",
+          "category": "node",
+          "label": "Orders DB",
+          "href": "pages/logical.svg#node-orders-db"
+        },
+        {
+          "id": "payment",
+          "anchor": "node-payment",
+          "category": "node",
+          "label": "Payment Provider",
+          "href": "pages/logical.svg#node-payment"
+        },
+        {
+          "id": "customer-web",
+          "anchor": "edge-customer-web",
+          "category": "edge",
+          "label": "HTTPS",
+          "href": "pages/logical.svg#edge-customer-web"
+        },
+        {
+          "id": "web-api",
+          "anchor": "edge-web-api",
+          "category": "edge",
+          "label": "JSON/HTTPS",
+          "href": "pages/logical.svg#edge-web-api"
+        },
+        {
+          "id": "api-orders",
+          "anchor": "edge-api-orders",
+          "category": "edge",
+          "label": "commands",
+          "href": "pages/logical.svg#edge-api-orders"
+        },
+        {
+          "id": "orders-store",
+          "anchor": "edge-orders-store",
+          "category": "edge",
+          "label": "reads/writes",
+          "href": "pages/logical.svg#edge-orders-store"
+        },
+        {
+          "id": "orders-events",
+          "anchor": "edge-orders-events",
+          "category": "edge",
+          "label": "OrderCreated",
+          "href": "pages/logical.svg#edge-orders-events"
+        },
+        {
+          "id": "orders-payment",
+          "anchor": "edge-orders-payment",
+          "category": "edge",
+          "label": "charges",
+          "href": "pages/logical.svg#edge-orders-payment"
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "title": "Commerce Platform — Data Flow",
+      "cells": [
+        {
+          "id": "group-domain-data",
+          "anchor": "group-group-domain-data",
+          "category": "group",
+          "label": "Data",
+          "href": "pages/data.svg#group-group-domain-data"
+        },
+        {
+          "id": "group-domain-orders",
+          "anchor": "group-group-domain-orders",
+          "category": "group",
+          "label": "Orders",
+          "href": "pages/data.svg#group-group-domain-orders"
+        },
+        {
+          "id": "group-domain-platform",
+          "anchor": "group-group-domain-platform",
+          "category": "group",
+          "label": "Platform",
+          "href": "pages/data.svg#group-group-domain-platform"
+        },
+        {
+          "id": "orders",
+          "anchor": "node-orders",
+          "category": "node",
+          "label": "Order Service",
+          "href": "pages/data.svg#node-orders"
+        },
+        {
+          "id": "events",
+          "anchor": "node-events",
+          "category": "node",
+          "label": "Order Events",
+          "href": "pages/data.svg#node-events"
+        },
+        {
+          "id": "orders-db",
+          "anchor": "node-orders-db",
+          "category": "node",
+          "label": "Orders DB",
+          "href": "pages/data.svg#node-orders-db"
+        },
+        {
+          "id": "payment",
+          "anchor": "node-payment",
+          "category": "node",
+          "label": "Payment Provider",
+          "href": "pages/data.svg#node-payment"
+        },
+        {
+          "id": "orders-store",
+          "anchor": "edge-orders-store",
+          "category": "edge",
+          "label": "reads/writes",
+          "href": "pages/data.svg#edge-orders-store"
+        },
+        {
+          "id": "orders-events",
+          "anchor": "edge-orders-events",
+          "category": "edge",
+          "label": "OrderCreated",
+          "href": "pages/data.svg#edge-orders-events"
+        },
+        {
+          "id": "orders-payment",
+          "anchor": "edge-orders-payment",
+          "category": "edge",
+          "label": "charges",
+          "href": "pages/data.svg#edge-orders-payment"
+        }
+      ]
+    },
+    {
+      "id": "deployment",
+      "title": "Commerce Platform — Deployment",
+      "cells": [
+        {
+          "id": "group-zone-data",
+          "anchor": "group-group-zone-data",
+          "category": "group",
+          "label": "Data",
+          "href": "pages/deployment.svg#group-group-zone-data"
+        },
+        {
+          "id": "group-zone-private",
+          "anchor": "group-group-zone-private",
+          "category": "group",
+          "label": "Private",
+          "href": "pages/deployment.svg#group-group-zone-private"
+        },
+        {
+          "id": "group-zone-public",
+          "anchor": "group-group-zone-public",
+          "category": "group",
+          "label": "Public",
+          "href": "pages/deployment.svg#group-group-zone-public"
+        },
+        {
+          "id": "web",
+          "anchor": "node-web",
+          "category": "node",
+          "label": "Web App",
+          "href": "pages/deployment.svg#node-web"
+        },
+        {
+          "id": "api",
+          "anchor": "node-api",
+          "category": "node",
+          "label": "API Gateway",
+          "href": "pages/deployment.svg#node-api"
+        },
+        {
+          "id": "orders",
+          "anchor": "node-orders",
+          "category": "node",
+          "label": "Order Service",
+          "href": "pages/deployment.svg#node-orders"
+        },
+        {
+          "id": "events",
+          "anchor": "node-events",
+          "category": "node",
+          "label": "Order Events",
+          "href": "pages/deployment.svg#node-events"
+        },
+        {
+          "id": "orders-db",
+          "anchor": "node-orders-db",
+          "category": "node",
+          "label": "Orders DB",
+          "href": "pages/deployment.svg#node-orders-db"
+        },
+        {
+          "id": "web-cluster",
+          "anchor": "node-web-cluster",
+          "category": "node",
+          "label": "Web Cluster",
+          "href": "pages/deployment.svg#node-web-cluster"
+        },
+        {
+          "id": "app-cluster",
+          "anchor": "node-app-cluster",
+          "category": "node",
+          "label": "Application Cluster",
+          "href": "pages/deployment.svg#node-app-cluster"
+        },
+        {
+          "id": "data-cluster",
+          "anchor": "node-data-cluster",
+          "category": "node",
+          "label": "Data Cluster",
+          "href": "pages/deployment.svg#node-data-cluster"
+        },
+        {
+          "id": "deploy-web-to-web-cluster",
+          "anchor": "edge-deploy-web-to-web-cluster",
+          "category": "edge",
+          "label": "hosts",
+          "href": "pages/deployment.svg#edge-deploy-web-to-web-cluster"
+        },
+        {
+          "id": "deploy-api-to-app-cluster",
+          "anchor": "edge-deploy-api-to-app-cluster",
+          "category": "edge",
+          "label": "hosts",
+          "href": "pages/deployment.svg#edge-deploy-api-to-app-cluster"
+        },
+        {
+          "id": "deploy-orders-to-app-cluster",
+          "anchor": "edge-deploy-orders-to-app-cluster",
+          "category": "edge",
+          "label": "hosts",
+          "href": "pages/deployment.svg#edge-deploy-orders-to-app-cluster"
+        },
+        {
+          "id": "deploy-events-to-app-cluster",
+          "anchor": "edge-deploy-events-to-app-cluster",
+          "category": "edge",
+          "label": "hosts",
+          "href": "pages/deployment.svg#edge-deploy-events-to-app-cluster"
+        },
+        {
+          "id": "deploy-orders-db-to-data-cluster",
+          "anchor": "edge-deploy-orders-db-to-data-cluster",
+          "category": "edge",
+          "label": "hosts",
+          "href": "pages/deployment.svg#edge-deploy-orders-db-to-data-cluster"
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "title": "Commerce Platform — Network & Security Zones",
+      "cells": [
+        {
+          "id": "group-zone-data",
+          "anchor": "group-group-zone-data",
+          "category": "group",
+          "label": "Data",
+          "href": "pages/security.svg#group-group-zone-data"
+        },
+        {
+          "id": "group-zone-internet",
+          "anchor": "group-group-zone-internet",
+          "category": "group",
+          "label": "Internet",
+          "href": "pages/security.svg#group-group-zone-internet"
+        },
+        {
+          "id": "group-zone-private",
+          "anchor": "group-group-zone-private",
+          "category": "group",
+          "label": "Private",
+          "href": "pages/security.svg#group-group-zone-private"
+        },
+        {
+          "id": "group-zone-public",
+          "anchor": "group-group-zone-public",
+          "category": "group",
+          "label": "Public",
+          "href": "pages/security.svg#group-group-zone-public"
+        },
+        {
+          "id": "customer",
+          "anchor": "node-customer",
+          "category": "node",
+          "label": "Customer",
+          "href": "pages/security.svg#node-customer"
+        },
+        {
+          "id": "web",
+          "anchor": "node-web",
+          "category": "node",
+          "label": "Web App",
+          "href": "pages/security.svg#node-web"
+        },
+        {
+          "id": "api",
+          "anchor": "node-api",
+          "category": "node",
+          "label": "API Gateway",
+          "href": "pages/security.svg#node-api"
+        },
+        {
+          "id": "orders",
+          "anchor": "node-orders",
+          "category": "node",
+          "label": "Order Service",
+          "href": "pages/security.svg#node-orders"
+        },
+        {
+          "id": "events",
+          "anchor": "node-events",
+          "category": "node",
+          "label": "Order Events",
+          "href": "pages/security.svg#node-events"
+        },
+        {
+          "id": "orders-db",
+          "anchor": "node-orders-db",
+          "category": "node",
+          "label": "Orders DB",
+          "href": "pages/security.svg#node-orders-db"
+        },
+        {
+          "id": "payment",
+          "anchor": "node-payment",
+          "category": "node",
+          "label": "Payment Provider",
+          "href": "pages/security.svg#node-payment"
+        },
+        {
+          "id": "customer-web",
+          "anchor": "edge-customer-web",
+          "category": "edge",
+          "label": "HTTPS",
+          "href": "pages/security.svg#edge-customer-web"
+        },
+        {
+          "id": "web-api",
+          "anchor": "edge-web-api",
+          "category": "edge",
+          "label": "JSON/HTTPS",
+          "href": "pages/security.svg#edge-web-api"
+        },
+        {
+          "id": "api-orders",
+          "anchor": "edge-api-orders",
+          "category": "edge",
+          "label": "commands",
+          "href": "pages/security.svg#edge-api-orders"
+        },
+        {
+          "id": "orders-store",
+          "anchor": "edge-orders-store",
+          "category": "edge",
+          "label": "reads/writes",
+          "href": "pages/security.svg#edge-orders-store"
+        },
+        {
+          "id": "orders-events",
+          "anchor": "edge-orders-events",
+          "category": "edge",
+          "label": "OrderCreated",
+          "href": "pages/security.svg#edge-orders-events"
+        },
+        {
+          "id": "orders-payment",
+          "anchor": "edge-orders-payment",
+          "category": "edge",
+          "label": "charges",
+          "href": "pages/security.svg#edge-orders-payment"
+        }
+      ]
+    },
+    {
+      "id": "decisions",
+      "title": "Commerce Platform — Architecture Decisions",
+      "cells": [
+        {
+          "id": "decision-event-driven-orders",
+          "anchor": "node-decision-event-driven-orders",
+          "category": "node",
+          "label": "Publish order domain events",
+          "href": "pages/decisions.svg#node-decision-event-driven-orders"
+        },
+        {
+          "id": "decision-isolated-data-zone",
+          "anchor": "node-decision-isolated-data-zone",
+          "category": "node",
+          "label": "Isolate persistent order data",
+          "href": "pages/decisions.svg#node-decision-isolated-data-zone"
+        },
+        {
+          "id": "orders",
+          "anchor": "node-orders",
+          "category": "node",
+          "label": "Order Service",
+          "href": "pages/decisions.svg#node-orders"
+        },
+        {
+          "id": "events",
+          "anchor": "node-events",
+          "category": "node",
+          "label": "Order Events",
+          "href": "pages/decisions.svg#node-events"
+        },
+        {
+          "id": "orders-db",
+          "anchor": "node-orders-db",
+          "category": "node",
+          "label": "Orders DB",
+          "href": "pages/decisions.svg#node-orders-db"
+        },
+        {
+          "id": "data-cluster",
+          "anchor": "node-data-cluster",
+          "category": "node",
+          "label": "Data Cluster",
+          "href": "pages/decisions.svg#node-data-cluster"
+        },
+        {
+          "id": "decision-event-driven-orders-affects-orders",
+          "anchor": "edge-decision-event-driven-orders-affects-orders",
+          "category": "edge",
+          "label": "affects",
+          "href": "pages/decisions.svg#edge-decision-event-driven-orders-affects-orders"
+        },
+        {
+          "id": "decision-event-driven-orders-affects-events",
+          "anchor": "edge-decision-event-driven-orders-affects-events",
+          "category": "edge",
+          "label": "affects",
+          "href": "pages/decisions.svg#edge-decision-event-driven-orders-affects-events"
+        },
+        {
+          "id": "decision-isolated-data-zone-affects-orders-db",
+          "anchor": "edge-decision-isolated-data-zone-affects-orders-db",
+          "category": "edge",
+          "label": "affects",
+          "href": "pages/decisions.svg#edge-decision-isolated-data-zone-affects-orders-db"
+        },
+        {
+          "id": "decision-isolated-data-zone-affects-data-cluster",
+          "anchor": "edge-decision-isolated-data-zone-affects-data-cluster",
+          "category": "edge",
+          "label": "affects",
+          "href": "pages/decisions.svg#edge-decision-isolated-data-zone-affects-data-cluster"
+        }
+      ]
+    }
+  ],
+  "annotations": [
+    {
+      "id": "confirm-platform-boundary",
+      "page": "context",
+      "cell": "node-commerce",
+      "status": "open",
+      "message": "Confirm the platform boundary and external payment-provider responsibility.",
+      "href": "pages/context.svg#node-commerce",
+      "author": "Architecture Review"
+    },
+    {
+      "id": "accept-data-ownership",
+      "page": "data",
+      "cell": "node-orders-db",
+      "status": "accepted",
+      "message": "Order service remains the system of record for order state.",
+      "href": "pages/data.svg#node-orders-db",
+      "author": "Data Review"
+    }
+  ],
+  "status": {
+    "audit": {
+      "passed": true,
+      "score": 100,
+      "errors": 0,
+      "warnings": 0
+    },
+    "security": {
+      "passed": true,
+      "errors": 0
+    },
+    "extraction": {
+      "passed": true,
+      "lossless": true,
+      "semantic_match": true,
+      "inferred_cells": 0
+    },
+    "exports": {
+      "status": "not-provided",
+      "reports": []
+    },
+    "visual_regression": {
+      "status": "not-configured",
+      "changed": false,
+      "summary": {
+        "added": 0,
+        "removed": 0,
+        "changed": 0,
+        "unchanged": 0
+      },
+      "pages": []
+    }
+  },
+  "artifacts": {
+    "index": "index.html",
+    "manifest": "review.json",
+    "audit": "reports/audit.json",
+    "security": "reports/security.json",
+    "extraction": "reports/extraction.json"
+  }
+}

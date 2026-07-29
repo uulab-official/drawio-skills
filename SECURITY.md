@@ -17,6 +17,8 @@ No telemetry or network requests are performed by the compiler, validator, or in
 
 The `security` command scans models, `.drawio` files, and bundles for embedded credential patterns, private keys, unsafe URL schemes, prohibited XML declarations, and decompression-limit violations. For draw.io input it scans both visible values and hidden page/cell `data-*` metadata used for round-trip editing. Successful `build` bundles include `security.json`. Findings name locations but never echo suspected credential values.
 
+`publish` rechecks Diagram IR and draw.io content before creating a review site. Generated sites contain no scripts, remote assets, telemetry, or network requests; `index.html` applies a restrictive Content Security Policy and frames only local SVG pages.
+
 Structured JSON/YAML and uncompressed draw.io input are limited to 50 MiB; each compressed page is limited to 100 MiB after decompression. DTD and entity declarations are rejected before XML parsing.
 
 Release workflows use only first-party GitHub actions pinned to full commit hashes. The workflow rejects tags that do not carry a trusted SSH signature or whose semantic version differs from the packaged source. Tagged ZIP artifacts include SHA-256 checksums and GitHub/Sigstore provenance attestations. Published GitHub releases are immutable.

@@ -1,6 +1,6 @@
 ---
 name: drawio-diagram-engineer
-description: Create, edit, import, extract, compare, compile, migrate, security-scan, audit, preview, and export editable draw.io diagrams from natural language, JSON/YAML, existing .drawio files, source trees, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate coordinated architecture blueprints, field-level Crow's Foot ERDs, HA topology/failover packs, infrastructure maps, CI/CD views, and semantic drift reports. Apply deterministic layout, round-trip semantic metadata, explicit ports, obstacle-aware routing, themes, verified shapes, contrast and credential checks, and structured repairs. Use for architecture, database schemas, HA/DR, codebase maps, infrastructure/deployment topology, pipelines, flowcharts, data flows, network maps, multi-page system views, legacy Diagram IR migration, or repairing and quality-checking .drawio files. Prefer when output must stay editable, deterministic, secure, source-reviewable, or exportable to PNG, SVG, or PDF.
+description: Create, edit, import, extract, compare, compile, migrate, audit, publish, and export editable draw.io diagrams from natural language, JSON/YAML, existing .drawio files, code, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate architecture blueprints, field-level Crow's Foot ERDs, HA/failover packs, infrastructure maps, pipelines, semantic drift reports, and portable HTML/SVG review sites with annotations and visual baselines. Apply deterministic layout, round-trip metadata, explicit ports, obstacle-aware routing, themes, contrast, credential checks, and structured repairs. Use for architecture, database schemas, HA/DR, codebase and deployment topology, flowcharts, data flows, network maps, multi-page views, architecture review publication, legacy IR migration, or .drawio repair. Prefer when output must stay editable, deterministic, secure, source-reviewable, CI-gated, shareable without Desktop, or exportable to PNG, SVG, or PDF.
 ---
 
 # Draw.io Diagram Engineer
@@ -28,15 +28,22 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
    ```
 
    This creates normalized IR, editable `.drawio`, all SVG previews, `audit.json`, `security.json`, and `bundle.json`. Use the lower-level `compile`, `validate`, `preview`, `security`, and `audit` commands only when the user needs individual artifacts or an incremental workflow.
-5. If draw.io Desktop is available and a Desktop export is requested, read [desktop-export.md](references/desktop-export.md), render from the bundle's `.drawio`, and retain its verification report:
+5. When reviewers need one portable artifact or CI needs an architecture evidence index, read [collaborative-review.md](references/collaborative-review.md) and publish the bundle:
+
+   ```bash
+   python3 <skill-dir>/scripts/drawio_tool.py publish build/diagram \
+     -o build/diagram-review --strict
+   ```
+
+6. If draw.io Desktop is available and a Desktop export is requested, read [desktop-export.md](references/desktop-export.md), render from the bundle's `.drawio`, and retain its verification report:
 
    ```bash
    python3 <skill-dir>/scripts/drawio_tool.py render build/diagram/diagram.drawio \
      -o diagram.png --report diagram.export.json
    ```
 
-6. Inspect every bundled preview visually. Fix hierarchy, clipped text, collisions, unclear edges, weak contrast, and excess detail. Rebuild at most twice before presenting the best result.
-7. Deliver the bundle's editable `.drawio`, IR source, audit report, previews, and requested exports. State clearly when Desktop export was skipped.
+7. Inspect every bundled or published preview visually. Fix hierarchy, clipped text, collisions, unclear edges, weak contrast, and excess detail. Rebuild at most twice before presenting the best result.
+8. Deliver the bundle's editable `.drawio`, IR source, audit report, previews, review site, and requested exports. State clearly when Desktop export was skipped.
 
 When comparing an approved architecture with a newly generated model, read [drift.md](references/drift.md), run `diff`, and deliver both the machine-readable report and editable drift view.
 
@@ -96,6 +103,7 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `doctor`: verify core files and Python/XML support, then report optional YAML and Desktop capabilities.
 - `init`: copy a safe starter for architecture, Blueprint, ERD, HA, routing, infrastructure, or CI.
 - `build`: auto-detect a model or source and create a complete, audited `drawio-diagram-bundle/v1`.
+- `publish`: create an atomic script-free `drawio-review-site/v1` with page navigation, semantic anchors, annotations, evidence status, and optional visual-baseline gating.
 - `migrate`: deterministically upgrade legacy/unversioned Diagram IR and emit a machine-readable change report.
 - `compile`: validate IR, calculate deterministic layout, and emit uncompressed editable draw.io XML.
 - `extract`: recover Diagram IR from compressed or uncompressed draw.io, preserving compiler-backed semantics and reporting every inferred legacy cell.

@@ -2,6 +2,16 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 1.2.0 — 2026-07-29
+
+- Add `publish` to create atomic, script-free multi-page HTML/SVG review sites from complete bundles.
+- Add stable SVG fragment anchors for every semantic group, node, and edge with target highlighting.
+- Add versioned reviewer annotations with strict page/cell link validation.
+- Add a machine-readable evidence index for audit, security, extraction, native exports, and visual regression.
+- Add deterministic page-level visual baselines with CI exit code `7`.
+- Block unsafe publication, refuse unowned output replacement, and publish without scripts, remote assets, telemetry, or network requests.
+- Fix round-trip extraction for semantic IDs beginning with `node-`, `edge-`, `group-`, or `page-`.
+
 ## 1.1.0 — 2026-07-28
 
 - Embed versioned, deterministic Diagram IR metadata in generated draw.io pages and semantic cells.

@@ -159,9 +159,18 @@ Exit criteria: compiler-owned diagrams extract without semantic inference, legac
 
 ## v1.2 — Collaborative publication
 
-- [ ] Atomic multi-page HTML/SVG review sites with page navigation
-- [ ] Review annotations linked to semantic cell IDs
-- [ ] CI artifact index with extraction, audit, security, and export status
-- [ ] Optional visual regression baselines for approved diagrams
+- [x] Atomic multi-page HTML/SVG review sites with page navigation
+- [x] Review annotations linked to semantic cell IDs
+- [x] CI artifact index with extraction, audit, security, and export status
+- [x] Optional visual regression baselines for approved diagrams
 
 Exit criteria: a reviewer can open one portable artifact, navigate every page, trace findings to semantic IDs, and compare approved visual baselines without draw.io Desktop.
+
+## v1.3 — Review lifecycle and policy
+
+- [ ] Annotation merge and resolution workflows without editing generated HTML
+- [ ] Configurable architecture policy packs for required views and evidence
+- [ ] SARIF output for audit, security, extraction, and visual findings
+- [ ] GitHub Pages publication recipe with immutable review artifacts
+
+Exit criteria: teams can carry review decisions across regenerated sites, apply organization policy as code, and surface every finding in standard code-review tooling.

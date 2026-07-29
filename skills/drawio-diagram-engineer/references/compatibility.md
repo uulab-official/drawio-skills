@@ -12,6 +12,8 @@ The following identifiers are independent versioned contracts:
 - Migration report: `drawio-migration-report/v1`
 - Export verification report: `drawio-export-report/v1`
 - Extraction report: `drawio-extraction-report/v1`
+- Review site manifest: `drawio-review-site/v1`
+- Review annotations: `version: "1"` and [review-annotations.schema.json](review-annotations.schema.json)
 
 Tool releases use semantic versions. Schema versions do not advance merely because the tool gains a feature.
 
@@ -68,3 +70,5 @@ Conflicting old and new fields fail instead of guessing. Unsupported versions fa
 ## Bundle evolution
 
 Bundle v1 may gain optional artifacts. Existing artifact paths retain their meaning. Inputs are never copied into a bundle. Consumers must ignore unknown manifest properties and locate files through `artifacts`, not hard-coded directory scans.
+
+Review site v1 may gain optional evidence, catalog, and annotation fields. Existing page artifact and report paths retain their meaning. Consumers should read `review.json` rather than scraping `index.html`.

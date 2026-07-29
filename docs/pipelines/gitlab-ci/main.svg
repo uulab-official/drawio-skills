@@ -2,32 +2,63 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1282" height="746" viewBox="0 0 1282 746" role="img" aria-label="GitLab Delivery Pipeline">
   <rect width="100%" height="100%" fill="#ffffff" />
   <defs>
+    <style>.semantic-cell:target&gt;*{filter:drop-shadow(0 0 5px #f59e0b);stroke-width:4px!important}.semantic-cell:target text{filter:none;font-weight:700}</style>
     <marker id="arrow-4d4d4d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#4d4d4d" />
     </marker>
   </defs>
-  <rect x="70" y="45" width="496" height="157" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
-  <text x="86" y="69" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">verify</text>
-  <rect x="656" y="277" width="228" height="157" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
-  <text x="672" y="301" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">build</text>
-  <rect x="974" y="509" width="228" height="157" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
-  <text x="990" y="533" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">deploy</text>
-  <polyline points="770.0,404 770.0,484.0 1088.0,484.0 1088.0,564" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
-  <text x="929.0" y="476.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">needs</text>
-  <polyline points="184.0,172 184.0,252.0 716.24,252.0 716.24,332" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
-  <text x="450.12" y="244.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">needs</text>
-  <polyline points="452.0,172 452.0,252.0 823.76,252.0 823.76,332" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
-  <text x="637.88" y="244.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">needs</text>
-  <rect x="686" y="332" width="168" height="72" rx="12" fill="#cfe2f3" stroke="#56b4e9" stroke-width="2" />
-  <text x="770.0" y="361.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">build</text>
-  <text x="770.0" y="381.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">1 script step(s)</text>
-  <rect x="1004" y="564" width="168" height="72" rx="12" fill="#cfe2f3" stroke="#56b4e9" stroke-width="2" />
-  <text x="1088.0" y="593.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">deploy</text>
-  <text x="1088.0" y="613.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">1 script step(s)</text>
-  <rect x="100" y="100" width="168" height="72" rx="12" fill="#cfe2f3" stroke="#56b4e9" stroke-width="2" />
-  <text x="184.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">lint</text>
-  <text x="184.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">1 script step(s)</text>
-  <rect x="368" y="100" width="168" height="72" rx="12" fill="#cfe2f3" stroke="#56b4e9" stroke-width="2" />
-  <text x="452.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">test</text>
-  <text x="452.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">1 script step(s)</text>
+  <g id="group-stage-verify" class="semantic-cell semantic-group" data-semantic-id="stage-verify">
+    <title>verify</title>
+    <rect x="70" y="45" width="496" height="157" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
+    <text x="86" y="69" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">verify</text>
+  </g>
+  <g id="group-stage-build" class="semantic-cell semantic-group" data-semantic-id="stage-build">
+    <title>build</title>
+    <rect x="656" y="277" width="228" height="157" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
+    <text x="672" y="301" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">build</text>
+  </g>
+  <g id="group-stage-deploy" class="semantic-cell semantic-group" data-semantic-id="stage-deploy">
+    <title>deploy</title>
+    <rect x="974" y="509" width="228" height="157" rx="14" fill="#f7f7f7" stroke="#7a7a7a" stroke-width="2" />
+    <text x="990" y="533" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">deploy</text>
+  </g>
+  <g id="edge-gitlab-job-build-before-gitlab-job-deploy" class="semantic-cell semantic-edge" data-semantic-id="gitlab-job-build-before-gitlab-job-deploy">
+    <title>needs</title>
+    <polyline points="770.0,404 770.0,484.0 1088.0,484.0 1088.0,564" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
+    <text x="929.0" y="476.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">needs</text>
+  </g>
+  <g id="edge-gitlab-job-lint-before-gitlab-job-build" class="semantic-cell semantic-edge" data-semantic-id="gitlab-job-lint-before-gitlab-job-build">
+    <title>needs</title>
+    <polyline points="184.0,172 184.0,252.0 716.24,252.0 716.24,332" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
+    <text x="450.12" y="244.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">needs</text>
+  </g>
+  <g id="edge-gitlab-job-test-before-gitlab-job-build" class="semantic-cell semantic-edge" data-semantic-id="gitlab-job-test-before-gitlab-job-build">
+    <title>needs</title>
+    <polyline points="452.0,172 452.0,252.0 823.76,252.0 823.76,332" fill="none" stroke="#4d4d4d" stroke-width="2" marker-end="url(#arrow-4d4d4d)" stroke-dasharray="7 5" />
+    <text x="637.88" y="244.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="11" text-anchor="middle">needs</text>
+  </g>
+  <g id="node-gitlab-job-build" class="semantic-cell semantic-node" data-semantic-id="gitlab-job-build">
+    <title>build</title>
+    <rect x="686" y="332" width="168" height="72" rx="12" fill="#cfe2f3" stroke="#56b4e9" stroke-width="2" />
+    <text x="770.0" y="361.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">build</text>
+    <text x="770.0" y="381.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">1 script step(s)</text>
+  </g>
+  <g id="node-gitlab-job-deploy" class="semantic-cell semantic-node" data-semantic-id="gitlab-job-deploy">
+    <title>deploy</title>
+    <rect x="1004" y="564" width="168" height="72" rx="12" fill="#cfe2f3" stroke="#56b4e9" stroke-width="2" />
+    <text x="1088.0" y="593.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">deploy</text>
+    <text x="1088.0" y="613.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">1 script step(s)</text>
+  </g>
+  <g id="node-gitlab-job-lint" class="semantic-cell semantic-node" data-semantic-id="gitlab-job-lint">
+    <title>lint</title>
+    <rect x="100" y="100" width="168" height="72" rx="12" fill="#cfe2f3" stroke="#56b4e9" stroke-width="2" />
+    <text x="184.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">lint</text>
+    <text x="184.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">1 script step(s)</text>
+  </g>
+  <g id="node-gitlab-job-test" class="semantic-cell semantic-node" data-semantic-id="gitlab-job-test">
+    <title>test</title>
+    <rect x="368" y="100" width="168" height="72" rx="12" fill="#cfe2f3" stroke="#56b4e9" stroke-width="2" />
+    <text x="452.0" y="129.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">test</text>
+    <text x="452.0" y="149.0" fill="#111111" font-family="Inter, Arial, sans-serif" font-size="10" text-anchor="middle">1 script step(s)</text>
+  </g>
 </svg>

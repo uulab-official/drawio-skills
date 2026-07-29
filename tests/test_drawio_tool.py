@@ -1036,7 +1036,47 @@ class DrawioToolTests(unittest.TestCase):
         tree = TOOL.compile_svg(sample_ir())
         root = tree.getroot()
         self.assertEqual("svg", root.tag)
-        self.assertGreaterEqual(len(root.findall("rect")), 4)
+        self.assertGreaterEqual(len(root.findall(".//rect")), 4)
+
+    def test_svg_preview_exposes_semantic_review_anchors(self):
+        root = TOOL.compile_svg(sample_ir()).getroot()
+        anchors = {
+            element.get("id")
+            for element in root.findall(".//g")
+            if "semantic-cell" in element.get("class", "")
+        }
+        self.assertTrue({
+            "group-core",
+            "node-client",
+            "node-api",
+            "node-db",
+            "edge-client-api",
+            "edge-api-db",
+        } <= anchors)
+        api = root.find(".//g[@id='node-api']")
+        self.assertIsNotNone(api)
+        self.assertEqual("api", api.get("data-semantic-id"))
+        self.assertEqual("API", api.find("title").text)
+
+    def test_round_trip_preserves_ids_that_start_with_drawio_prefixes(self):
+        source = sample_ir()
+        source["groups"][0]["id"] = "group-core"
+        source["nodes"][1]["group"] = "group-core"
+        source["nodes"][2]["group"] = "group-core"
+        source["nodes"][1]["id"] = "node-api"
+        source["edges"][0]["to"] = "node-api"
+        source["edges"][1]["from"] = "node-api"
+        source["edges"][1]["id"] = "edge-api-db"
+        with tempfile.TemporaryDirectory() as directory:
+            drawio = Path(directory) / "prefixed.drawio"
+            TOOL.compile_drawio(source).write(
+                drawio, encoding="utf-8", xml_declaration=True,
+            )
+            extracted, report = TOOL.extract_drawio(drawio)
+            self.assertTrue(report["lossless"])
+            self.assertFalse(
+                TOOL.architecture_diff(source, extracted)["drift"]
+            )
 
     def test_blueprint_projects_six_architecture_views(self):
         source = json.loads(
@@ -1291,7 +1331,7 @@ class DrawioToolTests(unittest.TestCase):
             item for item in TOOL.validate_ir(diagram_ir)
             if item["level"] == "error"
         ])
-        polyline = TOOL.compile_svg(diagram_ir).getroot().find("polyline")
+        polyline = TOOL.compile_svg(diagram_ir).getroot().find(".//polyline")
         self.assertGreaterEqual(len(polyline.get("points", "").split()), 5)
 
     def test_ha_model_generates_failure_domain_and_failover_views(self):

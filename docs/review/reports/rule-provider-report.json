@@ -1,0 +1,75 @@
+{
+  "format": "drawio-rule-provider-report/v1",
+  "provider": {
+    "id": "organization-guardrails",
+    "version": "1.0.0"
+  },
+  "request_sha256": "769f6c14effa58ab468727fe0a8c4d90785b76ad482cf83a34e33bbef7f563fe",
+  "passed": true,
+  "integrity_passed": true,
+  "errors": [],
+  "summary": {
+    "results": 1,
+    "failed": 1,
+    "errors": 0,
+    "warnings": 1
+  },
+  "results": [
+    {
+      "id": "event-stream-owner",
+      "rule_id": "ownership.event-stream",
+      "level": "warning",
+      "passed": false,
+      "message": "Confirm the event-stream ownership decision before the exception expires.",
+      "page": "logical",
+      "cell": "events"
+    }
+  ],
+  "sarif": {
+    "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+    "version": "2.1.0",
+    "runs": [
+      {
+        "tool": {
+          "driver": {
+            "name": "drawio-rule-provider:organization-guardrails",
+            "version": "1.0.0"
+          }
+        },
+        "results": [
+          {
+            "ruleId": "provider.organization-guardrails.ownership.event-stream",
+            "level": "warning",
+            "message": {
+              "text": "Confirm the event-stream ownership decision before the exception expires."
+            },
+            "locations": [
+              {
+                "physicalLocation": {
+                  "artifactLocation": {
+                    "uri": "pages/logical.svg"
+                  }
+                },
+                "logicalLocations": [
+                  {
+                    "name": "logical#events",
+                    "fullyQualifiedName": "logical#events"
+                  }
+                ]
+              }
+            ],
+            "partialFingerprints": {
+              "stableFinding": "6ea49f226e95eb6ae1ea0610b219cf55ccaaf99be47bfe4a91b31baedd9b7a6d"
+            },
+            "properties": {
+              "source": "rule-provider",
+              "providerId": "organization-guardrails",
+              "page": "logical",
+              "cell": "events"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

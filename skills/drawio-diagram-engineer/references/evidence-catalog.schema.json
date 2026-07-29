@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/evidence-catalog.schema.json",
+  "title": "Multi-repository architecture evidence catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "reviews", "summary", "baseline"],
+  "properties": {
+    "format": {"const": "drawio-evidence-catalog/v1"},
+    "reviews": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/review"}
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repositories", "reviews", "passed", "needs_review"],
+      "properties": {
+        "repositories": {"type": "integer", "minimum": 0},
+        "reviews": {"type": "integer", "minimum": 0},
+        "passed": {"type": "integer", "minimum": 0},
+        "needs_review": {"type": "integer", "minimum": 0}
+      }
+    },
+    "baseline": {"type": ["object", "null"]}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "repository",
+        "source_path",
+        "revision",
+        "revision_type",
+        "review_sha256",
+        "attestation_sha256",
+        "bundle_sha256",
+        "source_url",
+        "gates",
+        "passed"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/sha256"},
+        "title": {"type": "string", "minLength": 1},
+        "repository": {"type": ["string", "null"]},
+        "source_path": {"type": "string", "minLength": 1},
+        "revision": {"type": "string", "minLength": 1},
+        "revision_type": {"enum": ["scm", "bundle"]},
+        "review_sha256": {"$ref": "#/$defs/sha256"},
+        "attestation_sha256": {"$ref": "#/$defs/sha256"},
+        "bundle_sha256": {"$ref": "#/$defs/sha256"},
+        "source_url": {"type": ["string", "null"]},
+        "gates": {
+          "type": "object",
+          "additionalProperties": {"type": "boolean"}
+        },
+        "passed": {"type": "boolean"}
+      }
+    }
+  }
+}

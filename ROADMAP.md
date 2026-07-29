@@ -195,9 +195,19 @@ Exit criteria: repository-native ownership and checks remain optional adapters o
 
 ## v1.6 — Governance lifecycle and federation
 
-- [ ] Signed approval ledger with reviewer identities, quorum rules, and revocation evidence
-- [ ] Multi-repository architecture evidence catalog with immutable review discovery
-- [ ] Ownership, exception, and policy-health trend exports for governance dashboards
-- [ ] Sandboxed JSON rule-provider protocol for organization-specific policy checks
+- [x] Signed approval ledger with reviewer identities, quorum rules, and revocation evidence
+- [x] Multi-repository architecture evidence catalog with immutable review discovery
+- [x] Ownership, exception, and policy-health trend exports for governance dashboards
+- [x] Sandboxed JSON rule-provider protocol for organization-specific policy checks
 
 Exit criteria: organizations can trace approval history across repositories, measure governance health over time, and extend rules without executing untrusted code inside the diagram engine.
+
+## v1.7 — Organization-scale trust and discovery
+
+- [ ] Delegated reviewer trust policies with key rotation and organization/team identity mapping
+- [ ] Append-only transparency proofs for catalogs, approval ledgers, and historical governance snapshots
+- [ ] Static searchable architecture portal generated from federated evidence catalogs
+- [ ] OpenTelemetry and Prometheus-compatible governance metric exports
+- [ ] Interoperability adapters for C4/Structurizr and common architecture decision records
+
+Exit criteria: large organizations can rotate trust safely, discover current architecture evidence without repository knowledge, integrate governance telemetry, and exchange models with adjacent architecture tools.

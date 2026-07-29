@@ -1,6 +1,6 @@
 ---
 name: drawio-diagram-engineer
-description: Create, edit, import, extract, compare, compile, migrate, audit, govern, publish, and export editable draw.io diagrams from natural language, JSON/YAML, .drawio, code, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate architecture blueprints, field-level Crow's Foot ERDs, HA/failover packs, infrastructure maps, pipelines, drift reports, and portable review sites with policy tests, expiring exceptions, semantic and CODEOWNERS routing, GitHub Checks, SARIF, provenance, and signed attestations. Apply deterministic layout, round-trip metadata, routing, themes, contrast, credential checks, and repairs. Use for architecture, database schemas, HA/DR, deployment topology, flowcharts, data flows, network maps, multi-page views, review publication, legacy IR migration, or .drawio repair. Prefer when output must stay editable, deterministic, secure, source-reviewable, CI-gated, Desktop-free, or exportable to PNG, SVG, or PDF.
+description: Create, edit, import, extract, compare, compile, migrate, audit, govern, publish, and export editable draw.io diagrams from natural language, JSON/YAML, .drawio, code, API specs, SQL, Compose, IaC, or CI definitions. Generate architecture blueprints, field-level Crow's Foot ERDs, HA/failover packs, infrastructure maps, pipelines, drift reports, and portable review sites. Apply policy tests, exceptions, semantic and CODEOWNERS routing, GitHub Checks, SARIF, provenance, signed attestations and approval ledgers, multi-repository evidence catalogs, governance trends, and sandboxed JSON rule providers. Use for architecture, database schemas, HA/DR, deployment topology, flowcharts, data flows, network maps, multi-page reviews, federated governance, legacy IR migration, or .drawio repair. Prefer when output must stay editable, deterministic, secure, source-reviewable, CI-gated, Desktop-free, or exportable to PNG, SVG, or PDF.
 ---
 
 # Draw.io Diagram Engineer
@@ -44,7 +44,7 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
      --fail-on-policy --fail-on-unowned-findings --strict
    ```
 
-   Use `--carry-review` plus a version 1 annotation update file to preserve accepted and resolved decisions across regeneration. Explicit page/cell/rule routes take precedence over CODEOWNERS fallback. Use `--github-checks` only with a full SCM revision and repository. Sign local evidence with `attest-review` and verify it with `verify-review-attestation`. For GitHub Pages, Checks, attestations, and code scanning, read [github-pages-publication.md](references/github-pages-publication.md).
+   Use `--carry-review` plus a version 1 annotation update file to preserve accepted and resolved decisions across regeneration. Explicit page/cell/rule routes take precedence over CODEOWNERS fallback. Use `--github-checks` only with a full SCM revision and repository. Sign local evidence with `attest-review` and verify it with `verify-review-attestation`. When approvals require quorum or revocation, repositories need federation, governance metrics need exporting, or organization rules run outside the engine, read [governance-lifecycle.md](references/governance-lifecycle.md). For GitHub Pages, Checks, attestations, and code scanning, read [github-pages-publication.md](references/github-pages-publication.md).
 
 6. If draw.io Desktop is available and a Desktop export is requested, read [desktop-export.md](references/desktop-export.md), render from the bundle's `.drawio`, and retain its verification report:
 
@@ -119,6 +119,12 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `publish`: create an atomic script-free `drawio-review-site/v1` with page navigation, persistent annotations, composed policy evaluation, semantic and CODEOWNERS ownership, SARIF, optional GitHub Checks, immutable provenance, an in-toto statement, PR summary Markdown, and visual-baseline gating.
 - `attest-review`: sign a generated review attestation with an OpenSSH private key.
 - `verify-review-attestation`: verify the manifest binding and OpenSSH signature against an allowed-signers file.
+- `record-approval`: append an OpenSSH-signed, hash-chained approval or same-reviewer revocation bound to one immutable review.
+- `verify-approval-ledger`: verify review binding, event integrity, signatures, revocations, reviewer uniqueness, required roles, and quorum.
+- `catalog-reviews`: validate and index immutable review evidence across repositories, with optional discovery-baseline gating.
+- `governance-trends`: export dated audit, policy, ownership, exception, annotation, and SARIF metrics as deterministic JSON and CSV.
+- `rule-provider-request`: emit bounded review facts for an externally sandboxed organization rule provider.
+- `verify-rule-provider-result`: validate provider/request binding and semantic selectors, then normalize failed organization rules to SARIF without executing provider code.
 - `migrate`: deterministically upgrade legacy/unversioned Diagram IR and emit a machine-readable change report.
 - `compile`: validate IR, calculate deterministic layout, and emit uncompressed editable draw.io XML.
 - `extract`: recover Diagram IR from compressed or uncompressed draw.io, preserving compiler-backed semantics and reporting every inferred legacy cell.

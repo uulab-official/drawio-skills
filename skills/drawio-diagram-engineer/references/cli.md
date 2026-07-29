@@ -28,6 +28,21 @@ attest-review <review-dir> --signing-key <private-key>
               [--namespace <name>] [--force]
 verify-review-attestation <review-dir> --allowed-signers <file>
                           --identity <principal> [--namespace <name>]
+record-approval <review-dir> --ledger <ledger.json> --identity <principal>
+                --role <role> --timestamp <UTC> --reason <text>
+                --signing-key <private-key> [--action approve|revoke]
+                [--allowed-signers <file>]
+                [--revokes <event-id>] [--minimum-approvals <n>]
+                [--required-role <role>]...
+verify-approval-ledger <review-dir> --ledger <ledger.json>
+                       --allowed-signers <file> [--namespace <name>]
+catalog-reviews <review-dir>... -o <catalog.json>
+                [--baseline <catalog.json>] [--fail-on-change] [--force]
+governance-trends --snapshot <YYYY-MM-DD=review-dir>... -o <trends.json>
+                  [--csv-output <trends.csv>] [--force]
+rule-provider-request <review-dir> -o <request.json> [--force]
+verify-rule-provider-result <request.json> <result.json>
+                            [-o <report.json>] [--force]
 ```
 
 `init` profiles: `architecture`, `blueprint`, `erd`, `ha`, `routing`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
@@ -41,6 +56,14 @@ verify-review-attestation <review-dir> --allowed-signers <file>
 `publish` creates an atomic, script-free HTML/SVG review site from a bundle. Repeat `--policy` to compose organization and team packs. Scoped exceptions use the deterministic `--evaluation-date`; when omitted, `SOURCE_DATE_EPOCH` or the current UTC date is used. `--ownership` routes SARIF findings first; `--codeowners` supplies fallback owners for the repository-relative `--source-path`. `--github-checks` emits a maximum of 50 source annotations and requires a full SCM revision plus repository. `--public-base-url` makes evidence links absolute. Source revision defaults to `GITHUB_SHA`, then `CI_COMMIT_SHA`, then the bundle digest. See [collaborative-review.md](collaborative-review.md).
 
 Every site includes an unsigned in-toto statement. `attest-review` signs it as `reports/attestation.json.sig` with the default `drawio-review` OpenSSH namespace. `verify-review-attestation` first recomputes the manifest/provenance binding, then verifies the signature against the supplied allowed-signers file.
+
+`record-approval` appends an OpenSSH-signed, hash-chained approval or same-reviewer revocation. Quorum and required roles are immutable after ledger creation. Appending requires `--allowed-signers` so the signer verifies the entire existing chain and the new event before writing. `verify-approval-ledger` recomputes the review binding, event IDs, chain, signatures, active approvals, required roles, and quorum; it exits `12` when integrity or quorum fails.
+
+`catalog-reviews` verifies each review attestation before indexing its immutable repository/path/revision coordinate. A conflicting digest at the same coordinate is rejected. Baseline discovery drift exits `14` when `--fail-on-change` is set.
+
+`governance-trends` exports dated audit, policy, ownership, exception, annotation, and SARIF metrics for one repository path. Dates are explicit so JSON and optional CSV remain deterministic.
+
+The rule-provider protocol never executes provider code. `rule-provider-request` emits bounded review facts. Run an organization provider in a separately configured sandbox, then pass only its `drawio-rule-provider-result/v1` JSON to `verify-rule-provider-result`. The verifier checks the request digest, provider identity, bounds, page/cell selectors, result levels, and emits normalized SARIF; error-level rule failures exit `13`.
 
 ## Contract and security
 
@@ -111,3 +134,6 @@ verify-export <output.png|svg|pdf|jpg> [-f <format>] [-o <export-report.json>]
 | `9` | One or more findings lack an owner with `publish --fail-on-unowned-findings` |
 | `10` | Policy assertions, strict coverage, or requested baseline stability failed |
 | `11` | Review attestation binding or signature verification failed |
+| `12` | Approval-ledger integrity, signature, revocation, or quorum verification failed |
+| `13` | Rule-provider result integrity or error-level organization rule failed |
+| `14` | Evidence-catalog discovery changed with `catalog-reviews --fail-on-change` |

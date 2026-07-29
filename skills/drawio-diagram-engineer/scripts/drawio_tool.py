@@ -28,7 +28,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 IR_VERSION = "1"
 IR_METADATA_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
@@ -40,6 +40,12 @@ OWNERSHIP_REPORT_FORMAT = "drawio-review-ownership-report/v1"
 GITHUB_CHECKS_FORMAT = "drawio-github-checks/v1"
 POLICY_TEST_FORMAT = "drawio-policy-tests/v1"
 POLICY_TEST_REPORT_FORMAT = "drawio-policy-test-report/v1"
+APPROVAL_LEDGER_FORMAT = "drawio-approval-ledger/v1"
+EVIDENCE_CATALOG_FORMAT = "drawio-evidence-catalog/v1"
+GOVERNANCE_TRENDS_FORMAT = "drawio-governance-trends/v1"
+RULE_PROVIDER_REQUEST_FORMAT = "drawio-rule-provider-request/v1"
+RULE_PROVIDER_RESULT_FORMAT = "drawio-rule-provider-result/v1"
+RULE_PROVIDER_REPORT_FORMAT = "drawio-rule-provider-report/v1"
 REVIEW_ATTESTATION_PREDICATE = (
     "https://github.com/uulab-official/drawio-skills/"
     "attestations/review/v1"
@@ -7429,6 +7435,9 @@ def review_summary_markdown(
         f"- [Ownership report]({review_artifact_url(base_url, 'reports/ownership.json')})",
         f"- [SARIF findings]({review_artifact_url(base_url, 'reports/findings.sarif')})",
         f"- [Review attestation]({review_artifact_url(base_url, 'reports/attestation.json')})",
+        f"- [Evidence catalog]({review_artifact_url(base_url, 'reports/evidence-catalog.json')})",
+        f"- [Governance trends]({review_artifact_url(base_url, 'reports/governance-trends.json')})",
+        f"- [Rule-provider request]({review_artifact_url(base_url, 'reports/rule-provider-request.json')})",
         "",
     ])
     return "\n".join(lines)
@@ -7588,6 +7597,848 @@ def validate_review_attestation(
             "attestation statement does not match the review manifest and provenance"
         )
     return review, statement, errors
+
+
+def canonical_json_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+
+
+def canonical_sha256(value: Any) -> str:
+    return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+
+
+def write_json_output(
+    output: Path,
+    value: dict[str, Any],
+    force: bool = False,
+) -> None:
+    if output.exists():
+        if output.is_dir():
+            raise ValueError(f"JSON output must be a file: {output}")
+        if not force:
+            raise ValueError(
+                f"{output} already exists; choose another file or pass --force"
+            )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output.name}.",
+        suffix=".tmp",
+        dir=output.parent,
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        temporary.write_text(
+            json.dumps(value, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(output)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+def review_evidence_subject(review_directory: Path) -> dict[str, Any]:
+    review, _, errors = validate_review_attestation(review_directory)
+    if errors:
+        raise ValueError(errors[0])
+    review_path = review_directory / "review.json"
+    attestation_path = review_directory / "reports/attestation.json"
+    provenance = review["provenance"]
+    return {
+        "review_sha256": hashlib.sha256(review_path.read_bytes()).hexdigest(),
+        "attestation_sha256": hashlib.sha256(
+            attestation_path.read_bytes()
+        ).hexdigest(),
+        "repository": provenance.get("repository"),
+        "source_path": provenance["source_path"],
+        "revision": provenance["revision"],
+        "revision_type": provenance["revision_type"],
+        "bundle_sha256": provenance["bundle_sha256"],
+    }
+
+
+def parse_utc_timestamp(value: str) -> str:
+    normalized = validate_optional_text(value, "approval timestamp", 64)
+    if normalized is None or not normalized.endswith("Z"):
+        raise ValueError("approval timestamp must be an ISO-8601 UTC value ending in Z")
+    try:
+        parsed = datetime.fromisoformat(normalized[:-1] + "+00:00")
+    except ValueError as error:
+        raise ValueError("approval timestamp must be a valid ISO-8601 value") from error
+    if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+        raise ValueError("approval timestamp must use UTC")
+    return parsed.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def ssh_sign_payload(
+    payload: bytes,
+    key: Path,
+    namespace: str,
+) -> str:
+    ssh_keygen = shutil.which("ssh-keygen")
+    if not ssh_keygen:
+        raise ValueError("ssh-keygen is required to sign approval evidence")
+    if not key.is_file():
+        raise ValueError(f"signing key not found: {key}")
+    with tempfile.TemporaryDirectory(prefix="drawio-approval-sign-") as directory:
+        payload_path = Path(directory) / "approval-event.json"
+        payload_path.write_bytes(payload)
+        signature_path = payload_path.with_suffix(".json.sig")
+        completed = subprocess.run(
+            [
+                ssh_keygen,
+                "-Y",
+                "sign",
+                "-f",
+                str(key),
+                "-n",
+                namespace,
+                str(payload_path),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0 or not signature_path.is_file():
+            raise ValueError(
+                "ssh-keygen failed to sign approval evidence: "
+                f"{completed.stderr.strip() or 'no signature was produced'}"
+            )
+        return signature_path.read_text(encoding="utf-8")
+
+
+def ssh_verify_payload(
+    payload: bytes,
+    signature: str,
+    allowed_signers: Path,
+    identity: str,
+    namespace: str,
+) -> str | None:
+    ssh_keygen = shutil.which("ssh-keygen")
+    if not ssh_keygen:
+        return "ssh-keygen is required to verify approval evidence"
+    with tempfile.TemporaryDirectory(prefix="drawio-approval-verify-") as directory:
+        signature_path = Path(directory) / "approval-event.json.sig"
+        signature_path.write_text(signature, encoding="utf-8")
+        completed = subprocess.run(
+            [
+                ssh_keygen,
+                "-Y",
+                "verify",
+                "-f",
+                str(allowed_signers),
+                "-I",
+                identity,
+                "-n",
+                namespace,
+                "-s",
+                str(signature_path),
+            ],
+            input=payload.decode("utf-8"),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            return (
+                completed.stderr.strip()
+                or f"OpenSSH signature verification failed for {identity}"
+            )
+    return None
+
+
+def approval_event_id(event: dict[str, Any]) -> str:
+    unsigned = {
+        key: value
+        for key, value in event.items()
+        if key not in {"id", "signature"}
+    }
+    return canonical_sha256(unsigned)
+
+
+def approval_ledger_state(
+    ledger: dict[str, Any],
+    expected_subject: dict[str, Any],
+    allowed_signers: Path | None = None,
+    namespace: str = "drawio-approval",
+) -> dict[str, Any]:
+    errors: list[str] = []
+    if ledger.get("format") != APPROVAL_LEDGER_FORMAT:
+        errors.append(f"ledger format must be {APPROVAL_LEDGER_FORMAT}")
+    if ledger.get("subject") != expected_subject:
+        errors.append("approval ledger subject does not match review evidence")
+    quorum = ledger.get("quorum", {})
+    minimum = quorum.get("minimum_approvals")
+    required_roles = quorum.get("required_roles", [])
+    if (
+        not isinstance(minimum, int)
+        or isinstance(minimum, bool)
+        or minimum < 1
+        or minimum > 100
+    ):
+        errors.append("quorum minimum_approvals must be between 1 and 100")
+        minimum = 1
+    required_roles_valid = isinstance(required_roles, list)
+    if required_roles_valid:
+        try:
+            required_roles_valid = (
+                len(required_roles) == len(set(map(str, required_roles)))
+                and all(
+                    validate_optional_text(
+                        str(role),
+                        "required role",
+                        128,
+                    ) is not None
+                    for role in required_roles
+                )
+            )
+        except ValueError:
+            required_roles_valid = False
+    if not required_roles_valid:
+        errors.append("quorum required_roles must contain unique role names")
+        required_roles = []
+    events = ledger.get("events", [])
+    if not isinstance(events, list) or len(events) > 10000:
+        errors.append("approval ledger events must be a bounded list")
+        events = []
+    seen_ids: set[str] = set()
+    approvals: dict[str, dict[str, Any]] = {}
+    revoked: set[str] = set()
+    previous_digest = None
+    for index, event in enumerate(events, start=1):
+        label = f"event {index}"
+        if not isinstance(event, dict):
+            errors.append(f"{label} must be an object")
+            continue
+        event_id = str(event.get("id", ""))
+        if event.get("sequence") != index:
+            errors.append(f"{label} sequence must be {index}")
+        if event.get("previous_event_sha256") != previous_digest:
+            errors.append(f"{label} previous event digest is invalid")
+        if event_id != approval_event_id(event) or event_id in seen_ids:
+            errors.append(f"{label} id is invalid or duplicated")
+        seen_ids.add(event_id)
+        identity = str(event.get("identity", ""))
+        role = str(event.get("role", ""))
+        action = str(event.get("action", ""))
+        try:
+            if validate_optional_text(identity, f"{label} identity", 256) is None:
+                raise ValueError(f"{label} identity is required")
+            if validate_optional_text(role, f"{label} role", 128) is None:
+                raise ValueError(f"{label} role is required")
+            parse_utc_timestamp(str(event.get("timestamp", "")))
+            if validate_optional_text(
+                str(event.get("reason", "")),
+                f"{label} reason",
+                2000,
+            ) is None:
+                raise ValueError(f"{label} reason is required")
+        except ValueError as error:
+            errors.append(str(error))
+        if action not in {"approve", "revoke"}:
+            errors.append(f"{label} action must be approve or revoke")
+        revokes = event.get("revokes")
+        if action == "approve":
+            if revokes is not None:
+                errors.append(f"{label} approve action must not include revokes")
+            approvals[event_id] = event
+        elif action == "revoke":
+            target = approvals.get(str(revokes))
+            if target is None or str(revokes) in revoked:
+                errors.append(f"{label} revokes must reference an active approval")
+            elif target.get("identity") != identity:
+                errors.append(f"{label} can only revoke the same reviewer's approval")
+            else:
+                revoked.add(str(revokes))
+        signature = event.get("signature")
+        if not isinstance(signature, str) or "BEGIN SSH SIGNATURE" not in signature:
+            errors.append(f"{label} signature is missing or malformed")
+        elif allowed_signers is not None:
+            signed_event = {
+                key: value for key, value in event.items() if key != "signature"
+            }
+            signature_error = ssh_verify_payload(
+                canonical_json_bytes(signed_event),
+                signature,
+                allowed_signers,
+                identity,
+                namespace,
+            )
+            if signature_error:
+                errors.append(f"{label}: {signature_error}")
+        previous_digest = canonical_sha256(event)
+    active_events = [
+        event
+        for event_id, event in approvals.items()
+        if event_id not in revoked
+    ]
+    active_by_identity: dict[str, dict[str, Any]] = {}
+    for event in active_events:
+        active_by_identity[str(event["identity"])] = event
+    active = list(active_by_identity.values())
+    active_roles = sorted({str(event["role"]) for event in active})
+    missing_roles = sorted(set(map(str, required_roles)) - set(active_roles))
+    quorum_met = len(active) >= int(minimum) and not missing_roles
+    return {
+        "format": "drawio-approval-ledger-verification/v1",
+        "passed": not errors and quorum_met,
+        "integrity_passed": not errors,
+        "quorum_met": quorum_met,
+        "minimum_approvals": int(minimum),
+        "active_approvals": len(active),
+        "active_reviewers": sorted(active_by_identity),
+        "active_roles": active_roles,
+        "missing_roles": missing_roles,
+        "revoked_approvals": len(revoked),
+        "events": len(events),
+        "errors": errors,
+    }
+
+
+def command_record_approval(args: argparse.Namespace) -> int:
+    review_directory = Path(args.input)
+    subject = review_evidence_subject(review_directory)
+    ledger_path = Path(args.ledger)
+    namespace = validate_optional_text(args.namespace, "signature namespace", 128)
+    identity = validate_optional_text(args.identity, "reviewer identity", 256)
+    role = validate_optional_text(args.role, "reviewer role", 128)
+    reason = validate_optional_text(args.reason, "approval reason", 2000)
+    if (
+        namespace is None
+        or identity is None
+        or role is None
+        or reason is None
+        or any(character.isspace() for character in namespace)
+    ):
+        raise ValueError("approval namespace, identity, role, and reason are required")
+    if ledger_path.exists():
+        if not ledger_path.is_file():
+            raise ValueError("approval ledger must be a file")
+        ledger = load_data(ledger_path)
+        if not args.allowed_signers:
+            raise ValueError(
+                "appending to an approval ledger requires --allowed-signers"
+            )
+        allowed_signers = Path(args.allowed_signers)
+        if not allowed_signers.is_file():
+            raise ValueError(f"allowed signers file not found: {allowed_signers}")
+        state = approval_ledger_state(
+            ledger,
+            subject,
+            allowed_signers,
+            namespace,
+        )
+        if not state["integrity_passed"]:
+            raise ValueError(state["errors"][0])
+        if (
+            args.minimum_approvals is not None
+            and args.minimum_approvals != ledger["quorum"]["minimum_approvals"]
+        ):
+            raise ValueError("existing ledger quorum cannot be changed while appending")
+        if args.required_role:
+            requested_roles = sorted(set(args.required_role))
+            if requested_roles != sorted(ledger["quorum"]["required_roles"]):
+                raise ValueError("existing ledger required roles cannot be changed")
+    else:
+        minimum = args.minimum_approvals or 1
+        if minimum < 1 or minimum > 100:
+            raise ValueError("minimum approvals must be between 1 and 100")
+        required_roles = sorted(set(args.required_role or []))
+        for required_role in required_roles:
+            validate_optional_text(required_role, "required role", 128)
+        ledger = {
+            "format": APPROVAL_LEDGER_FORMAT,
+            "subject": subject,
+            "quorum": {
+                "minimum_approvals": minimum,
+                "required_roles": required_roles,
+            },
+            "events": [],
+        }
+    events = ledger["events"]
+    action = args.action
+    revokes = args.revokes
+    if action == "revoke" and not revokes:
+        raise ValueError("revoke actions require --revokes")
+    if action == "approve" and revokes:
+        raise ValueError("approve actions do not accept --revokes")
+    previous = canonical_sha256(events[-1]) if events else None
+    event: dict[str, Any] = {
+        "sequence": len(events) + 1,
+        "action": action,
+        "identity": identity,
+        "role": role,
+        "timestamp": parse_utc_timestamp(args.timestamp),
+        "reason": reason,
+        "previous_event_sha256": previous,
+    }
+    if revokes:
+        event["revokes"] = revokes
+    event["id"] = approval_event_id(event)
+    event["signature"] = ssh_sign_payload(
+        canonical_json_bytes(event),
+        Path(args.signing_key),
+        namespace,
+    )
+    candidate = copy.deepcopy(ledger)
+    candidate["events"].append(event)
+    state = approval_ledger_state(
+        candidate,
+        subject,
+        Path(args.allowed_signers) if args.allowed_signers else None,
+        namespace,
+    )
+    if not state["integrity_passed"]:
+        raise ValueError(state["errors"][0])
+    write_json_output(ledger_path, candidate, force=True)
+    print(json.dumps({
+        "ledger": str(ledger_path),
+        "event": event["id"],
+        "action": action,
+        "identity": identity,
+        "quorum": state,
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def command_verify_approval_ledger(args: argparse.Namespace) -> int:
+    review_directory = Path(args.input)
+    subject = review_evidence_subject(review_directory)
+    ledger_path = Path(args.ledger)
+    allowed_signers = Path(args.allowed_signers)
+    if not ledger_path.is_file():
+        raise ValueError(f"approval ledger not found: {ledger_path}")
+    if not allowed_signers.is_file():
+        raise ValueError(f"allowed signers file not found: {allowed_signers}")
+    namespace = validate_optional_text(args.namespace, "signature namespace", 128)
+    if namespace is None or any(character.isspace() for character in namespace):
+        raise ValueError("signature namespace must not contain whitespace")
+    report = approval_ledger_state(
+        load_data(ledger_path),
+        subject,
+        allowed_signers,
+        namespace,
+    )
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["passed"] else 12
+
+
+def review_evidence_entry(review_directory: Path) -> dict[str, Any]:
+    review, _, errors = validate_review_attestation(review_directory)
+    if errors:
+        raise ValueError(errors[0])
+    subject = review_evidence_subject(review_directory)
+    status = review["status"]
+    entry = {
+        "id": canonical_sha256(subject),
+        "title": review["title"],
+        "repository": subject["repository"],
+        "source_path": subject["source_path"],
+        "revision": subject["revision"],
+        "revision_type": subject["revision_type"],
+        "review_sha256": subject["review_sha256"],
+        "attestation_sha256": subject["attestation_sha256"],
+        "bundle_sha256": subject["bundle_sha256"],
+        "source_url": review["provenance"].get("source_url"),
+        "gates": {
+            "audit": bool(status["audit"]["passed"]),
+            "security": bool(status["security"]["passed"]),
+            "extraction": bool(
+                status["extraction"]["lossless"]
+                and status["extraction"]["semantic_match"]
+            ),
+            "policy": bool(status["policy"]["passed"]),
+            "ownership": bool(status["ownership"]["passed"]),
+        },
+    }
+    entry["passed"] = all(entry["gates"].values())
+    return entry
+
+
+def command_catalog_reviews(args: argparse.Namespace) -> int:
+    entries = [review_evidence_entry(Path(path)) for path in args.inputs]
+    coordinate_entries: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for entry in entries:
+        coordinate = (
+            str(entry["repository"] or "local"),
+            str(entry["source_path"]),
+            str(entry["revision"]),
+        )
+        existing = coordinate_entries.get(coordinate)
+        if existing and existing["review_sha256"] != entry["review_sha256"]:
+            raise ValueError(
+                "immutable review coordinate resolves to conflicting evidence: "
+                + "/".join(coordinate)
+            )
+        coordinate_entries[coordinate] = entry
+    entries = sorted(
+        coordinate_entries.values(),
+        key=lambda item: (
+            str(item["repository"] or ""),
+            item["source_path"],
+            item["revision"],
+        ),
+    )
+    changes = []
+    if args.baseline:
+        baseline = load_data(Path(args.baseline))
+        if baseline.get("format") != EVIDENCE_CATALOG_FORMAT:
+            raise ValueError(f"catalog baseline must be {EVIDENCE_CATALOG_FORMAT}")
+        previous = {str(item["id"]): item for item in baseline.get("reviews", [])}
+        current = {str(item["id"]): item for item in entries}
+        for entry_id in sorted(previous.keys() | current.keys()):
+            if entry_id not in previous:
+                changes.append({"id": entry_id, "status": "added"})
+            elif entry_id not in current:
+                changes.append({"id": entry_id, "status": "removed"})
+    catalog = {
+        "format": EVIDENCE_CATALOG_FORMAT,
+        "reviews": entries,
+        "summary": {
+            "repositories": len({
+                str(entry["repository"] or "local") for entry in entries
+            }),
+            "reviews": len(entries),
+            "passed": sum(1 for entry in entries if entry["passed"]),
+            "needs_review": sum(1 for entry in entries if not entry["passed"]),
+        },
+        "baseline": (
+            {
+                "source": Path(args.baseline).name,
+                "changed": bool(changes),
+                "changes": changes,
+            }
+            if args.baseline else None
+        ),
+    }
+    write_json_output(Path(args.output), catalog, args.force)
+    print(json.dumps({
+        "output": args.output,
+        "summary": catalog["summary"],
+        "baseline": catalog["baseline"],
+    }, indent=2, ensure_ascii=False))
+    return 14 if args.fail_on_change and changes else 0
+
+
+def governance_snapshot(snapshot_date: str, review_directory: Path) -> dict[str, Any]:
+    parsed_date = parse_evaluation_date(snapshot_date)
+    if parsed_date.isoformat() != snapshot_date:
+        raise ValueError("governance snapshot date must use YYYY-MM-DD")
+    review, _, errors = validate_review_attestation(review_directory)
+    if errors:
+        raise ValueError(errors[0])
+    policy_path = review_directory / review["artifacts"]["policy"]
+    sarif_path = review_directory / review["artifacts"]["sarif"]
+    policy = load_data(policy_path)
+    sarif = load_data(sarif_path)
+    exception_statuses = defaultdict(int)
+    for exception in policy.get("exceptions", []):
+        exception_statuses[str(exception.get("status", "unknown"))] += 1
+    annotations = review["status"]["annotations"]
+    status = review["status"]
+    return {
+        "date": snapshot_date,
+        "review_sha256": hashlib.sha256(
+            (review_directory / "review.json").read_bytes()
+        ).hexdigest(),
+        "revision": review["provenance"]["revision"],
+        "metrics": {
+            "audit_score": int(status["audit"]["score"]),
+            "audit_errors": int(status["audit"]["errors"]),
+            "audit_warnings": int(status["audit"]["warnings"]),
+            "policy_errors": int(status["policy"]["errors"]),
+            "policy_warnings": int(status["policy"]["warnings"]),
+            "ownership_coverage_percent": int(
+                status["ownership"]["coverage_percent"]
+            ),
+            "unassigned_findings": int(status["ownership"]["unassigned"]),
+            "open_annotations": int(annotations["open"]),
+            "sarif_findings": len(sarif["runs"][0].get("results", [])),
+            "exceptions_total": len(policy.get("exceptions", [])),
+            "exceptions_applied": int(exception_statuses["applied"]),
+            "exceptions_expired": int(exception_statuses["expired"]),
+        },
+    }
+
+
+def governance_trends_csv(report: dict[str, Any]) -> str:
+    def cell(value: Any) -> str:
+        text = str(value)
+        if text.startswith(("=", "+", "-", "@")):
+            text = "'" + text
+        if any(character in text for character in (",", '"', "\r", "\n")):
+            return '"' + text.replace('"', '""') + '"'
+        return text
+
+    metrics = sorted(report["snapshots"][0]["metrics"]) if report["snapshots"] else []
+    lines = [",".join(["date", "revision", *metrics])]
+    for snapshot in report["snapshots"]:
+        lines.append(",".join([
+            cell(snapshot["date"]),
+            cell(snapshot["revision"]),
+            *[cell(snapshot["metrics"][metric]) for metric in metrics],
+        ]))
+    return "\n".join(lines) + "\n"
+
+
+def command_governance_trends(args: argparse.Namespace) -> int:
+    snapshots = []
+    subject_coordinate = None
+    for value in args.snapshot:
+        if "=" not in value:
+            raise ValueError("--snapshot must use YYYY-MM-DD=REVIEW_DIRECTORY")
+        snapshot_date, path = value.split("=", 1)
+        review_directory = Path(path)
+        subject = review_evidence_subject(review_directory)
+        coordinate = (subject["repository"], subject["source_path"])
+        if subject_coordinate is None:
+            subject_coordinate = coordinate
+        elif coordinate != subject_coordinate:
+            raise ValueError(
+                "governance trend snapshots must describe the same repository path"
+            )
+        snapshots.append(governance_snapshot(snapshot_date, review_directory))
+    snapshots.sort(key=lambda item: item["date"])
+    if len({item["date"] for item in snapshots}) != len(snapshots):
+        raise ValueError("governance snapshot dates must be unique")
+    first = snapshots[0]["metrics"]
+    latest = snapshots[-1]["metrics"]
+    report = {
+        "format": GOVERNANCE_TRENDS_FORMAT,
+        "subject": {
+            "repository": subject_coordinate[0],
+            "source_path": subject_coordinate[1],
+        },
+        "snapshots": snapshots,
+        "change": {
+            metric: latest[metric] - first[metric]
+            for metric in sorted(first)
+        },
+    }
+    write_json_output(Path(args.output), report, args.force)
+    if args.csv_output:
+        csv_path = Path(args.csv_output)
+        if csv_path.exists() and not args.force:
+            raise ValueError(
+                f"{csv_path} already exists; choose another file or pass --force"
+            )
+        if csv_path.exists() and csv_path.is_dir():
+            raise ValueError("governance CSV output must be a file")
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path.write_text(governance_trends_csv(report), encoding="utf-8")
+    print(json.dumps({
+        "output": args.output,
+        "csv": args.csv_output,
+        "snapshots": len(snapshots),
+        "subject": report["subject"],
+        "change": report["change"],
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def rule_provider_request(review_directory: Path) -> dict[str, Any]:
+    review, _, errors = validate_review_attestation(review_directory)
+    if errors:
+        raise ValueError(errors[0])
+    subject = review_evidence_subject(review_directory)
+    return {
+        "format": RULE_PROVIDER_REQUEST_FORMAT,
+        "subject": subject,
+        "facts": {
+            "status": copy.deepcopy(review["status"]),
+            "pages": [
+                {
+                    "id": page["id"],
+                    "title": page["title"],
+                    "cells": [
+                        {
+                            "id": cell["id"],
+                            "category": cell["category"],
+                            "label": cell["label"],
+                        }
+                        for cell in page["cells"]
+                    ],
+                }
+                for page in review["catalog"]
+            ],
+            "annotations": [
+                {
+                    key: annotation[key]
+                    for key in (
+                        "id", "page", "cell", "status", "source", "message"
+                    )
+                    if key in annotation
+                }
+                for annotation in review["annotations"]
+            ],
+            "policy": [
+                {
+                    key: result[key]
+                    for key in (
+                        "key", "type", "level", "passed", "compliant", "waived"
+                    )
+                }
+                for result in review["policy"]["results"]
+            ],
+        },
+    }
+
+
+def command_rule_provider_request(args: argparse.Namespace) -> int:
+    request = rule_provider_request(Path(args.input))
+    write_json_output(Path(args.output), request, args.force)
+    print(json.dumps({
+        "output": args.output,
+        "request_sha256": canonical_sha256(request),
+        "pages": len(request["facts"]["pages"]),
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def validate_rule_provider_result(
+    request: dict[str, Any],
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    errors = []
+    if request.get("format") != RULE_PROVIDER_REQUEST_FORMAT:
+        raise ValueError(f"provider request must be {RULE_PROVIDER_REQUEST_FORMAT}")
+    if result.get("format") != RULE_PROVIDER_RESULT_FORMAT:
+        raise ValueError(f"provider result must be {RULE_PROVIDER_RESULT_FORMAT}")
+    request_digest = canonical_sha256(request)
+    if result.get("request_sha256") != request_digest:
+        errors.append("provider result request digest does not match")
+    provider = result.get("provider", {})
+    if (
+        not isinstance(provider, dict)
+        or not valid_semantic_id(str(provider.get("id", "")))
+    ):
+        errors.append("provider requires a semantic id")
+    try:
+        if validate_optional_text(
+            str(provider.get("version", "")),
+            "provider version",
+            128,
+        ) is None:
+            raise ValueError("provider version is required")
+    except ValueError as error:
+        errors.append(str(error))
+    allowed = {
+        (str(page["id"]), str(cell["id"]))
+        for page in request["facts"]["pages"]
+        for cell in page["cells"]
+    }
+    page_ids = {str(page["id"]) for page in request["facts"]["pages"]}
+    results = result.get("results", [])
+    if not isinstance(results, list) or len(results) > 1000:
+        raise ValueError("provider results must be a list of at most 1000 items")
+    normalized = []
+    seen = set()
+    sarif_results = []
+    for index, item in enumerate(results, start=1):
+        if not isinstance(item, dict):
+            errors.append(f"provider result {index} must be an object")
+            continue
+        result_id = str(item.get("id", ""))
+        rule_id = str(item.get("rule_id", ""))
+        level = str(item.get("level", ""))
+        passed = item.get("passed")
+        page = str(item.get("page", ""))
+        cell = str(item.get("cell", ""))
+        message = str(item.get("message", ""))
+        if not valid_semantic_id(result_id) or result_id in seen:
+            errors.append(f"provider result {index} id is invalid or duplicated")
+        seen.add(result_id)
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,127}", rule_id):
+            errors.append(f"provider result {result_id} rule_id is invalid")
+        if level not in {"error", "warning", "note"}:
+            errors.append(f"provider result {result_id} level is invalid")
+        if not isinstance(passed, bool):
+            errors.append(f"provider result {result_id} passed must be boolean")
+        try:
+            validate_optional_text(message, f"provider result {result_id} message", 2000)
+        except ValueError as error:
+            errors.append(str(error))
+        if page and page not in page_ids:
+            errors.append(f"provider result {result_id} references unknown page")
+        if cell and (page, cell) not in allowed:
+            errors.append(f"provider result {result_id} references unknown cell")
+        normalized_item = {
+            "id": result_id,
+            "rule_id": rule_id,
+            "level": level,
+            "passed": passed,
+            "message": message,
+            "page": page or None,
+            "cell": cell or None,
+        }
+        normalized.append(normalized_item)
+        if passed is False:
+            sarif_results.append(sarif_result(
+                f"provider.{provider.get('id', 'unknown')}.{rule_id}",
+                level,
+                message,
+                f"pages/{page}.svg" if page else "review.json",
+                f"{page}#{cell}" if page and cell else page or None,
+                {
+                    "source": "rule-provider",
+                    "providerId": provider.get("id"),
+                    **({"page": page} if page else {}),
+                    **({"cell": cell} if cell else {}),
+                },
+            ))
+    failed_errors = sum(
+        1
+        for item in normalized
+        if item["passed"] is False and item["level"] == "error"
+    )
+    return {
+        "format": RULE_PROVIDER_REPORT_FORMAT,
+        "provider": copy.deepcopy(provider),
+        "request_sha256": request_digest,
+        "passed": not errors and failed_errors == 0,
+        "integrity_passed": not errors,
+        "errors": errors,
+        "summary": {
+            "results": len(normalized),
+            "failed": sum(1 for item in normalized if item["passed"] is False),
+            "errors": failed_errors,
+            "warnings": sum(
+                1
+                for item in normalized
+                if item["passed"] is False and item["level"] == "warning"
+            ),
+        },
+        "results": normalized,
+        "sarif": {
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "version": SARIF_VERSION,
+            "runs": [{
+                "tool": {
+                    "driver": {
+                        "name": f"drawio-rule-provider:{provider.get('id', 'unknown')}",
+                        "version": str(provider.get("version", "")),
+                    },
+                },
+                "results": sarif_results,
+            }],
+        },
+    }
+
+
+def command_verify_rule_provider_result(args: argparse.Namespace) -> int:
+    request = load_data(Path(args.request))
+    result = load_data(Path(args.result))
+    report = validate_rule_provider_result(request, result)
+    if args.output:
+        write_json_output(Path(args.output), report, args.force)
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["passed"] else 13
 
 
 def status_badge(label: str, passed: bool, detail: str) -> str:
@@ -7781,7 +8632,7 @@ def review_site_html(review: dict[str, Any]) -> str:
     section h2{{margin:0 0 12px;font-size:17px}} ul{{list-style:none;padding:0;margin:0;display:grid;gap:8px}} li{{display:grid;grid-template-columns:auto 1fr auto;gap:10px;border-bottom:1px solid var(--line);padding:8px 0}}
     li a{{color:var(--accent);font-weight:650;text-decoration:none}} li small,.empty{{color:var(--muted)}} details{{border-top:1px solid var(--line);padding:10px 0}} summary{{cursor:pointer;font-weight:650}}
     .chips{{display:flex;flex-wrap:wrap;gap:7px;padding:10px 0}} .chips a{{font-size:12px;padding:5px 8px}} table{{width:100%;border-collapse:collapse}} td{{padding:7px;border-bottom:1px solid var(--line)}}
-    .pill{{padding:3px 7px;border-radius:999px;background:#e8edf5}} .pill.changed,.pill.added,.pill.removed,.pill.failed,.pill.error,.pill.warning,.pill.expired{{background:#fff0d6;color:#7c4600}} .pill.waived,.pill.applied{{background:#e8f1ff;color:#2447a8}}
+    .pill{{display:inline-block;white-space:nowrap;padding:3px 7px;border-radius:999px;background:#e8edf5}} .pill.changed,.pill.added,.pill.removed,.pill.failed,.pill.error,.pill.warning,.pill.expired{{background:#fff0d6;color:#7c4600}} .pill.waived,.pill.applied{{background:#e8f1ff;color:#2447a8}}
     li.resolved{{opacity:.64}} li.accepted{{border-left:3px solid var(--pass);padding-left:9px}} .lifecycle{{margin:0 0 12px;color:var(--muted)}}
     td{{overflow-wrap:anywhere}} .provenance{{display:grid;grid-template-columns:max-content 1fr;gap:8px 12px}} .provenance dt{{color:var(--muted)}} .provenance dd{{margin:0;overflow-wrap:anywhere}}
     footer{{padding:18px 34px;color:var(--muted)}} footer a{{color:var(--accent)}}
@@ -7827,6 +8678,9 @@ def review_site_html(review: dict[str, Any]) -> str:
           <a href="reports/findings.sarif">SARIF findings</a>
           <a href="reports/summary.md">PR check summary</a>
 {github_checks_link}          <a href="reports/attestation.json">Review attestation</a>
+          <a href="reports/evidence-catalog.json">Evidence catalog</a>
+          <a href="reports/governance-trends.json">Governance trends</a>
+          <a href="reports/rule-provider-request.json">Rule-provider request</a>
         </div>
       </section>
     </div>
@@ -8039,6 +8893,10 @@ def publish_review_site(
                 "sarif": "reports/findings.sarif",
                 "summary": "reports/summary.md",
                 "attestation": "reports/attestation.json",
+                "evidence_catalog": "reports/evidence-catalog.json",
+                "governance_trends": "reports/governance-trends.json",
+                "governance_csv": "reports/governance-trends.csv",
+                "rule_provider_request": "reports/rule-provider-request.json",
             },
         }
         if github_checks:
@@ -8116,6 +8974,51 @@ def publish_review_site(
         )
         (reports_dir / "attestation.json").write_text(
             json.dumps(attestation, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        evidence_entry = review_evidence_entry(staging)
+        evidence_catalog = {
+            "format": EVIDENCE_CATALOG_FORMAT,
+            "reviews": [evidence_entry],
+            "summary": {
+                "repositories": 1,
+                "reviews": 1,
+                "passed": 1 if evidence_entry["passed"] else 0,
+                "needs_review": 0 if evidence_entry["passed"] else 1,
+            },
+            "baseline": None,
+        }
+        (reports_dir / "evidence-catalog.json").write_text(
+            json.dumps(evidence_catalog, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        current_snapshot = governance_snapshot(
+            evaluation_date.isoformat(),
+            staging,
+        )
+        governance_report = {
+            "format": GOVERNANCE_TRENDS_FORMAT,
+            "subject": {
+                "repository": provenance.get("repository"),
+                "source_path": provenance["source_path"],
+            },
+            "snapshots": [current_snapshot],
+            "change": {
+                metric: 0
+                for metric in sorted(current_snapshot["metrics"])
+            },
+        }
+        (reports_dir / "governance-trends.json").write_text(
+            json.dumps(governance_report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        (reports_dir / "governance-trends.csv").write_text(
+            governance_trends_csv(governance_report),
+            encoding="utf-8",
+        )
+        provider_request = rule_provider_request(staging)
+        (reports_dir / "rule-provider-request.json").write_text(
+            json.dumps(provider_request, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
         (staging / "index.html").write_text(
@@ -9136,6 +10039,118 @@ def build_parser() -> argparse.ArgumentParser:
     )
     verify_attestation_parser.set_defaults(
         func=command_verify_review_attestation
+    )
+
+    record_approval_parser = subparsers.add_parser(
+        "record-approval",
+        help="append a signed approval or revocation to a review ledger",
+    )
+    record_approval_parser.add_argument(
+        "input",
+        help="published review directory",
+    )
+    record_approval_parser.add_argument("--ledger", required=True)
+    record_approval_parser.add_argument("--identity", required=True)
+    record_approval_parser.add_argument("--role", required=True)
+    record_approval_parser.add_argument("--timestamp", required=True)
+    record_approval_parser.add_argument("--reason", required=True)
+    record_approval_parser.add_argument(
+        "--action",
+        choices=["approve", "revoke"],
+        default="approve",
+    )
+    record_approval_parser.add_argument(
+        "--revokes",
+        help="approval event id revoked by a revoke action",
+    )
+    record_approval_parser.add_argument("--signing-key", required=True)
+    record_approval_parser.add_argument(
+        "--allowed-signers",
+        help="required when appending; verifies every prior and new signature",
+    )
+    record_approval_parser.add_argument(
+        "--namespace",
+        default="drawio-approval",
+    )
+    record_approval_parser.add_argument("--minimum-approvals", type=int)
+    record_approval_parser.add_argument(
+        "--required-role",
+        action="append",
+        help="repeatable role required by a newly created ledger",
+    )
+    record_approval_parser.set_defaults(func=command_record_approval)
+
+    verify_ledger_parser = subparsers.add_parser(
+        "verify-approval-ledger",
+        help="verify approval signatures, hash chain, revocations, and quorum",
+    )
+    verify_ledger_parser.add_argument(
+        "input",
+        help="published review directory",
+    )
+    verify_ledger_parser.add_argument("--ledger", required=True)
+    verify_ledger_parser.add_argument("--allowed-signers", required=True)
+    verify_ledger_parser.add_argument(
+        "--namespace",
+        default="drawio-approval",
+    )
+    verify_ledger_parser.set_defaults(func=command_verify_approval_ledger)
+
+    catalog_parser = subparsers.add_parser(
+        "catalog-reviews",
+        help="build an immutable multi-repository review evidence catalog",
+    )
+    catalog_parser.add_argument(
+        "inputs",
+        nargs="+",
+        help="one or more published review directories",
+    )
+    catalog_parser.add_argument("-o", "--output", required=True)
+    catalog_parser.add_argument(
+        "--baseline",
+        help="prior drawio-evidence-catalog/v1 used for discovery drift",
+    )
+    catalog_parser.add_argument("--fail-on-change", action="store_true")
+    catalog_parser.add_argument("--force", action="store_true")
+    catalog_parser.set_defaults(func=command_catalog_reviews)
+
+    trends_parser = subparsers.add_parser(
+        "governance-trends",
+        help="export review governance metrics as deterministic JSON and CSV",
+    )
+    trends_parser.add_argument(
+        "--snapshot",
+        action="append",
+        required=True,
+        help="repeatable YYYY-MM-DD=REVIEW_DIRECTORY snapshot",
+    )
+    trends_parser.add_argument("-o", "--output", required=True)
+    trends_parser.add_argument("--csv-output")
+    trends_parser.add_argument("--force", action="store_true")
+    trends_parser.set_defaults(func=command_governance_trends)
+
+    provider_request_parser = subparsers.add_parser(
+        "rule-provider-request",
+        help="emit bounded review facts for an externally sandboxed JSON rule provider",
+    )
+    provider_request_parser.add_argument(
+        "input",
+        help="published review directory",
+    )
+    provider_request_parser.add_argument("-o", "--output", required=True)
+    provider_request_parser.add_argument("--force", action="store_true")
+    provider_request_parser.set_defaults(func=command_rule_provider_request)
+
+    provider_result_parser = subparsers.add_parser(
+        "verify-rule-provider-result",
+        help="validate a JSON rule-provider result without executing provider code",
+    )
+    provider_result_parser.add_argument("request")
+    provider_result_parser.add_argument("result")
+    provider_result_parser.add_argument("-o", "--output")
+    provider_result_parser.add_argument("--force", action="store_true")
+    provider_result_parser.set_defaults(
+        func=command_verify_rule_provider_result
     )
 
     publish_parser = subparsers.add_parser(

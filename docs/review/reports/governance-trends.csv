@@ -1,0 +1,2 @@
+date,revision,audit_errors,audit_score,audit_warnings,exceptions_applied,exceptions_expired,exceptions_total,open_annotations,ownership_coverage_percent,policy_errors,policy_warnings,sarif_findings,unassigned_findings
+2026-07-29,983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c,0,100,0,1,0,1,1,100,0,0,1,0

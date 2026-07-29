@@ -1,4 +1,4 @@
 interface:
   display_name: "Draw.io Diagram Engineer"
-  short_description: "Build, govern, attest, and publish draw.io diagrams"
-  default_prompt: "Use $drawio-diagram-engineer to create, govern, attest, publish, or review a validated editable draw.io architecture, ERD, HA pack, infrastructure topology, or CI/CD pipeline."
+  short_description: "Build, govern, approve, and federate draw.io evidence"
+  default_prompt: "Use $drawio-diagram-engineer to create, validate, govern, approve, federate, or review an editable draw.io architecture, ERD, HA pack, infrastructure topology, or CI/CD pipeline."

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/rule-provider-request.schema.json",
+  "title": "Sandboxed rule-provider request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "subject", "facts"],
+  "properties": {
+    "format": {"const": "drawio-rule-provider-request/v1"},
+    "subject": {"type": "object"},
+    "facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "pages", "annotations", "policy"],
+      "properties": {
+        "status": {"type": "object"},
+        "pages": {"type": "array"},
+        "annotations": {"type": "array"},
+        "policy": {"type": "array"}
+      }
+    }
+  }
+}

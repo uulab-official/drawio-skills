@@ -44,10 +44,12 @@ HTTP, HTTPS, and mail links are listed in `external_links` for human review but 
 - GitHub Checks output is data only; the core tool never calls GitHub or reads a token.
 - Review signing invokes `ssh-keygen` without a shell and never reads or prints private-key material.
 - Attestation verification recomputes the complete manifest binding before accepting a cryptographic signature.
+- Approval ledgers use a separate `drawio-approval` namespace, sign every identity/role/action/reason/sequence/chain link, and accept only same-reviewer revocations.
+- Rule providers are never imported or executed. The engine emits bounded JSON facts and validates only digest-bound JSON results and known semantic selectors.
 
 ## Boundaries
 
-The scan is a deterministic release gate, not a replacement for repository secret scanning, malware analysis, signature-key lifecycle management, or organizational threat modeling. Scan source repositories with the organization’s security tooling before import and protect review-signing keys with the same controls as other release credentials.
+The scan is a deterministic release gate, not a replacement for repository secret scanning, malware analysis, signature-key lifecycle management, sandbox policy, or organizational threat modeling. Scan source repositories with the organization’s security tooling before import. Keep review-attestation, approval, and release signing keys separate. Run organization rule providers outside the engine with minimum filesystem, credential, and network access.
 
 Structured JSON/YAML and raw XML are limited to 50 MiB. Each decompressed draw.io page is limited to 100 MiB. The XML parser also rejects DTD/entity declarations. Inputs above a limit require manual review before increasing it.
 

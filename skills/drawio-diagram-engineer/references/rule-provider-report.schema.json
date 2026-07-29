@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/rule-provider-report.schema.json",
+  "title": "Validated rule-provider report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "provider",
+    "request_sha256",
+    "passed",
+    "integrity_passed",
+    "errors",
+    "summary",
+    "results",
+    "sarif"
+  ],
+  "properties": {
+    "format": {"const": "drawio-rule-provider-report/v1"},
+    "provider": {"type": "object"},
+    "request_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "passed": {"type": "boolean"},
+    "integrity_passed": {"type": "boolean"},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "summary": {"type": "object"},
+    "results": {"type": "array"},
+    "sarif": {"type": "object"}
+  }
+}

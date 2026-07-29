@@ -2,6 +2,15 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 1.6.0 — 2026-07-29
+
+- Add OpenSSH-signed, hash-chained approval ledgers with immutable quorum, required roles, reviewer identity, and same-reviewer revocation evidence.
+- Add multi-repository catalogs that recompute review attestations and reject conflicting evidence at one repository/path/revision coordinate.
+- Export deterministic audit, policy, ownership, exception, annotation, and SARIF trends as JSON and dashboard-ready CSV.
+- Add a bounded data-only rule-provider request/result protocol that validates digests and semantic selectors without executing provider code.
+- Publish six new JSON schemas, governance lifecycle documentation, CLI gates, examples, and regression coverage.
+- Complete the v1.6 governance lifecycle and federation roadmap.
+
 ## 1.5.0 — 2026-07-29
 
 - Add last-match-wins CODEOWNERS fallback while preserving explicit semantic ownership routes.

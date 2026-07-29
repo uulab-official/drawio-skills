@@ -1,21 +1,21 @@
 {
   "format": "drawio-review-site/v1",
   "generator": "drawio-diagram-engineer",
-  "tool_version": "1.5.0",
+  "tool_version": "1.6.0",
   "title": "example-blueprint",
-  "source_bundle": "bundle",
+  "source_bundle": "public-bundle",
   "provenance": {
-    "revision": "bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65",
+    "revision": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
     "revision_type": "bundle",
     "repository": null,
     "source_url": null,
     "source_path": "architecture/commerce-platform.json",
-    "bundle_sha256": "bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65",
+    "bundle_sha256": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
     "artifacts": {
       "audit.json": "af6d7d92b0510e5696133f66e1c9208754d24c360b3d0c240b74f69631af55ca",
-      "bundle.json": "ceafde3aa2d26ba2ba0448670607bb90b17cd62edfd6563fee1bcce26b5b2544",
+      "bundle.json": "f64b7c763e001f8a697745e21980a20346907792e46a79d615b2ceeb7da552a3",
       "diagram.json": "087fca45c9f73420f9e29f0cb4463c9350d3c4857c45f44f19c4ee38b322321b",
-      "example-blueprint.drawio": "9b80ff67a9bc072088934bfaf35cf6409f7d78fb24c2b7cb979bcb1ce518a5d7",
+      "example-blueprint.drawio": "45ebeeefbf46bcd1ea80e3abed99deea367a258a7e8a41465400b5813e7c071e",
       "previews/context.svg": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
       "previews/data.svg": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
       "previews/decisions.svg": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
@@ -789,7 +789,11 @@
     "ownership": "reports/ownership.json",
     "sarif": "reports/findings.sarif",
     "summary": "reports/summary.md",
-    "attestation": "reports/attestation.json"
+    "attestation": "reports/attestation.json",
+    "evidence_catalog": "reports/evidence-catalog.json",
+    "governance_trends": "reports/governance-trends.json",
+    "governance_csv": "reports/governance-trends.csv",
+    "rule_provider_request": "reports/rule-provider-request.json"
   },
   "policy": {
     "format": "drawio-architecture-policy-report/v1",

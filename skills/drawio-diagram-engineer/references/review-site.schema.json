@@ -232,6 +232,18 @@
         },
         "github_checks": {
           "const": "reports/github-checks.json"
+        },
+        "evidence_catalog": {
+          "const": "reports/evidence-catalog.json"
+        },
+        "governance_trends": {
+          "const": "reports/governance-trends.json"
+        },
+        "governance_csv": {
+          "const": "reports/governance-trends.csv"
+        },
+        "rule_provider_request": {
+          "const": "reports/rule-provider-request.json"
         }
       }
     },

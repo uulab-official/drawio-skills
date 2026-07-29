@@ -230,6 +230,9 @@ class UserExperienceTests(unittest.TestCase):
             self.assertNotIn("<script", html_text)
             self.assertIn("Semantic element index", html_text)
             self.assertTrue((review / "reports/extraction.json").is_file())
+            self.assertTrue((review / "reports/evidence-catalog.json").is_file())
+            self.assertTrue((review / "reports/governance-trends.csv").is_file())
+            self.assertTrue((review / "reports/rule-provider-request.json").is_file())
 
             same_review = temp / "same-review"
             run(
@@ -865,6 +868,243 @@ class UserExperienceTests(unittest.TestCase):
             )
             self.assertEqual(11, tampered.returncode)
             self.assertFalse(json.loads(tampered.stdout)["passed"])
+
+    def test_signed_approval_ledger_enforces_quorum_and_revocation(self):
+        if not shutil.which("ssh-keygen"):
+            self.skipTest("ssh-keygen is required")
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            ledger = temp / "approvals.json"
+            allowed_signers = temp / "allowed-signers"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.architecture.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            run(TOOL, "publish", bundle, "-o", review, "--strict")
+            keys = {}
+            signer_lines = []
+            for identity in ("architecture@example.com", "security@example.com"):
+                key = temp / identity.split("@", 1)[0]
+                subprocess.run(
+                    [
+                        "ssh-keygen", "-q", "-t", "ed25519", "-N", "",
+                        "-f", str(key),
+                    ],
+                    check=True,
+                )
+                keys[identity] = key
+                signer_lines.append(
+                    f'{identity} namespaces="drawio-approval" '
+                    + key.with_suffix(".pub").read_text(encoding="utf-8")
+                )
+            allowed_signers.write_text("".join(signer_lines), encoding="utf-8")
+            first = run(
+                TOOL,
+                "record-approval",
+                review,
+                "--ledger",
+                ledger,
+                "--identity",
+                "architecture@example.com",
+                "--role",
+                "architecture",
+                "--timestamp",
+                "2026-07-29T01:00:00Z",
+                "--reason",
+                "Architecture approved",
+                "--signing-key",
+                keys["architecture@example.com"],
+                "--minimum-approvals",
+                "2",
+                "--required-role",
+                "architecture",
+                "--required-role",
+                "security",
+            )
+            first_event = json.loads(first.stdout)["event"]
+            self.assertFalse(json.loads(first.stdout)["quorum"]["quorum_met"])
+            run(
+                TOOL,
+                "record-approval",
+                review,
+                "--ledger",
+                ledger,
+                "--identity",
+                "security@example.com",
+                "--role",
+                "security",
+                "--timestamp",
+                "2026-07-29T01:01:00Z",
+                "--reason",
+                "Security approved",
+                "--signing-key",
+                keys["security@example.com"],
+                "--allowed-signers",
+                allowed_signers,
+            )
+            verified = run(
+                TOOL,
+                "verify-approval-ledger",
+                review,
+                "--ledger",
+                ledger,
+                "--allowed-signers",
+                allowed_signers,
+            )
+            self.assertTrue(json.loads(verified.stdout)["quorum_met"])
+            run(
+                TOOL,
+                "record-approval",
+                review,
+                "--ledger",
+                ledger,
+                "--identity",
+                "architecture@example.com",
+                "--role",
+                "architecture",
+                "--timestamp",
+                "2026-07-29T01:02:00Z",
+                "--reason",
+                "Architecture changed",
+                "--action",
+                "revoke",
+                "--revokes",
+                first_event,
+                "--signing-key",
+                keys["architecture@example.com"],
+                "--allowed-signers",
+                allowed_signers,
+            )
+            revoked = run(
+                TOOL,
+                "verify-approval-ledger",
+                review,
+                "--ledger",
+                ledger,
+                "--allowed-signers",
+                allowed_signers,
+                check=False,
+            )
+            self.assertEqual(12, revoked.returncode)
+            revoked_report = json.loads(revoked.stdout)
+            self.assertTrue(revoked_report["integrity_passed"])
+            self.assertFalse(revoked_report["quorum_met"])
+            self.assertEqual(1, revoked_report["revoked_approvals"])
+
+    def test_catalog_trends_and_sandboxed_rule_provider_contracts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review_a = temp / "review-a"
+            review_b = temp / "review-b"
+            catalog = temp / "catalog.json"
+            trends = temp / "trends.json"
+            trends_csv = temp / "trends.csv"
+            request = temp / "provider-request.json"
+            result = temp / "provider-result.json"
+            provider_report = temp / "provider-report.json"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.architecture.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            for review, repository, revision in (
+                (review_a, "uulab/service-a", "a" * 40),
+                (review_b, "uulab/service-b", "b" * 40),
+            ):
+                run(
+                    TOOL,
+                    "publish",
+                    bundle,
+                    "-o",
+                    review,
+                    "--source-repository",
+                    repository,
+                    "--source-revision",
+                    revision,
+                    "--source-path",
+                    "architecture/system.json",
+                    "--strict",
+                )
+            run(
+                TOOL,
+                "catalog-reviews",
+                review_a,
+                review_b,
+                "-o",
+                catalog,
+            )
+            catalog_report = json.loads(catalog.read_text(encoding="utf-8"))
+            self.assertEqual(2, catalog_report["summary"]["repositories"])
+            self.assertEqual(2, catalog_report["summary"]["reviews"])
+            run(
+                TOOL,
+                "governance-trends",
+                "--snapshot",
+                f"2026-07-28={review_a}",
+                "--snapshot",
+                f"2026-07-29={review_a}",
+                "-o",
+                trends,
+                "--csv-output",
+                trends_csv,
+            )
+            trend_report = json.loads(trends.read_text(encoding="utf-8"))
+            self.assertEqual(2, len(trend_report["snapshots"]))
+            self.assertIn("ownership_coverage_percent", trend_report["change"])
+            self.assertTrue(trends_csv.read_text(encoding="utf-8").startswith("date,"))
+            request_result = run(
+                TOOL,
+                "rule-provider-request",
+                review_a,
+                "-o",
+                request,
+            )
+            request_digest = json.loads(request_result.stdout)["request_sha256"]
+            result.write_text(
+                json.dumps({
+                    "format": "drawio-rule-provider-result/v1",
+                    "request_sha256": request_digest,
+                    "provider": {
+                        "id": "organization-guardrails",
+                        "version": "1.0.0",
+                    },
+                    "results": [{
+                        "id": "api-owner",
+                        "rule_id": "ownership.api",
+                        "level": "warning",
+                        "passed": False,
+                        "message": "Confirm the API owner.",
+                        "page": "main",
+                        "cell": "api",
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            run(
+                TOOL,
+                "verify-rule-provider-result",
+                request,
+                result,
+                "-o",
+                provider_report,
+            )
+            validated = json.loads(provider_report.read_text(encoding="utf-8"))
+            self.assertTrue(validated["integrity_passed"])
+            self.assertEqual(1, validated["summary"]["warnings"])
+            self.assertEqual(
+                "provider.organization-guardrails.ownership.api",
+                validated["sarif"]["runs"][0]["results"][0]["ruleId"],
+            )
 
     def test_migrate_check_and_write_workflow(self):
         legacy = {

@@ -1,0 +1,32 @@
+{
+  "format": "drawio-evidence-catalog/v1",
+  "reviews": [
+    {
+      "id": "c1983cae5f30821e9ff2e68d5a000456e20d8cbbf48c9198f64ef580bf31c135",
+      "title": "example-blueprint",
+      "repository": null,
+      "source_path": "architecture/commerce-platform.json",
+      "revision": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
+      "revision_type": "bundle",
+      "review_sha256": "43f17c7398d5fc5c55b730348e1adafb766b1278d62e2f3eb7683cb362a8c120",
+      "attestation_sha256": "c84ff9480056eb421cca132f1e299878ec427edd02f6496e908a795f96e424d3",
+      "bundle_sha256": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
+      "source_url": null,
+      "gates": {
+        "audit": true,
+        "security": true,
+        "extraction": true,
+        "policy": true,
+        "ownership": true
+      },
+      "passed": true
+    }
+  ],
+  "summary": {
+    "repositories": 1,
+    "reviews": 1,
+    "passed": 1,
+    "needs_review": 0
+  },
+  "baseline": null
+}

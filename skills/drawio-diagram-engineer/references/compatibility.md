@@ -21,6 +21,12 @@ The following identifiers are independent versioned contracts:
 - GitHub Checks adapter: `drawio-github-checks/v1`
 - Policy test suite: `drawio-policy-tests/v1`
 - Policy test report: `drawio-policy-test-report/v1`
+- Approval ledger: `drawio-approval-ledger/v1`
+- Multi-repository evidence catalog: `drawio-evidence-catalog/v1`
+- Governance trend export: `drawio-governance-trends/v1`
+- Rule-provider request: `drawio-rule-provider-request/v1`
+- Rule-provider result: `drawio-rule-provider-result/v1`
+- Validated rule-provider report: `drawio-rule-provider-report/v1`
 - Review attestation predicate: `https://github.com/uulab-official/drawio-skills/attestations/review/v1`
 - Review findings: SARIF `2.1.0`
 
@@ -80,4 +86,4 @@ Conflicting old and new fields fail instead of guessing. Unsupported versions fa
 
 Bundle v1 may gain optional artifacts. Existing artifact paths retain their meaning. Inputs are never copied into a bundle. Consumers must ignore unknown manifest properties and locate files through `artifacts`, not hard-coded directory scans.
 
-Review site v1 may gain optional evidence, catalog, annotation-lifecycle, policy, ownership, provenance, summary, attestation, adapter, and SARIF fields. v1.3 added policy and SARIF; v1.4 added ownership, summary, and provenance; v1.5 adds `reports/attestation.json`, optional `reports/github-checks.json`, and CODEOWNERS evidence without changing existing paths. Consumers should ignore unknown fields, follow paths from `review.json`, and never scrape `index.html`.
+Review site v1 may gain optional evidence, catalog, annotation-lifecycle, policy, ownership, provenance, summary, attestation, adapter, and SARIF fields. v1.3 added policy and SARIF; v1.4 added ownership, summary, and provenance; v1.5 added `reports/attestation.json`, optional `reports/github-checks.json`, and CODEOWNERS evidence without changing existing paths. v1.6 adds optional catalog, governance trend, and rule-provider request artifacts; approval ledgers remain separately stored and bind the immutable review digest. Existing required paths are unchanged. Consumers should ignore unknown fields, follow paths from `review.json`, and never scrape `index.html`.

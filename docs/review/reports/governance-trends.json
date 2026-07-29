@@ -1,0 +1,42 @@
+{
+  "format": "drawio-governance-trends/v1",
+  "subject": {
+    "repository": null,
+    "source_path": "architecture/commerce-platform.json"
+  },
+  "snapshots": [
+    {
+      "date": "2026-07-29",
+      "review_sha256": "43f17c7398d5fc5c55b730348e1adafb766b1278d62e2f3eb7683cb362a8c120",
+      "revision": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
+      "metrics": {
+        "audit_score": 100,
+        "audit_errors": 0,
+        "audit_warnings": 0,
+        "policy_errors": 0,
+        "policy_warnings": 0,
+        "ownership_coverage_percent": 100,
+        "unassigned_findings": 0,
+        "open_annotations": 1,
+        "sarif_findings": 1,
+        "exceptions_total": 1,
+        "exceptions_applied": 1,
+        "exceptions_expired": 0
+      }
+    }
+  ],
+  "change": {
+    "audit_errors": 0,
+    "audit_score": 0,
+    "audit_warnings": 0,
+    "exceptions_applied": 0,
+    "exceptions_expired": 0,
+    "exceptions_total": 0,
+    "open_annotations": 0,
+    "ownership_coverage_percent": 0,
+    "policy_errors": 0,
+    "policy_warnings": 0,
+    "sarif_findings": 0,
+    "unassigned_findings": 0
+  }
+}

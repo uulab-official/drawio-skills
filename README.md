@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v1.5**. The stable Diagram IR v1 contract now includes CODEOWNERS fallback, GitHub Checks annotations, signed review attestations, and policy contract tests, while retaining ERD, HA, composable governance, round-trip editing, security gates, and signed-release controls.
+> Status: **v1.6**. The stable Diagram IR v1 contract now includes signed approval quorum and revocation, multi-repository evidence catalogs, governance trend exports, and sandboxed JSON rule providers, while retaining ERD, HA, CODEOWNERS and Checks integration, composable governance, round-trip editing, and signed attestations.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -157,6 +157,53 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
   policy-test architecture/policies/tests.json \
   -o build/policy-tests.json --strict
 ```
+
+Record independently signed architecture and security approvals, then verify quorum:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  record-approval build/my-system-review \
+  --ledger build/my-system-approvals.json \
+  --identity architect@example.com --role architecture \
+  --timestamp 2026-07-29T03:00:00Z \
+  --reason "Architecture reviewed" \
+  --signing-key architecture-review-key \
+  --minimum-approvals 2 \
+  --required-role architecture --required-role security
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  verify-approval-ledger build/my-system-review \
+  --ledger build/my-system-approvals.json \
+  --allowed-signers .github/architecture-reviewers
+```
+
+Federate immutable reviews and export dashboard-ready governance history:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  catalog-reviews services/*/review -o build/architecture-catalog.json
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  governance-trends \
+  --snapshot 2026-06-30=history/june/review \
+  --snapshot 2026-07-29=history/july/review \
+  -o build/governance-trends.json \
+  --csv-output build/governance-trends.csv
+```
+
+Organization rules use a data-only protocol. The engine emits bounded review facts and validates the returned JSON without importing or executing provider code:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  rule-provider-request build/my-system-review -o build/provider-request.json
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  verify-rule-provider-result \
+  build/provider-request.json build/provider-result.json \
+  -o build/provider-report.json
+```
+
+See the [governance lifecycle and federation contract](skills/drawio-diagram-engineer/references/governance-lifecycle.md).
 
 Use an approved review site or bundle as a deterministic visual baseline:
 
@@ -402,6 +449,12 @@ drawio_tool.py policy-test <suite.json> [-o <report.json>] [--baseline <report>]
 drawio_tool.py publish <bundle-dir> -o <review-dir> [--policy <json>]... [--ownership <json>] [--codeowners <file>] [--source-path <path>] [--github-checks] [--strict]
 drawio_tool.py attest-review <review-dir> --signing-key <private-key>
 drawio_tool.py verify-review-attestation <review-dir> --allowed-signers <file> --identity <id>
+drawio_tool.py record-approval <review-dir> --ledger <json> --identity <id> --role <role> --timestamp <UTC> --reason <text> --signing-key <key>
+drawio_tool.py verify-approval-ledger <review-dir> --ledger <json> --allowed-signers <file>
+drawio_tool.py catalog-reviews <review-dir>... -o <catalog.json>
+drawio_tool.py governance-trends --snapshot <date=review-dir>... -o <trends.json> [--csv-output <csv>]
+drawio_tool.py rule-provider-request <review-dir> -o <request.json>
+drawio_tool.py verify-rule-provider-result <request.json> <result.json> [-o <report.json>]
 drawio_tool.py migrate <legacy-ir.json> [-o <v1-ir.json>] [--report <report.json>] [--check]
 drawio_tool.py security <model|diagram.drawio|bundle-dir> [-o <report.json>] [--strict]
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
@@ -428,7 +481,7 @@ For every command and exit code, see the [CLI reference](skills/drawio-diagram-e
 
 ## Roadmap
 
-The v0.1–v1.0 roadmap is complete. v1.1–v1.4 added round trips, publication, policy lifecycle, and team governance. v1.5 adds repository-native ownership, Checks, signed review attestations, and policy contract testing without weakening the portable contract. v1.6 tracks approval lifecycle and multi-repository federation. See [ROADMAP.md](ROADMAP.md).
+The v0.1–v1.0 roadmap is complete. v1.1–v1.5 added round trips, review publication, policy lifecycle, team governance, and enterprise repository integrations. v1.6 completes signed approval lifecycle, multi-repository evidence federation, governance trend exports, and a data-only organization rule protocol. v1.7 tracks organizational scale, discovery, and interoperability. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

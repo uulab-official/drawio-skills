@@ -1,0 +1,19 @@
+{
+  "format": "drawio-rule-provider-result/v1",
+  "request_sha256": "769f6c14effa58ab468727fe0a8c4d90785b76ad482cf83a34e33bbef7f563fe",
+  "provider": {
+    "id": "organization-guardrails",
+    "version": "1.0.0"
+  },
+  "results": [
+    {
+      "id": "event-stream-owner",
+      "rule_id": "ownership.event-stream",
+      "level": "warning",
+      "passed": false,
+      "message": "Confirm the event-stream ownership decision before the exception expires.",
+      "page": "logical",
+      "cell": "events"
+    }
+  ]
+}

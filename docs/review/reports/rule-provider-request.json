@@ -1,0 +1,619 @@
+{
+  "format": "drawio-rule-provider-request/v1",
+  "subject": {
+    "review_sha256": "43f17c7398d5fc5c55b730348e1adafb766b1278d62e2f3eb7683cb362a8c120",
+    "attestation_sha256": "c84ff9480056eb421cca132f1e299878ec427edd02f6496e908a795f96e424d3",
+    "repository": null,
+    "source_path": "architecture/commerce-platform.json",
+    "revision": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c",
+    "revision_type": "bundle",
+    "bundle_sha256": "983b91d024d7d4da3138222a242327cd4fa776efd373194b3c238e97fb2c9b7c"
+  },
+  "facts": {
+    "status": {
+      "audit": {
+        "passed": true,
+        "score": 100,
+        "errors": 0,
+        "warnings": 0
+      },
+      "security": {
+        "passed": true,
+        "errors": 0
+      },
+      "extraction": {
+        "passed": true,
+        "lossless": true,
+        "semantic_match": true,
+        "inferred_cells": 0
+      },
+      "exports": {
+        "status": "not-provided",
+        "reports": []
+      },
+      "visual_regression": {
+        "status": "passed",
+        "changed": false,
+        "summary": {
+          "added": 0,
+          "removed": 0,
+          "changed": 0,
+          "unchanged": 6
+        },
+        "pages": [
+          {
+            "id": "context",
+            "status": "unchanged",
+            "baseline_sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
+            "current_sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0"
+          },
+          {
+            "id": "data",
+            "status": "unchanged",
+            "baseline_sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
+            "current_sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63"
+          },
+          {
+            "id": "decisions",
+            "status": "unchanged",
+            "baseline_sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
+            "current_sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09"
+          },
+          {
+            "id": "deployment",
+            "status": "unchanged",
+            "baseline_sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891",
+            "current_sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891"
+          },
+          {
+            "id": "logical",
+            "status": "unchanged",
+            "baseline_sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2",
+            "current_sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2"
+          },
+          {
+            "id": "security",
+            "status": "unchanged",
+            "baseline_sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb",
+            "current_sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb"
+          }
+        ]
+      },
+      "annotations": {
+        "base": 3,
+        "updates": 3,
+        "carried": 0,
+        "updated": 3,
+        "added": 0,
+        "total": 3,
+        "open": 1,
+        "accepted": 1,
+        "resolved": 1,
+        "generated": 0,
+        "all": 3
+      },
+      "policy": {
+        "status": "passed",
+        "passed": true,
+        "errors": 0,
+        "warnings": 0,
+        "report": "reports/policy.json"
+      },
+      "ownership": {
+        "status": "passed",
+        "configured": true,
+        "passed": true,
+        "assigned": 1,
+        "unassigned": 0,
+        "total_findings": 1,
+        "coverage_percent": 100,
+        "report": "reports/ownership.json"
+      }
+    },
+    "pages": [
+      {
+        "id": "context",
+        "title": "Commerce Platform — System Context",
+        "cells": [
+          {
+            "id": "customer",
+            "category": "node",
+            "label": "Customer"
+          },
+          {
+            "id": "commerce",
+            "category": "node",
+            "label": "Commerce Platform"
+          },
+          {
+            "id": "payment",
+            "category": "node",
+            "label": "Payment Provider"
+          },
+          {
+            "id": "customer-web",
+            "category": "edge",
+            "label": "HTTPS"
+          },
+          {
+            "id": "orders-payment",
+            "category": "edge",
+            "label": "charges"
+          }
+        ]
+      },
+      {
+        "id": "logical",
+        "title": "Commerce Platform — Logical Architecture",
+        "cells": [
+          {
+            "id": "group-domain-data",
+            "category": "group",
+            "label": "Data"
+          },
+          {
+            "id": "group-domain-experience",
+            "category": "group",
+            "label": "Experience"
+          },
+          {
+            "id": "group-domain-orders",
+            "category": "group",
+            "label": "Orders"
+          },
+          {
+            "id": "group-domain-platform",
+            "category": "group",
+            "label": "Platform"
+          },
+          {
+            "id": "customer",
+            "category": "node",
+            "label": "Customer"
+          },
+          {
+            "id": "web",
+            "category": "node",
+            "label": "Web App"
+          },
+          {
+            "id": "api",
+            "category": "node",
+            "label": "API Gateway"
+          },
+          {
+            "id": "orders",
+            "category": "node",
+            "label": "Order Service"
+          },
+          {
+            "id": "events",
+            "category": "node",
+            "label": "Order Events"
+          },
+          {
+            "id": "orders-db",
+            "category": "node",
+            "label": "Orders DB"
+          },
+          {
+            "id": "payment",
+            "category": "node",
+            "label": "Payment Provider"
+          },
+          {
+            "id": "customer-web",
+            "category": "edge",
+            "label": "HTTPS"
+          },
+          {
+            "id": "web-api",
+            "category": "edge",
+            "label": "JSON/HTTPS"
+          },
+          {
+            "id": "api-orders",
+            "category": "edge",
+            "label": "commands"
+          },
+          {
+            "id": "orders-store",
+            "category": "edge",
+            "label": "reads/writes"
+          },
+          {
+            "id": "orders-events",
+            "category": "edge",
+            "label": "OrderCreated"
+          },
+          {
+            "id": "orders-payment",
+            "category": "edge",
+            "label": "charges"
+          }
+        ]
+      },
+      {
+        "id": "data",
+        "title": "Commerce Platform — Data Flow",
+        "cells": [
+          {
+            "id": "group-domain-data",
+            "category": "group",
+            "label": "Data"
+          },
+          {
+            "id": "group-domain-orders",
+            "category": "group",
+            "label": "Orders"
+          },
+          {
+            "id": "group-domain-platform",
+            "category": "group",
+            "label": "Platform"
+          },
+          {
+            "id": "orders",
+            "category": "node",
+            "label": "Order Service"
+          },
+          {
+            "id": "events",
+            "category": "node",
+            "label": "Order Events"
+          },
+          {
+            "id": "orders-db",
+            "category": "node",
+            "label": "Orders DB"
+          },
+          {
+            "id": "payment",
+            "category": "node",
+            "label": "Payment Provider"
+          },
+          {
+            "id": "orders-store",
+            "category": "edge",
+            "label": "reads/writes"
+          },
+          {
+            "id": "orders-events",
+            "category": "edge",
+            "label": "OrderCreated"
+          },
+          {
+            "id": "orders-payment",
+            "category": "edge",
+            "label": "charges"
+          }
+        ]
+      },
+      {
+        "id": "deployment",
+        "title": "Commerce Platform — Deployment",
+        "cells": [
+          {
+            "id": "group-zone-data",
+            "category": "group",
+            "label": "Data"
+          },
+          {
+            "id": "group-zone-private",
+            "category": "group",
+            "label": "Private"
+          },
+          {
+            "id": "group-zone-public",
+            "category": "group",
+            "label": "Public"
+          },
+          {
+            "id": "web",
+            "category": "node",
+            "label": "Web App"
+          },
+          {
+            "id": "api",
+            "category": "node",
+            "label": "API Gateway"
+          },
+          {
+            "id": "orders",
+            "category": "node",
+            "label": "Order Service"
+          },
+          {
+            "id": "events",
+            "category": "node",
+            "label": "Order Events"
+          },
+          {
+            "id": "orders-db",
+            "category": "node",
+            "label": "Orders DB"
+          },
+          {
+            "id": "web-cluster",
+            "category": "node",
+            "label": "Web Cluster"
+          },
+          {
+            "id": "app-cluster",
+            "category": "node",
+            "label": "Application Cluster"
+          },
+          {
+            "id": "data-cluster",
+            "category": "node",
+            "label": "Data Cluster"
+          },
+          {
+            "id": "deploy-web-to-web-cluster",
+            "category": "edge",
+            "label": "hosts"
+          },
+          {
+            "id": "deploy-api-to-app-cluster",
+            "category": "edge",
+            "label": "hosts"
+          },
+          {
+            "id": "deploy-orders-to-app-cluster",
+            "category": "edge",
+            "label": "hosts"
+          },
+          {
+            "id": "deploy-events-to-app-cluster",
+            "category": "edge",
+            "label": "hosts"
+          },
+          {
+            "id": "deploy-orders-db-to-data-cluster",
+            "category": "edge",
+            "label": "hosts"
+          }
+        ]
+      },
+      {
+        "id": "security",
+        "title": "Commerce Platform — Network & Security Zones",
+        "cells": [
+          {
+            "id": "group-zone-data",
+            "category": "group",
+            "label": "Data"
+          },
+          {
+            "id": "group-zone-internet",
+            "category": "group",
+            "label": "Internet"
+          },
+          {
+            "id": "group-zone-private",
+            "category": "group",
+            "label": "Private"
+          },
+          {
+            "id": "group-zone-public",
+            "category": "group",
+            "label": "Public"
+          },
+          {
+            "id": "customer",
+            "category": "node",
+            "label": "Customer"
+          },
+          {
+            "id": "web",
+            "category": "node",
+            "label": "Web App"
+          },
+          {
+            "id": "api",
+            "category": "node",
+            "label": "API Gateway"
+          },
+          {
+            "id": "orders",
+            "category": "node",
+            "label": "Order Service"
+          },
+          {
+            "id": "events",
+            "category": "node",
+            "label": "Order Events"
+          },
+          {
+            "id": "orders-db",
+            "category": "node",
+            "label": "Orders DB"
+          },
+          {
+            "id": "payment",
+            "category": "node",
+            "label": "Payment Provider"
+          },
+          {
+            "id": "customer-web",
+            "category": "edge",
+            "label": "HTTPS"
+          },
+          {
+            "id": "web-api",
+            "category": "edge",
+            "label": "JSON/HTTPS"
+          },
+          {
+            "id": "api-orders",
+            "category": "edge",
+            "label": "commands"
+          },
+          {
+            "id": "orders-store",
+            "category": "edge",
+            "label": "reads/writes"
+          },
+          {
+            "id": "orders-events",
+            "category": "edge",
+            "label": "OrderCreated"
+          },
+          {
+            "id": "orders-payment",
+            "category": "edge",
+            "label": "charges"
+          }
+        ]
+      },
+      {
+        "id": "decisions",
+        "title": "Commerce Platform — Architecture Decisions",
+        "cells": [
+          {
+            "id": "decision-event-driven-orders",
+            "category": "node",
+            "label": "Publish order domain events"
+          },
+          {
+            "id": "decision-isolated-data-zone",
+            "category": "node",
+            "label": "Isolate persistent order data"
+          },
+          {
+            "id": "orders",
+            "category": "node",
+            "label": "Order Service"
+          },
+          {
+            "id": "events",
+            "category": "node",
+            "label": "Order Events"
+          },
+          {
+            "id": "orders-db",
+            "category": "node",
+            "label": "Orders DB"
+          },
+          {
+            "id": "data-cluster",
+            "category": "node",
+            "label": "Data Cluster"
+          },
+          {
+            "id": "decision-event-driven-orders-affects-orders",
+            "category": "edge",
+            "label": "affects"
+          },
+          {
+            "id": "decision-event-driven-orders-affects-events",
+            "category": "edge",
+            "label": "affects"
+          },
+          {
+            "id": "decision-isolated-data-zone-affects-orders-db",
+            "category": "edge",
+            "label": "affects"
+          },
+          {
+            "id": "decision-isolated-data-zone-affects-data-cluster",
+            "category": "edge",
+            "label": "affects"
+          }
+        ]
+      }
+    ],
+    "annotations": [
+      {
+        "id": "confirm-platform-boundary",
+        "page": "context",
+        "cell": "node-commerce",
+        "status": "accepted",
+        "source": "reviewer",
+        "message": "Platform ownership boundary accepted for this release."
+      },
+      {
+        "id": "accept-data-ownership",
+        "page": "data",
+        "cell": "node-orders-db",
+        "status": "resolved",
+        "source": "reviewer",
+        "message": "Residency controls are documented in the deployment evidence."
+      },
+      {
+        "id": "assign-event-stream-owner",
+        "page": "logical",
+        "cell": "node-events",
+        "status": "open",
+        "source": "reviewer",
+        "message": "Confirm the long-term owning team for the order event stream."
+      }
+    ],
+    "policy": [
+      {
+        "key": "production/required-views",
+        "type": "required-pages",
+        "level": "error",
+        "passed": true,
+        "compliant": true,
+        "waived": false
+      },
+      {
+        "key": "production/audit-score",
+        "type": "minimum-audit-score",
+        "level": "error",
+        "passed": true,
+        "compliant": true,
+        "waived": false
+      },
+      {
+        "key": "production/security-gate",
+        "type": "require-security",
+        "level": "error",
+        "passed": true,
+        "compliant": true,
+        "waived": false
+      },
+      {
+        "key": "production/lossless-round-trip",
+        "type": "require-lossless-extraction",
+        "level": "error",
+        "passed": true,
+        "compliant": true,
+        "waived": false
+      },
+      {
+        "key": "production/semantic-alignment",
+        "type": "require-semantic-match",
+        "level": "error",
+        "passed": true,
+        "compliant": true,
+        "waived": false
+      },
+      {
+        "key": "production/approved-baseline",
+        "type": "require-visual-baseline",
+        "level": "warning",
+        "passed": true,
+        "compliant": true,
+        "waived": false
+      },
+      {
+        "key": "production/open-review-items",
+        "type": "maximum-open-annotations",
+        "level": "warning",
+        "passed": true,
+        "compliant": true,
+        "waived": false
+      },
+      {
+        "key": "team-governance/no-open-decisions",
+        "type": "maximum-open-annotations",
+        "level": "error",
+        "passed": true,
+        "compliant": false,
+        "waived": true
+      }
+    ]
+  }
+}

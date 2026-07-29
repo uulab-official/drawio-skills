@@ -2,6 +2,8 @@
 
 Read this reference when a bundle must be shared with reviewers or used as a CI architecture artifact without requiring draw.io Desktop.
 
+After publication, read [governance-lifecycle.md](governance-lifecycle.md) when reviews require signed quorum and revocation, multi-repository discovery, governance trend exports, or external organization rules.
+
 ## Publish a review site
 
 Build first, then publish:

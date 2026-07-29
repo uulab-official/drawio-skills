@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/rule-provider-result.schema.json",
+  "title": "Sandboxed rule-provider result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "request_sha256", "provider", "results"],
+  "properties": {
+    "format": {"const": "drawio-rule-provider-result/v1"},
+    "request_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 128}
+      }
+    },
+    "results": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "rule_id", "level", "passed", "message"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+          "rule_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"
+          },
+          "level": {"enum": ["error", "warning", "note"]},
+          "passed": {"type": "boolean"},
+          "message": {"type": "string", "minLength": 1, "maxLength": 2000},
+          "page": {"type": "string"},
+          "cell": {"type": "string"}
+        }
+      }
+    }
+  }
+}

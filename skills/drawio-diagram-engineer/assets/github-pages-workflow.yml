@@ -10,6 +10,8 @@ on:
       - "skills/drawio-diagram-engineer/**"
 
 permissions:
+  attestations: write
+  checks: write
   contents: read
   pages: write
   id-token: write
@@ -24,6 +26,8 @@ env:
   ORGANIZATION_POLICY: architecture/policies/organization.json
   TEAM_POLICY: architecture/policies/team.json
   REVIEW_OWNERSHIP: architecture/review-ownership.json
+  POLICY_TESTS: architecture/policies/tests.json
+  CODEOWNERS_FILE: .github/CODEOWNERS
 
 jobs:
   publish:
@@ -47,6 +51,13 @@ jobs:
       - name: Resolve the deterministic policy date
         run: echo "POLICY_DATE=$(git show -s --format=%cs "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
+      - name: Test policy contracts and exception coverage
+        run: |
+          python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+            policy-test "$POLICY_TESTS" \
+            -o "${RUNNER_TEMP}/policy-tests.json" \
+            --strict
+
       - name: Build the diagram evidence bundle
         run: |
           python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
@@ -62,11 +73,14 @@ jobs:
             --policy "$ORGANIZATION_POLICY" \
             --policy "$TEAM_POLICY" \
             --ownership "$REVIEW_OWNERSHIP" \
+            --codeowners "$CODEOWNERS_FILE" \
             --evaluation-date "$POLICY_DATE" \
             --source-revision "$GITHUB_SHA" \
             --source-repository "$GITHUB_REPOSITORY" \
             --source-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" \
+            --source-path "$DIAGRAM_SOURCE" \
             --public-base-url "${{ steps.pages.outputs.base_url }}" \
+            --github-checks \
             --fail-on-policy \
             --fail-on-unowned-findings \
             --strict
@@ -80,11 +94,29 @@ jobs:
             echo "Architecture review publication did not produce a summary." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Publish GitHub Check annotations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq '.request' "${RUNNER_TEMP}/diagram-review/reports/github-checks.json" |
+            gh api \
+              --method POST \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "repos/${GITHUB_REPOSITORY}/check-runs" \
+              --input -
+
       - name: Upload findings to code scanning
         uses: github/codeql-action/upload-sarif@4187e74d05793876e9989daffde9c3e66b4acd07
         with:
           sarif_file: ${{ runner.temp }}/diagram-review/reports/findings.sarif
           category: drawio-architecture-review
+
+      - name: Sign the review-manifest attestation
+        uses: actions/attest@36051bcae73b7c2a8a6945a48cbf80953c6baa35
+        with:
+          subject-path: ${{ runner.temp }}/diagram-review/review.json
+          predicate-type: https://github.com/uulab-official/drawio-skills/attestations/review/v1
+          predicate-path: ${{ runner.temp }}/diagram-review/reports/attestation.json
 
       - name: Retain an immutable review artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

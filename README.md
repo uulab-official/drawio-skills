@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v1.4**. The stable Diagram IR v1 contract now includes composable policy packs, auditable expiring exceptions, accountable finding ownership, source provenance, and pull-request summaries, while retaining ERD, HA, round-trip editing, native export verification, security gates, and signed-release controls.
+> Status: **v1.5**. The stable Diagram IR v1 contract now includes CODEOWNERS fallback, GitHub Checks annotations, signed review attestations, and policy contract tests, while retaining ERD, HA, composable governance, round-trip editing, security gates, and signed-release controls.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -122,6 +122,41 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
 ```
 
 Scoped exceptions record a reason, owner, expiry, and optional page/cell selectors. Waived rules remain visibly non-compliant, and expired error-level exceptions block policy. Every site includes `reports/policy.json`, `reports/ownership.json`, `reports/summary.md`, and SARIF 2.1.0 `reports/findings.sarif`. A [pinned GitHub Pages workflow recipe](skills/drawio-diagram-engineer/assets/github-pages-workflow.yml) appends the summary to the job, retains an immutable `diagram-review-<commit-sha>` artifact, and deploys the same evidence directory.
+
+Use repository ownership only as a fallback after semantic routes and emit a ready-to-send GitHub Checks request:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  publish build/my-system \
+  -o build/my-system-review \
+  --ownership review-ownership.json \
+  --codeowners .github/CODEOWNERS \
+  --source-path architecture/my-system.json \
+  --source-revision "$GITHUB_SHA" \
+  --source-repository "$GITHUB_REPOSITORY" \
+  --github-checks \
+  --strict
+```
+
+Every review now includes an in-toto statement that binds `review.json` to the source revision and bundle digest. Sign and verify it locally with OpenSSH:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  attest-review build/my-system-review --signing-key review-signing-key
+
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  verify-review-attestation build/my-system-review \
+  --allowed-signers .github/review-signers \
+  --identity architecture@example.com
+```
+
+Test policy behavior before publication:
+
+```bash
+python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
+  policy-test architecture/policies/tests.json \
+  -o build/policy-tests.json --strict
+```
 
 Use an approved review site or bundle as a deterministic visual baseline:
 
@@ -363,7 +398,10 @@ drawio_tool.py doctor [--format human|json]
 drawio_tool.py init <architecture|blueprint|erd|ha|routing|terraform|kubernetes|github-actions|gitlab-ci> [-o <starter>]
 drawio_tool.py build <model|source> [-o <bundle-dir>] [--type auto|...] [--strict]
 drawio_tool.py merge-annotations <prior-review|annotations> <updates> -o <merged.json>
-drawio_tool.py publish <bundle-dir> -o <review-dir> [--annotations <json>] [--carry-review <review>] [--baseline <review|bundle>] [--policy <json>]... [--ownership <json>] [--source-revision <revision>] [--public-base-url <url>] [--fail-on-visual-change] [--fail-on-policy] [--fail-on-unowned-findings] [--strict]
+drawio_tool.py policy-test <suite.json> [-o <report.json>] [--baseline <report>] [--fail-on-change] [--strict]
+drawio_tool.py publish <bundle-dir> -o <review-dir> [--policy <json>]... [--ownership <json>] [--codeowners <file>] [--source-path <path>] [--github-checks] [--strict]
+drawio_tool.py attest-review <review-dir> --signing-key <private-key>
+drawio_tool.py verify-review-attestation <review-dir> --allowed-signers <file> --identity <id>
 drawio_tool.py migrate <legacy-ir.json> [-o <v1-ir.json>] [--report <report.json>] [--check]
 drawio_tool.py security <model|diagram.drawio|bundle-dir> [-o <report.json>] [--strict]
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
@@ -390,7 +428,7 @@ For every command and exit code, see the [CLI reference](skills/drawio-diagram-e
 
 ## Roadmap
 
-The v0.1–v1.0 roadmap is complete. v1.1 added round-trip editing, v1.2 portable publication, v1.3 persistent policy review, and v1.4 team-scale governance with composable exceptions, ownership, provenance, and PR summaries. v1.5 tracks optional enterprise integrations without weakening the portable contract. See [ROADMAP.md](ROADMAP.md).
+The v0.1–v1.0 roadmap is complete. v1.1–v1.4 added round trips, publication, policy lifecycle, and team governance. v1.5 adds repository-native ownership, Checks, signed review attestations, and policy contract testing without weakening the portable contract. v1.6 tracks approval lifecycle and multi-repository federation. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

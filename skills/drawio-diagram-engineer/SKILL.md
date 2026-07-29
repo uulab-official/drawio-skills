@@ -1,6 +1,6 @@
 ---
 name: drawio-diagram-engineer
-description: Create, edit, import, extract, compare, compile, migrate, audit, govern, publish, and export editable draw.io diagrams from natural language, JSON/YAML, .drawio, code, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate architecture blueprints, field-level Crow's Foot ERDs, HA/failover packs, infrastructure maps, pipelines, drift reports, and portable HTML/SVG review sites with persistent decisions, composable policies, expiring exceptions, owner-routed SARIF, provenance, and PR summaries. Apply deterministic layout, round-trip metadata, explicit ports, obstacle-aware routing, themes, contrast, credential checks, and repairs. Use for architecture, database schemas, HA/DR, deployment topology, flowcharts, data flows, network maps, multi-page views, review publication, legacy IR migration, or .drawio repair. Prefer when output must stay editable, deterministic, secure, source-reviewable, CI-gated, Desktop-free, or exportable to PNG, SVG, or PDF.
+description: Create, edit, import, extract, compare, compile, migrate, audit, govern, publish, and export editable draw.io diagrams from natural language, JSON/YAML, .drawio, code, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate architecture blueprints, field-level Crow's Foot ERDs, HA/failover packs, infrastructure maps, pipelines, drift reports, and portable review sites with policy tests, expiring exceptions, semantic and CODEOWNERS routing, GitHub Checks, SARIF, provenance, and signed attestations. Apply deterministic layout, round-trip metadata, routing, themes, contrast, credential checks, and repairs. Use for architecture, database schemas, HA/DR, deployment topology, flowcharts, data flows, network maps, multi-page views, review publication, legacy IR migration, or .drawio repair. Prefer when output must stay editable, deterministic, secure, source-reviewable, CI-gated, Desktop-free, or exportable to PNG, SVG, or PDF.
 ---
 
 # Draw.io Diagram Engineer
@@ -31,15 +31,20 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
 5. When reviewers need one portable artifact or CI needs an architecture evidence index, read [collaborative-review.md](references/collaborative-review.md) and publish the bundle:
 
    ```bash
+   python3 <skill-dir>/scripts/drawio_tool.py policy-test \
+     architecture/policies/tests.json --strict
+
    python3 <skill-dir>/scripts/drawio_tool.py publish build/diagram \
      -o build/diagram-review \
      --policy organization-policy.json \
      --policy team-policy.json \
      --ownership review-ownership.json \
+     --codeowners .github/CODEOWNERS \
+     --source-path architecture/diagram.json \
      --fail-on-policy --fail-on-unowned-findings --strict
    ```
 
-   Use `--carry-review` plus a version 1 annotation update file to preserve accepted and resolved decisions across regeneration. For GitHub Pages and code-scanning publication, read [github-pages-publication.md](references/github-pages-publication.md).
+   Use `--carry-review` plus a version 1 annotation update file to preserve accepted and resolved decisions across regeneration. Explicit page/cell/rule routes take precedence over CODEOWNERS fallback. Use `--github-checks` only with a full SCM revision and repository. Sign local evidence with `attest-review` and verify it with `verify-review-attestation`. For GitHub Pages, Checks, attestations, and code scanning, read [github-pages-publication.md](references/github-pages-publication.md).
 
 6. If draw.io Desktop is available and a Desktop export is requested, read [desktop-export.md](references/desktop-export.md), render from the bundle's `.drawio`, and retain its verification report:
 
@@ -110,7 +115,10 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `init`: copy a safe starter for architecture, Blueprint, ERD, HA, routing, infrastructure, or CI.
 - `build`: auto-detect a model or source and create a complete, audited `drawio-diagram-bundle/v1`.
 - `merge-annotations`: carry prior reviewer records and apply accepted/resolved updates by stable annotation ID.
-- `publish`: create an atomic script-free `drawio-review-site/v1` with page navigation, semantic anchors, persistent annotations, composed policy evaluation, scoped exception evidence, owner-routed SARIF, immutable source provenance, PR summary Markdown, and optional visual-baseline gating.
+- `policy-test`: evaluate policy packs against deterministic synthetic reviews, enforce rule/exception assertion coverage, and detect outcome drift against a baseline report.
+- `publish`: create an atomic script-free `drawio-review-site/v1` with page navigation, persistent annotations, composed policy evaluation, semantic and CODEOWNERS ownership, SARIF, optional GitHub Checks, immutable provenance, an in-toto statement, PR summary Markdown, and visual-baseline gating.
+- `attest-review`: sign a generated review attestation with an OpenSSH private key.
+- `verify-review-attestation`: verify the manifest binding and OpenSSH signature against an allowed-signers file.
 - `migrate`: deterministically upgrade legacy/unversioned Diagram IR and emit a machine-readable change report.
 - `compile`: validate IR, calculate deterministic layout, and emit uncompressed editable draw.io XML.
 - `extract`: recover Diagram IR from compressed or uncompressed draw.io, preserving compiler-backed semantics and reporting every inferred legacy cell.
@@ -130,4 +138,4 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 
 Before first use, verify `python3 -c "import xml.etree.ElementTree"`. If a macOS Homebrew Python reports a `pyexpat`/`libexpat` symbol error, use `/usr/bin/python3` or repair that Python installation; do not attribute the ABI failure to the diagram input.
 
-Use [example.architecture.json](assets/example.architecture.json), [example.blueprint.json](assets/example.blueprint.json), [example.erd.json](assets/example.erd.json), [example.ha.json](assets/example.ha.json), [example.routing.json](assets/example.routing.json), [example.terraform.tf](assets/example.terraform.tf), or [example.kubernetes.json](assets/example.kubernetes.json) as a compact starting point, not as a fixed template. Apply [corporate.json](assets/themes/corporate.json) for custom styling. Compose [production-review.json](assets/policies/production-review.json) with [team-governance.json](assets/policies/team-governance.json), and adapt [example.ownership.json](assets/example.ownership.json) for accountable review routing.
+Use [example.architecture.json](assets/example.architecture.json), [example.blueprint.json](assets/example.blueprint.json), [example.erd.json](assets/example.erd.json), [example.ha.json](assets/example.ha.json), [example.routing.json](assets/example.routing.json), [example.terraform.tf](assets/example.terraform.tf), or [example.kubernetes.json](assets/example.kubernetes.json) as a compact starting point. Apply [corporate.json](assets/themes/corporate.json) for custom styling. Compose [production-review.json](assets/policies/production-review.json) with [team-governance.json](assets/policies/team-governance.json); adapt [example.ownership.json](assets/example.ownership.json), [example.CODEOWNERS](assets/example.CODEOWNERS), and [example.policy-tests.json](assets/example.policy-tests.json) for governance.

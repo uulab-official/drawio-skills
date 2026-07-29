@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/github-checks-v1.json",
+  "title": "Draw.io GitHub Checks Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "repository",
+    "source_path",
+    "total_findings",
+    "included_annotations",
+    "omitted_annotations",
+    "request"
+  ],
+  "properties": {
+    "format": {
+      "const": "drawio-github-checks/v1"
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_path": {
+      "type": "string",
+      "pattern": "^[^/\\\\](?:[^\\\\]*[^/\\\\])?$"
+    },
+    "total_findings": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "included_annotations": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    },
+    "omitted_annotations": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "head_sha",
+        "status",
+        "conclusion",
+        "output"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$"
+        },
+        "status": {
+          "const": "completed"
+        },
+        "conclusion": {
+          "enum": ["success", "neutral", "failure"]
+        },
+        "details_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "summary", "text", "annotations"],
+          "properties": {
+            "title": {
+              "type": "string",
+              "maxLength": 255
+            },
+            "summary": {
+              "type": "string",
+              "maxLength": 65535
+            },
+            "text": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "array",
+              "maxItems": 50,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "start_line",
+                  "end_line",
+                  "annotation_level",
+                  "message",
+                  "title",
+                  "raw_details"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "start_line": {
+                    "const": 1
+                  },
+                  "end_line": {
+                    "const": 1
+                  },
+                  "annotation_level": {
+                    "enum": ["notice", "warning", "failure"]
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 65535
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "raw_details": {
+                    "type": "string",
+                    "maxLength": 65535
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -28,6 +28,7 @@ STDLIB_IMPORTS = {
     "os",
     "pathlib",
     "re",
+    "shlex",
     "shutil",
     "subprocess",
     "sys",

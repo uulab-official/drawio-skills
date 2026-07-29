@@ -53,6 +53,10 @@ class SkillContractTests(unittest.TestCase):
             "policy-report.schema.json",
             "ownership.schema.json",
             "ownership-report.schema.json",
+            "github-checks.schema.json",
+            "review-attestation.schema.json",
+            "policy-tests.schema.json",
+            "policy-test-report.schema.json",
         ):
             schema = SKILL / f"references/{filename}"
             self.assertIn('"$schema"', schema.read_text(encoding="utf-8"))
@@ -93,6 +97,7 @@ class SkillContractTests(unittest.TestCase):
             "inspect",
             "migrate",
             "merge-annotations",
+            "policy-test",
             "patch",
             "preview",
             "publish",
@@ -100,6 +105,8 @@ class SkillContractTests(unittest.TestCase):
             "security",
             "validate",
             "verify-export",
+            "attest-review",
+            "verify-review-attestation",
         }
         for command in commands:
             self.assertRegex(reference, rf"\b{re.escape(command)}\b", command)

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/policy-tests-v1.json",
+  "title": "Draw.io Architecture Policy Tests v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "policies", "cases"],
+  "properties": {
+    "format": {
+      "const": "drawio-policy-tests/v1"
+    },
+    "policies": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "evaluation_date", "review", "expect"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "evaluation_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "review": {
+            "type": "object"
+          },
+          "expect": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

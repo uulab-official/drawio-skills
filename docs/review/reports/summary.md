@@ -1,6 +1,6 @@
 # example-blueprint
 
-Revision `99abe5e97a9d54b29ff41a11daf13c6e0747cab10963ec9d6a33cc05f17b138b` (bundle) · bundle `99abe5e97a9d`
+Revision `bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65` (bundle) · bundle `bda3ac3127fd`
 
 | Gate | Status | Detail |
 | --- | --- | --- |
@@ -29,3 +29,4 @@ Revision `99abe5e97a9d54b29ff41a11daf13c6e0747cab10963ec9d6a33cc05f17b138b` (bun
 - [Policy report](reports/policy.json)
 - [Ownership report](reports/ownership.json)
 - [SARIF findings](reports/findings.sarif)
+- [Review attestation](reports/attestation.json)

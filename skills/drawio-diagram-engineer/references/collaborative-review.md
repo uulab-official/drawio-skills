@@ -29,6 +29,8 @@ architecture-review/
     ├── policy.json
     ├── ownership.json
     ├── summary.md
+    ├── attestation.json
+    ├── github-checks.json    # only with --github-checks
     └── findings.sarif
 ```
 
@@ -155,6 +157,19 @@ python3 <skill-dir>/scripts/drawio_tool.py publish build/architecture \
 
 Routes match one or more SARIF rule globs and optional page/cell globs. Every matching route contributes its owners; routing is deterministic and additive. `reports/ownership.json` conforms to [ownership-report.schema.json](ownership-report.schema.json), records each stable finding fingerprint, and reports assignment coverage. Exit code `9` is reserved for an explicit unowned-finding gate. Adapt [example.ownership.json](../assets/example.ownership.json), keeping semantic page/cell routes more specific than broad policy or security routes.
 
+Add CODEOWNERS as a repository-level fallback:
+
+```bash
+python3 <skill-dir>/scripts/drawio_tool.py publish build/architecture \
+  -o build/architecture-review \
+  --ownership review-ownership.json \
+  --codeowners .github/CODEOWNERS \
+  --source-path architecture/system.json \
+  --fail-on-unowned-findings
+```
+
+CODEOWNERS uses last-match-wins for the declared source path. It is consulted only when no explicit page/cell/rule route matched, so repository defaults cannot dilute semantic ownership. The report records the matched pattern, line, owners, and whether each assignment came from `routes`, `codeowners`, or remained `unassigned`. Start with [example.CODEOWNERS](../assets/example.CODEOWNERS).
+
 ## Revision provenance and check summaries
 
 Use immutable source coordinates in CI:
@@ -172,6 +187,43 @@ python3 <skill-dir>/scripts/drawio_tool.py publish build/architecture \
 `review.json` embeds the supplied revision, repository and source URL, the SHA-256 of `bundle.json`, and hashes for every bundle artifact. Without an SCM revision it uses `GITHUB_SHA`, `CI_COMMIT_SHA`, or finally the bundle digest and marks `revision_type: bundle`.
 
 `reports/summary.md` is safe to append to `GITHUB_STEP_SUMMARY`. It includes the gate table, changed-page links, unresolved reviewer decisions, routed owners, and links to the manifest, SARIF, policy, and ownership evidence. `--public-base-url` makes those links usable from a pull request; without it the summary remains portable with relative links.
+
+## GitHub Checks
+
+Pass `--github-checks` with a full Git commit SHA, repository, and repository-relative source path. The resulting [github-checks.schema.json](github-checks.schema.json)-compatible `reports/github-checks.json` contains a ready-to-send `request` object for `POST /repos/{owner}/{repo}/check-runs`. Findings retain their SARIF fingerprints and evidence links while annotations point to line 1 of the declared source model. The request includes at most 50 annotations; omitted findings remain in SARIF and are counted explicitly.
+
+This file is an optional adapter, not the source of truth. The portable summary, SARIF, ownership report, and manifest remain complete even when GitHub publication is disabled.
+
+## Review attestations
+
+Every publication writes [review-attestation.schema.json](review-attestation.schema.json)-compatible `reports/attestation.json`. It is an in-toto statement whose subject is the exact `review.json` SHA-256 and whose predicate binds the source revision/path and bundle/artifact digests.
+
+Sign and verify locally:
+
+```bash
+python3 <skill-dir>/scripts/drawio_tool.py attest-review \
+  build/architecture-review --signing-key review-signing-key
+
+python3 <skill-dir>/scripts/drawio_tool.py verify-review-attestation \
+  build/architecture-review \
+  --allowed-signers .github/review-signers \
+  --identity architecture@example.com
+```
+
+The allowed-signers file uses the standard OpenSSH format: `<identity> <public-key>`. Verification exits `11` when either the JSON binding or signature is invalid. CI may instead use the pinned GitHub attestation action with this statement as a custom predicate.
+
+## Policy contract tests
+
+Run [policy-tests.schema.json](policy-tests.schema.json)-compatible cases before publishing:
+
+```bash
+python3 <skill-dir>/scripts/drawio_tool.py policy-test \
+  architecture/policies/tests.json \
+  -o build/policy-tests.json \
+  --strict
+```
+
+Cases define a compact synthetic review, explicit evaluation date, and expected rule/exception outcomes. Strict mode requires 100% assertion coverage. Compare against an approved [policy-test-report.schema.json](policy-test-report.schema.json) report with `--baseline --fail-on-change`; exit code `10` detects assertion failures, missing coverage, or outcome drift. Start with [example.policy-tests.json](../assets/example.policy-tests.json).
 
 For hosted publication and code-scanning upload, read [github-pages-publication.md](github-pages-publication.md) and copy the pinned workflow asset.
 

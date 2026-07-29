@@ -2,6 +2,15 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 1.5.0 — 2026-07-29
+
+- Add last-match-wins CODEOWNERS fallback while preserving explicit semantic ownership routes.
+- Emit optional GitHub Checks requests with repository-source annotations backed by the portable summary and SARIF evidence.
+- Publish deterministic in-toto review statements and add local OpenSSH signing and verification commands.
+- Add policy contract suites with deterministic evaluation dates, full rule/exception coverage, outcome fingerprints, and baseline drift gates.
+- Extend the pinned Pages workflow with policy tests, Checks publication, and GitHub/Sigstore custom-predicate attestations.
+- Add v1.5 schemas, examples, documentation, tests, and public review evidence.
+
 ## 1.4.0 — 2026-07-29
 
 - Compose multiple architecture policy packs with stable namespaced rule IDs.

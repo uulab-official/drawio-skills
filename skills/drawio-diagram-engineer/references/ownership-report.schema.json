@@ -30,6 +30,42 @@
     "source": {
       "type": ["string", "null"]
     },
+    "codeowners": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "source_path",
+        "matched",
+        "line",
+        "pattern",
+        "owners"
+      ],
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "source_path": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "boolean"
+        },
+        "line": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "pattern": {
+          "type": ["string", "null"]
+        },
+        "owners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "passed": {
       "type": "boolean"
     },
@@ -91,6 +127,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "source": {
+            "enum": ["routes", "codeowners", "unassigned"]
           }
         }
       }

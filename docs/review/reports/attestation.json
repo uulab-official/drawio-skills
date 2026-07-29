@@ -1,0 +1,39 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "review.json",
+      "digest": {
+        "sha256": "6f43196b04716cc2486cf6422385dd8b6f5ad28ac63518edb47fbf877b27a0e2"
+      }
+    }
+  ],
+  "predicateType": "https://github.com/uulab-official/drawio-skills/attestations/review/v1",
+  "predicate": {
+    "generator": "drawio-diagram-engineer",
+    "tool_version": "1.5.0",
+    "source": {
+      "revision": "bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65",
+      "revision_type": "bundle",
+      "repository": null,
+      "path": "architecture/commerce-platform.json",
+      "url": null
+    },
+    "bundle": {
+      "sha256": "bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65",
+      "artifacts": {
+        "audit.json": "af6d7d92b0510e5696133f66e1c9208754d24c360b3d0c240b74f69631af55ca",
+        "bundle.json": "ceafde3aa2d26ba2ba0448670607bb90b17cd62edfd6563fee1bcce26b5b2544",
+        "diagram.json": "087fca45c9f73420f9e29f0cb4463c9350d3c4857c45f44f19c4ee38b322321b",
+        "example-blueprint.drawio": "9b80ff67a9bc072088934bfaf35cf6409f7d78fb24c2b7cb979bcb1ce518a5d7",
+        "previews/context.svg": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
+        "previews/data.svg": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
+        "previews/decisions.svg": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
+        "previews/deployment.svg": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891",
+        "previews/logical.svg": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2",
+        "previews/security.svg": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb",
+        "security.json": "2544d558aff75299579dfc39ae03453a6568471944cbbfdc0bdf79f50efa30cd"
+      }
+    }
+  }
+}

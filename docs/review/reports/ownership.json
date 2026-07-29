@@ -3,6 +3,17 @@
   "status": "passed",
   "configured": true,
   "source": "example.ownership.json",
+  "codeowners": {
+    "source": "example.CODEOWNERS",
+    "source_path": "architecture/commerce-platform.json",
+    "matched": true,
+    "line": 3,
+    "pattern": "/architecture/commerce-platform.json",
+    "owners": [
+      "@uulab/platform",
+      "@uulab/architecture"
+    ]
+  },
   "passed": true,
   "total_findings": 1,
   "assigned": 1,
@@ -52,7 +63,8 @@
       ],
       "routes": [
         "platform-event-stream"
-      ]
+      ],
+      "source": "routes"
     }
   ]
 }

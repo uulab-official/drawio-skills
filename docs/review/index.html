@@ -36,7 +36,7 @@
   </style>
 </head>
 <body>
-  <header><h1>example-blueprint</h1><p>Portable architecture review · 6 page(s) · revision 99abe5e97a9d</p></header>
+  <header><h1>example-blueprint</h1><p>Portable architecture review · 6 page(s) · revision bda3ac3127fd</p></header>
   <nav aria-label="Diagram pages"><a href="pages/context.svg" target="diagram-frame">Commerce Platform — System Context</a><a href="pages/logical.svg" target="diagram-frame">Commerce Platform — Logical Architecture</a><a href="pages/data.svg" target="diagram-frame">Commerce Platform — Data Flow</a><a href="pages/deployment.svg" target="diagram-frame">Commerce Platform — Deployment</a><a href="pages/security.svg" target="diagram-frame">Commerce Platform — Network &amp; Security Zones</a><a href="pages/decisions.svg" target="diagram-frame">Commerce Platform — Architecture Decisions</a></nav>
   <main>
     <div class="status-grid"><article class="status pass"><span>Audit</span><strong>PASS</strong><small>100/100 · 0 warning(s)</small></article><article class="status pass"><span>Security</span><strong>PASS</strong><small>0 error(s)</small></article><article class="status pass"><span>Round trip</span><strong>PASS</strong><small>lossless and source-aligned</small></article><article class="status pass"><span>Native exports</span><strong>PASS</strong><small>not-provided</small></article><article class="status pass"><span>Visual baseline</span><strong>PASS</strong><small>passed</small></article><article class="status pass"><span>Architecture policy</span><strong>PASS</strong><small>0 error(s) · 0 warning(s)</small></article><article class="status pass"><span>Finding ownership</span><strong>PASS</strong><small>1/1 assigned</small></article></div>
@@ -44,20 +44,21 @@
     <div class="panels">
       <section><h2>Review annotations</h2>
         <p class="lifecycle">1 open · 1 accepted · 1 resolved · 0 carried</p>
-        <ul><li class="accepted"><a href="pages/context.svg#node-commerce" target="diagram-frame">context · node-commerce</a><span>Platform ownership boundary accepted for this release.</span><small>accepted · updated</small></li><li class="resolved"><a href="pages/data.svg#node-orders-db" target="diagram-frame">data · node-orders-db</a><span>Residency controls are documented in the deployment evidence.</span><small>resolved · updated</small></li><li class="open"><a href="pages/logical.svg#node-events" target="diagram-frame">logical · node-events</a><span>Confirm the long-term owning team for the order event stream.</span><small>open · added</small></li></ul>
+        <ul><li class="accepted"><a href="pages/context.svg#node-commerce" target="diagram-frame">context · node-commerce</a><span>Platform ownership boundary accepted for this release.</span><small>accepted · updated</small></li><li class="resolved"><a href="pages/data.svg#node-orders-db" target="diagram-frame">data · node-orders-db</a><span>Residency controls are documented in the deployment evidence.</span><small>resolved · updated</small></li><li class="open"><a href="pages/logical.svg#node-events" target="diagram-frame">logical · node-events</a><span>Confirm the long-term owning team for the order event stream.</span><small>open · updated</small></li></ul>
       </section>
       <section><h2>Visual baseline</h2><table><tr><td>context</td><td><span class="pill unchanged">unchanged</span></td></tr><tr><td>data</td><td><span class="pill unchanged">unchanged</span></td></tr><tr><td>decisions</td><td><span class="pill unchanged">unchanged</span></td></tr><tr><td>deployment</td><td><span class="pill unchanged">unchanged</span></td></tr><tr><td>logical</td><td><span class="pill unchanged">unchanged</span></td></tr><tr><td>security</td><td><span class="pill unchanged">unchanged</span></td></tr></table></section>
       <section><h2>Architecture policy</h2><table><tr><td>production/required-views</td><td><span class="pill passed">passed</span></td><td>all required pages are present</td></tr><tr><td>production/audit-score</td><td><span class="pill passed">passed</span></td><td>audit score 100; required 95</td></tr><tr><td>production/security-gate</td><td><span class="pill passed">passed</span></td><td>security gate passed</td></tr><tr><td>production/lossless-round-trip</td><td><span class="pill passed">passed</span></td><td>round trip is lossless</td></tr><tr><td>production/semantic-alignment</td><td><span class="pill passed">passed</span></td><td>bundle and draw.io semantics match</td></tr><tr><td>production/approved-baseline</td><td><span class="pill passed">passed</span></td><td>visual baseline status: passed</td></tr><tr><td>production/open-review-items</td><td><span class="pill passed">passed</span></td><td>1 unwaived open reviewer annotation(s); maximum 1</td></tr><tr><td>team-governance/no-open-decisions</td><td><span class="pill waived">waived</span></td><td>0 unwaived open reviewer annotation(s); maximum 0</td></tr><tr><td>exception · team-governance/event-stream-review-window</td><td><span class="pill applied">applied</span></td><td>Event-stream ownership is being finalized during the platform migration. · expires 2026-12-31</td></tr></table></section>
       <section><h2>Finding ownership</h2>
         <p class="lifecycle">1 assigned · 0 unassigned · 100% coverage</p>
-        <table><tr><td>platform-event-stream</td><td>@uulab/platform</td><td>logical, node-events</td></tr><tr><td>architecture-policy</td><td>@uulab/architecture</td><td>policy.*, policy-exception.*</td></tr><tr><td>security-findings</td><td>@uulab/security</td><td>security.*</td></tr></table>
+        <table><tr><td>platform-event-stream</td><td>@uulab/platform</td><td>logical, node-events</td></tr><tr><td>architecture-policy</td><td>@uulab/architecture</td><td>policy.*, policy-exception.*</td></tr><tr><td>security-findings</td><td>@uulab/security</td><td>security.*</td></tr><tr><td>CODEOWNERS fallback</td><td>@uulab/platform, @uulab/architecture</td><td>architecture/commerce-platform.json · /architecture/commerce-platform.json</td></tr></table>
       </section>
       <section><h2>Artifact provenance</h2>
         <dl class="provenance">
-          <dt>Revision</dt><dd>99abe5e97a9d54b29ff41a11daf13c6e0747cab10963ec9d6a33cc05f17b138b</dd>
+          <dt>Revision</dt><dd>bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65</dd>
           <dt>Type</dt><dd>bundle</dd>
           <dt>Repository</dt><dd>not supplied</dd>
-          <dt>Bundle SHA-256</dt><dd>99abe5e97a9d54b29ff41a11daf13c6e0747cab10963ec9d6a33cc05f17b138b</dd>
+          <dt>Source path</dt><dd>architecture/commerce-platform.json</dd>
+          <dt>Bundle SHA-256</dt><dd>bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65</dd>
           <dt>Source</dt><dd>No source URL supplied</dd>
         </dl>
       </section>
@@ -72,10 +73,11 @@
           <a href="reports/ownership.json">Ownership report</a>
           <a href="reports/findings.sarif">SARIF findings</a>
           <a href="reports/summary.md">PR check summary</a>
+          <a href="reports/attestation.json">Review attestation</a>
         </div>
       </section>
     </div>
   </main>
-  <footer>Generated by drawio-diagram-engineer 1.4.0. No scripts, remote assets, telemetry, or network requests.</footer>
+  <footer>Generated by drawio-diagram-engineer 1.5.0. No scripts, remote assets, telemetry, or network requests.</footer>
 </body>
 </html>

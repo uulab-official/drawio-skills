@@ -186,9 +186,18 @@ Exit criteria: larger organizations can reuse policy layers, make exceptions aud
 
 ## v1.5 — Enterprise review integrations
 
-- [ ] Import ownership defaults from CODEOWNERS without weakening explicit semantic routes
-- [ ] Optional GitHub Checks annotations backed by the portable SARIF and summary artifacts
-- [ ] Signed review-manifest attestations tied to the source revision and bundle digest
-- [ ] Policy-pack test harness for exception expiry, selector coverage, and breaking-change detection
+- [x] Import ownership defaults from CODEOWNERS without weakening explicit semantic routes
+- [x] Optional GitHub Checks annotations backed by the portable SARIF and summary artifacts
+- [x] Signed review-manifest attestations tied to the source revision and bundle digest
+- [x] Policy-pack test harness for exception expiry, selector coverage, and breaking-change detection
 
 Exit criteria: repository-native ownership and checks remain optional adapters over the portable review contract, while signed manifests and policy tests make approval evidence independently verifiable.
+
+## v1.6 — Governance lifecycle and federation
+
+- [ ] Signed approval ledger with reviewer identities, quorum rules, and revocation evidence
+- [ ] Multi-repository architecture evidence catalog with immutable review discovery
+- [ ] Ownership, exception, and policy-health trend exports for governance dashboards
+- [ ] Sandboxed JSON rule-provider protocol for organization-specific policy checks
+
+Exit criteria: organizations can trace approval history across repositories, measure governance health over time, and extend rules without executing untrusted code inside the diagram engine.

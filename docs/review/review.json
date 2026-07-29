@@ -1,20 +1,21 @@
 {
   "format": "drawio-review-site/v1",
   "generator": "drawio-diagram-engineer",
-  "tool_version": "1.4.0",
+  "tool_version": "1.5.0",
   "title": "example-blueprint",
   "source_bundle": "bundle",
   "provenance": {
-    "revision": "99abe5e97a9d54b29ff41a11daf13c6e0747cab10963ec9d6a33cc05f17b138b",
+    "revision": "bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65",
     "revision_type": "bundle",
     "repository": null,
     "source_url": null,
-    "bundle_sha256": "99abe5e97a9d54b29ff41a11daf13c6e0747cab10963ec9d6a33cc05f17b138b",
+    "source_path": "architecture/commerce-platform.json",
+    "bundle_sha256": "bda3ac3127fd997a9f216085cbf8cd852a791162b3ecab5ff84ebc5dae4d4e65",
     "artifacts": {
       "audit.json": "af6d7d92b0510e5696133f66e1c9208754d24c360b3d0c240b74f69631af55ca",
-      "bundle.json": "d7a105812dcf686c3256f0c7fafb1d0303f23ea594df62f3d0dfb2254dd512f4",
+      "bundle.json": "ceafde3aa2d26ba2ba0448670607bb90b17cd62edfd6563fee1bcce26b5b2544",
       "diagram.json": "087fca45c9f73420f9e29f0cb4463c9350d3c4857c45f44f19c4ee38b322321b",
-      "example-blueprint.drawio": "2a11ce23a24fa4f8c93f090e2f445bab2d0904a92f429017e3cab6749b27b905",
+      "example-blueprint.drawio": "9b80ff67a9bc072088934bfaf35cf6409f7d78fb24c2b7cb979bcb1ce518a5d7",
       "previews/context.svg": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
       "previews/data.svg": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
       "previews/decisions.svg": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
@@ -675,7 +676,7 @@
       "href": "pages/logical.svg#node-events",
       "author": "Architecture Review Board",
       "source": "reviewer",
-      "lifecycle": "added"
+      "lifecycle": "updated"
     }
   ],
   "status": {
@@ -748,11 +749,11 @@
       ]
     },
     "annotations": {
-      "base": 2,
+      "base": 3,
       "updates": 3,
       "carried": 0,
-      "updated": 2,
-      "added": 1,
+      "updated": 3,
+      "added": 0,
       "total": 3,
       "open": 1,
       "accepted": 1,
@@ -787,7 +788,8 @@
     "policy": "reports/policy.json",
     "ownership": "reports/ownership.json",
     "sarif": "reports/findings.sarif",
-    "summary": "reports/summary.md"
+    "summary": "reports/summary.md",
+    "attestation": "reports/attestation.json"
   },
   "policy": {
     "format": "drawio-architecture-policy-report/v1",
@@ -949,6 +951,17 @@
     "status": "passed",
     "configured": true,
     "source": "example.ownership.json",
+    "codeowners": {
+      "source": "example.CODEOWNERS",
+      "source_path": "architecture/commerce-platform.json",
+      "matched": true,
+      "line": 3,
+      "pattern": "/architecture/commerce-platform.json",
+      "owners": [
+        "@uulab/platform",
+        "@uulab/architecture"
+      ]
+    },
     "passed": true,
     "total_findings": 1,
     "assigned": 1,
@@ -998,7 +1011,8 @@
         ],
         "routes": [
           "platform-event-stream"
-        ]
+        ],
+        "source": "routes"
       }
     ]
   }

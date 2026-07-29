@@ -12,14 +12,22 @@ build <model|source> [-o <bundle-dir>] [--type <type>] [--name <name>]
       [--strict] [--force]
 merge-annotations <prior-review|annotations.json> <updates.json>
                   -o <merged.json> [--force]
+policy-test <tests.json> [-o <report.json>] [--baseline <report.json>]
+            [--fail-on-change] [--strict] [--force]
 publish <bundle-dir> -o <review-dir> [--title <title>]
         [--annotations <annotations.json>] [--carry-review <prior-review>]
         [--baseline <review|bundle>] [--policy <policy.json>]...
-        [--ownership <ownership.json>] [--evaluation-date <YYYY-MM-DD>]
+        [--ownership <ownership.json>] [--codeowners <CODEOWNERS>]
+        [--evaluation-date <YYYY-MM-DD>]
         [--source-revision <revision>] [--source-repository <repository>]
-        [--source-url <https-url>] [--public-base-url <https-url>]
+        [--source-url <https-url>] [--source-path <repository-path>]
+        [--public-base-url <https-url>] [--github-checks]
         [--fail-on-visual-change] [--fail-on-policy]
         [--fail-on-unowned-findings] [--strict] [--force]
+attest-review <review-dir> --signing-key <private-key>
+              [--namespace <name>] [--force]
+verify-review-attestation <review-dir> --allowed-signers <file>
+                          --identity <principal> [--namespace <name>]
 ```
 
 `init` profiles: `architecture`, `blueprint`, `erd`, `ha`, `routing`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
@@ -28,7 +36,11 @@ publish <bundle-dir> -o <review-dir> [--title <title>]
 
 `merge-annotations` replaces matching stable IDs with full-record updates and carries all untouched reviewer records. `publish --carry-review` performs the same merge against a regenerated diagram and validates every page/cell link.
 
-`publish` creates an atomic, script-free HTML/SVG review site from a bundle. Repeat `--policy` to compose organization and team packs. Scoped exceptions use the deterministic `--evaluation-date`; when omitted, `SOURCE_DATE_EPOCH` or the current UTC date is used. `--ownership` routes SARIF findings, and `--public-base-url` makes summary links absolute for pull-request checks. Source revision defaults to `GITHUB_SHA`, then `CI_COMMIT_SHA`, then the bundle digest. See [collaborative-review.md](collaborative-review.md).
+`policy-test` evaluates compact synthetic review cases without building diagrams. Every case requires an explicit date. `--strict` requires assertions to cover every composed rule and exception; `--baseline --fail-on-change` exits `10` when deterministic outcome fingerprints change.
+
+`publish` creates an atomic, script-free HTML/SVG review site from a bundle. Repeat `--policy` to compose organization and team packs. Scoped exceptions use the deterministic `--evaluation-date`; when omitted, `SOURCE_DATE_EPOCH` or the current UTC date is used. `--ownership` routes SARIF findings first; `--codeowners` supplies fallback owners for the repository-relative `--source-path`. `--github-checks` emits a maximum of 50 source annotations and requires a full SCM revision plus repository. `--public-base-url` makes evidence links absolute. Source revision defaults to `GITHUB_SHA`, then `CI_COMMIT_SHA`, then the bundle digest. See [collaborative-review.md](collaborative-review.md).
+
+Every site includes an unsigned in-toto statement. `attest-review` signs it as `reports/attestation.json.sig` with the default `drawio-review` OpenSSH namespace. `verify-review-attestation` first recomputes the manifest/provenance binding, then verifies the signature against the supplied allowed-signers file.
 
 ## Contract and security
 
@@ -97,3 +109,5 @@ verify-export <output.png|svg|pdf|jpg> [-f <format>] [-o <export-report.json>]
 | `7` | Visual baseline change found with `publish --fail-on-visual-change` |
 | `8` | Architecture policy error found with `publish --fail-on-policy` |
 | `9` | One or more findings lack an owner with `publish --fail-on-unowned-findings` |
+| `10` | Policy assertions, strict coverage, or requested baseline stability failed |
+| `11` | Review attestation binding or signature verification failed |

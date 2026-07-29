@@ -1,0 +1,138 @@
+{
+  "format": "drawio-policy-tests/v1",
+  "policies": [
+    "policies/production-review.json",
+    "policies/team-governance.json"
+  ],
+  "cases": [
+    {
+      "id": "healthy-production-review",
+      "evaluation_date": "2026-07-29",
+      "review": {
+        "pages": [
+          "context",
+          "logical",
+          "data",
+          "deployment",
+          "security",
+          "decisions"
+        ],
+        "audit_score": 100,
+        "security_passed": true,
+        "lossless": true,
+        "semantic_match": true,
+        "visual_baseline": true
+      },
+      "expect": {
+        "passed": true,
+        "errors": 0,
+        "warnings": 0,
+        "rules": {
+          "production/required-views": {
+            "passed": true
+          },
+          "production/audit-score": {
+            "passed": true
+          },
+          "production/security-gate": {
+            "passed": true
+          },
+          "production/lossless-round-trip": {
+            "passed": true
+          },
+          "production/semantic-alignment": {
+            "passed": true
+          },
+          "production/approved-baseline": {
+            "passed": true
+          },
+          "production/open-review-items": {
+            "passed": true
+          },
+          "team-governance/no-open-decisions": {
+            "passed": true,
+            "compliant": true,
+            "waived": false
+          }
+        },
+        "exceptions": {
+          "team-governance/event-stream-review-window": "unused"
+        }
+      }
+    },
+    {
+      "id": "scoped-exception-applies",
+      "evaluation_date": "2026-07-29",
+      "review": {
+        "pages": [
+          "context",
+          "logical",
+          "data",
+          "deployment",
+          "security",
+          "decisions"
+        ],
+        "visual_baseline": true,
+        "open_annotations": [
+          {
+            "id": "event-stream-owner",
+            "page": "logical",
+            "cell": "node-events"
+          }
+        ]
+      },
+      "expect": {
+        "passed": true,
+        "errors": 0,
+        "warnings": 0,
+        "rules": {
+          "team-governance/no-open-decisions": {
+            "passed": true,
+            "compliant": false,
+            "waived": true
+          }
+        },
+        "exceptions": {
+          "team-governance/event-stream-review-window": "applied"
+        }
+      }
+    },
+    {
+      "id": "expired-exception-blocks",
+      "evaluation_date": "2027-01-01",
+      "review": {
+        "pages": [
+          "context",
+          "logical",
+          "data",
+          "deployment",
+          "security",
+          "decisions"
+        ],
+        "visual_baseline": true,
+        "open_annotations": [
+          {
+            "id": "event-stream-owner",
+            "page": "logical",
+            "cell": "node-events"
+          }
+        ]
+      },
+      "expect": {
+        "passed": false,
+        "errors": 2,
+        "warnings": 0,
+        "rules": {
+          "team-governance/no-open-decisions": {
+            "passed": false,
+            "compliant": false,
+            "waived": false
+          }
+        },
+        "exceptions": {
+          "team-governance/event-stream-review-window": "expired"
+        }
+      }
+    }
+  ]
+}

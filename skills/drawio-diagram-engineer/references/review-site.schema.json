@@ -59,6 +59,10 @@
           "type": ["string", "null"],
           "format": "uri"
         },
+        "source_path": {
+          "type": "string",
+          "minLength": 1
+        },
         "bundle_sha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
@@ -222,6 +226,12 @@
         },
         "summary": {
           "const": "reports/summary.md"
+        },
+        "attestation": {
+          "const": "reports/attestation.json"
+        },
+        "github_checks": {
+          "const": "reports/github-checks.json"
         }
       }
     },

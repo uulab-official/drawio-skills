@@ -658,6 +658,214 @@ class UserExperienceTests(unittest.TestCase):
             self.assertEqual("not-configured", ownership["status"])
             self.assertEqual(1, ownership["unassigned"])
 
+    def test_codeowners_fallback_preserves_explicit_routes_and_emits_checks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            ownership_path = temp / "ownership.json"
+            revision = "0123456789abcdef0123456789abcdef01234567"
+            ownership_path.write_text(
+                json.dumps({
+                    "format": "drawio-review-ownership/v1",
+                    "routes": [{
+                        "id": "event-stream",
+                        "owners": ["@uulab/platform"],
+                        "pages": ["logical"],
+                        "cells": ["node-events"],
+                    }],
+                }),
+                encoding="utf-8",
+            )
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.blueprint.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                review,
+                "--annotations",
+                ASSETS / "example.governance-annotations.json",
+                "--policy",
+                ASSETS / "policies/production-review.json",
+                "--ownership",
+                ownership_path,
+                "--codeowners",
+                ASSETS / "example.CODEOWNERS",
+                "--source-path",
+                "architecture/commerce-platform.json",
+                "--source-revision",
+                revision,
+                "--source-repository",
+                "uulab/example",
+                "--public-base-url",
+                "https://reviews.example.com/pr-42",
+                "--github-checks",
+                "--fail-on-unowned-findings",
+            )
+            ownership = json.loads(
+                (review / "reports/ownership.json").read_text(encoding="utf-8")
+            )
+            assignments = {
+                item["rule_id"]: item
+                for item in ownership["assignments"]
+            }
+            reviewer = assignments["review.annotation-open"]
+            self.assertEqual("routes", reviewer["source"])
+            self.assertEqual(["@uulab/platform"], reviewer["owners"])
+            policy = assignments["policy.production.approved-baseline"]
+            self.assertEqual("codeowners", policy["source"])
+            self.assertEqual(
+                ["@uulab/architecture", "@uulab/platform"],
+                policy["owners"],
+            )
+            checks = json.loads(
+                (review / "reports/github-checks.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual("drawio-github-checks/v1", checks["format"])
+            self.assertEqual(revision, checks["request"]["head_sha"])
+            self.assertEqual(
+                "architecture/commerce-platform.json",
+                checks["request"]["output"]["annotations"][0]["path"],
+            )
+            review_bytes = (review / "review.json").read_bytes()
+            attestation = json.loads(
+                (review / "reports/attestation.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                hashlib.sha256(review_bytes).hexdigest(),
+                attestation["subject"][0]["digest"]["sha256"],
+            )
+            self.assertEqual(
+                "architecture/commerce-platform.json",
+                attestation["predicate"]["source"]["path"],
+            )
+
+    def test_policy_test_harness_covers_rules_and_detects_outcome_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            report = temp / "policy-tests.json"
+            run(
+                TOOL,
+                "policy-test",
+                ASSETS / "example.policy-tests.json",
+                "-o",
+                report,
+                "--strict",
+            )
+            result = json.loads(report.read_text(encoding="utf-8"))
+            self.assertTrue(result["gate"]["passed"])
+            self.assertEqual(100, result["coverage"]["percent"])
+            self.assertEqual(0, result["assertions"]["failed"])
+            unchanged = run(
+                TOOL,
+                "policy-test",
+                ASSETS / "example.policy-tests.json",
+                "--baseline",
+                report,
+                "--fail-on-change",
+            )
+            self.assertEqual(0, unchanged.returncode)
+            result["cases"][0]["outcome_fingerprint"] = "0" * 64
+            report.write_text(
+                json.dumps(result),
+                encoding="utf-8",
+            )
+            changed = run(
+                TOOL,
+                "policy-test",
+                ASSETS / "example.policy-tests.json",
+                "--baseline",
+                report,
+                "--fail-on-change",
+                check=False,
+            )
+            self.assertEqual(10, changed.returncode)
+
+    def test_review_attestation_sign_and_verify_detects_tampering(self):
+        if not shutil.which("ssh-keygen"):
+            self.skipTest("ssh-keygen is required")
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            key = temp / "review-key"
+            allowed_signers = temp / "allowed-signers"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.architecture.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            run(TOOL, "publish", bundle, "-o", review, "--strict")
+            subprocess.run(
+                [
+                    "ssh-keygen",
+                    "-q",
+                    "-t",
+                    "ed25519",
+                    "-N",
+                    "",
+                    "-f",
+                    str(key),
+                ],
+                check=True,
+            )
+            allowed_signers.write_text(
+                "review@example.com "
+                + key.with_suffix(".pub").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            run(
+                TOOL,
+                "attest-review",
+                review,
+                "--signing-key",
+                key,
+            )
+            verified = run(
+                TOOL,
+                "verify-review-attestation",
+                review,
+                "--allowed-signers",
+                allowed_signers,
+                "--identity",
+                "review@example.com",
+            )
+            self.assertTrue(json.loads(verified.stdout)["passed"])
+            manifest_path = review / "review.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["title"] = "Tampered review"
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            tampered = run(
+                TOOL,
+                "verify-review-attestation",
+                review,
+                "--allowed-signers",
+                allowed_signers,
+                "--identity",
+                "review@example.com",
+                check=False,
+            )
+            self.assertEqual(11, tampered.returncode)
+            self.assertFalse(json.loads(tampered.stdout)["passed"])
+
     def test_migrate_check_and_write_workflow(self):
         legacy = {
             "title": "Legacy",

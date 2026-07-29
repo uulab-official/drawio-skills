@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/policy-test-report-v1.json",
+  "title": "Draw.io Architecture Policy Test Report v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "format",
+    "suite",
+    "suite_sha256",
+    "policies",
+    "passed",
+    "assertions",
+    "coverage",
+    "baseline",
+    "cases"
+  ],
+  "properties": {
+    "format": {
+      "const": "drawio-policy-test-report/v1"
+    },
+    "suite": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suite_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "assertions": {
+      "type": "object"
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["rules", "exceptions", "percent"],
+      "properties": {
+        "percent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "baseline": {
+      "type": ["object", "null"]
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "passed",
+          "failures",
+          "outcome_fingerprint",
+          "policy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "outcome_fingerprint": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

@@ -15,6 +15,7 @@ import json
 import math
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -27,7 +28,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 IR_VERSION = "1"
 IR_METADATA_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
@@ -36,6 +37,13 @@ POLICY_FORMAT = "drawio-architecture-policy/v1"
 POLICY_REPORT_FORMAT = "drawio-architecture-policy-report/v1"
 OWNERSHIP_FORMAT = "drawio-review-ownership/v1"
 OWNERSHIP_REPORT_FORMAT = "drawio-review-ownership-report/v1"
+GITHUB_CHECKS_FORMAT = "drawio-github-checks/v1"
+POLICY_TEST_FORMAT = "drawio-policy-tests/v1"
+POLICY_TEST_REPORT_FORMAT = "drawio-policy-test-report/v1"
+REVIEW_ATTESTATION_PREDICATE = (
+    "https://github.com/uulab-official/drawio-skills/"
+    "attestations/review/v1"
+)
 SARIF_VERSION = "2.1.0"
 MAX_STRUCTURED_INPUT_BYTES = 50 * 1024 * 1024
 MAX_XML_INPUT_BYTES = 50 * 1024 * 1024
@@ -6448,6 +6456,315 @@ def evaluate_architecture_policy(
     }
 
 
+def policy_test_review(specification: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(specification, dict):
+        raise ValueError("policy test review must be an object")
+    page_ids = specification.get("pages", [])
+    if (
+        not isinstance(page_ids, list)
+        or any(not valid_semantic_id(str(page)) for page in page_ids)
+    ):
+        raise ValueError("policy test pages must be semantic ids")
+    annotations = []
+    for index, annotation in enumerate(
+        specification.get("open_annotations", []),
+        start=1,
+    ):
+        if (
+            not isinstance(annotation, dict)
+            or not valid_semantic_id(str(annotation.get("page", "")))
+            or not valid_selector_pattern(str(annotation.get("cell", "")))
+        ):
+            raise ValueError(
+                f"policy test open annotation {index} requires page and cell ids"
+            )
+        annotations.append({
+            "id": str(annotation.get("id") or f"test-open-{index}"),
+            "page": str(annotation["page"]),
+            "cell": str(annotation["cell"]),
+            "status": "open",
+            "source": "reviewer",
+            "message": str(annotation.get("message", "Policy test annotation")),
+        })
+    audit_score = specification.get("audit_score", 100)
+    if (
+        not isinstance(audit_score, int)
+        or isinstance(audit_score, bool)
+        or not 0 <= audit_score <= 100
+    ):
+        raise ValueError("policy test audit_score must be 0..100")
+    for field in (
+        "security_passed",
+        "lossless",
+        "semantic_match",
+        "visual_baseline",
+    ):
+        if field in specification and not isinstance(
+            specification[field], bool
+        ):
+            raise ValueError(f"policy test {field} must be boolean")
+    export_formats = specification.get("export_formats", [])
+    if (
+        not isinstance(export_formats, list)
+        or any(
+            str(value) not in {"png", "svg", "pdf", "jpg"}
+            for value in export_formats
+        )
+    ):
+        raise ValueError("policy test export_formats contains an invalid format")
+    visual_baseline = bool(specification.get("visual_baseline", False))
+    return {
+        "pages": [{"id": str(page)} for page in page_ids],
+        "annotations": annotations,
+        "status": {
+            "audit": {"score": audit_score},
+            "security": {
+                "passed": bool(specification.get("security_passed", True)),
+            },
+            "extraction": {
+                "lossless": bool(specification.get("lossless", True)),
+                "semantic_match": bool(
+                    specification.get("semantic_match", True)
+                ),
+            },
+            "exports": {
+                "reports": [
+                    {"format": str(value), "passed": True}
+                    for value in export_formats
+                ],
+            },
+            "visual_regression": {
+                "status": "passed" if visual_baseline else "not-configured",
+            },
+        },
+    }
+
+
+def policy_outcome_fingerprint(report: dict[str, Any]) -> str:
+    outcome = {
+        "passed": report["passed"],
+        "errors": report["errors"],
+        "warnings": report["warnings"],
+        "rules": {
+            result["key"]: {
+                "passed": result["passed"],
+                "compliant": result["compliant"],
+                "waived": result["waived"],
+            }
+            for result in report["results"]
+        },
+        "exceptions": {
+            item["key"]: item["status"]
+            for item in report["exceptions"]
+        },
+    }
+    return hashlib.sha256(
+        json.dumps(
+            outcome,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def run_policy_test_suite(
+    suite_path: Path,
+    baseline_path: Path | None,
+) -> dict[str, Any]:
+    suite = load_data(suite_path)
+    if suite.get("format") != POLICY_TEST_FORMAT:
+        raise ValueError(f"policy test format must be {POLICY_TEST_FORMAT}")
+    policy_entries = suite.get("policies")
+    cases = suite.get("cases")
+    if (
+        not isinstance(policy_entries, list)
+        or not policy_entries
+        or any(not isinstance(item, str) or not item for item in policy_entries)
+        or not isinstance(cases, list)
+        or not cases
+    ):
+        raise ValueError("policy tests require policies and at least one case")
+    normalized_policy_entries = [
+        normalize_repository_path(entry, "policy test policy path")
+        for entry in policy_entries
+    ]
+    policy_paths = [
+        (suite_path.parent / entry).resolve()
+        for entry in normalized_policy_entries
+    ]
+    policies = load_architecture_policies(policy_paths)
+    all_rules = {
+        f"{policy['id']}/{rule['id']}"
+        for policy in policies
+        for rule in policy["rules"]
+    }
+    all_exceptions = {
+        f"{policy['id']}/{exception['id']}"
+        for policy in policies
+        for exception in policy.get("exceptions", [])
+    }
+    covered_rules: set[str] = set()
+    covered_exceptions: set[str] = set()
+    case_reports = []
+    seen_cases: set[str] = set()
+    total_assertions = 0
+    failed_assertions = 0
+    for index, case in enumerate(cases, start=1):
+        if not isinstance(case, dict):
+            raise ValueError(f"policy test case {index} must be an object")
+        case_id = str(case.get("id", ""))
+        if not valid_semantic_id(case_id) or case_id in seen_cases:
+            raise ValueError(
+                f"policy test case {index} requires a unique semantic id"
+            )
+        seen_cases.add(case_id)
+        evaluation_date_value = case.get("evaluation_date")
+        if not isinstance(evaluation_date_value, str) or not evaluation_date_value:
+            raise ValueError(
+                f"policy test case {case_id} requires evaluation_date"
+            )
+        evaluation_date = parse_evaluation_date(evaluation_date_value)
+        report = evaluate_architecture_policy(
+            policies,
+            policy_test_review(case.get("review", {})),
+            evaluation_date,
+        )
+        expected = case.get("expect", {})
+        if not isinstance(expected, dict):
+            raise ValueError(f"policy test case {case_id} expect must be an object")
+        failures = []
+        for field in ("passed", "errors", "warnings"):
+            if field in expected:
+                total_assertions += 1
+                if report[field] != expected[field]:
+                    failed_assertions += 1
+                    failures.append(
+                        f"{field}: expected {expected[field]!r}, "
+                        f"actual {report[field]!r}"
+                    )
+        actual_rules = {
+            result["key"]: result for result in report["results"]
+        }
+        expected_rules = expected.get("rules", {})
+        if not isinstance(expected_rules, dict):
+            raise ValueError(
+                f"policy test case {case_id} expected rules must be an object"
+            )
+        for rule_key, rule_expectation in expected_rules.items():
+            if rule_key not in all_rules or not isinstance(rule_expectation, dict):
+                raise ValueError(
+                    f"policy test case {case_id} references unknown rule {rule_key}"
+                )
+            covered_rules.add(rule_key)
+            for field, expected_value in rule_expectation.items():
+                if field not in {"passed", "compliant", "waived"}:
+                    raise ValueError(
+                        f"policy rule expectation does not support {field}"
+                    )
+                total_assertions += 1
+                if actual_rules[rule_key][field] != expected_value:
+                    failed_assertions += 1
+                    failures.append(
+                        f"{rule_key}.{field}: expected {expected_value!r}, "
+                        f"actual {actual_rules[rule_key][field]!r}"
+                    )
+        actual_exceptions = {
+            item["key"]: item for item in report["exceptions"]
+        }
+        expected_exceptions = expected.get("exceptions", {})
+        if not isinstance(expected_exceptions, dict):
+            raise ValueError(
+                f"policy test case {case_id} exceptions must be an object"
+            )
+        for exception_key, expected_status in expected_exceptions.items():
+            if exception_key not in all_exceptions:
+                raise ValueError(
+                    f"policy test case {case_id} references unknown exception "
+                    f"{exception_key}"
+                )
+            covered_exceptions.add(exception_key)
+            total_assertions += 1
+            if actual_exceptions[exception_key]["status"] != expected_status:
+                failed_assertions += 1
+                failures.append(
+                    f"{exception_key}.status: expected {expected_status!r}, "
+                    f"actual {actual_exceptions[exception_key]['status']!r}"
+                )
+        case_reports.append({
+            "id": case_id,
+            "passed": not failures,
+            "failures": failures,
+            "outcome_fingerprint": policy_outcome_fingerprint(report),
+            "policy": report,
+        })
+    coverage_total = len(all_rules) + len(all_exceptions)
+    coverage_count = len(covered_rules) + len(covered_exceptions)
+    baseline_changes = []
+    if baseline_path:
+        baseline = load_data(baseline_path)
+        if baseline.get("format") != POLICY_TEST_REPORT_FORMAT:
+            raise ValueError(
+                f"policy test baseline must be {POLICY_TEST_REPORT_FORMAT}"
+            )
+        previous = {
+            str(case["id"]): str(case["outcome_fingerprint"])
+            for case in baseline.get("cases", [])
+        }
+        current = {
+            str(case["id"]): str(case["outcome_fingerprint"])
+            for case in case_reports
+        }
+        for case_id in sorted(previous.keys() | current.keys()):
+            if previous.get(case_id) != current.get(case_id):
+                baseline_changes.append({
+                    "id": case_id,
+                    "status": (
+                        "added" if case_id not in previous else "removed"
+                        if case_id not in current else "changed"
+                    ),
+                    "baseline": previous.get(case_id),
+                    "current": current.get(case_id),
+                })
+    policy_digests = {
+        entry: hashlib.sha256(path.read_bytes()).hexdigest()
+        for entry, path in zip(normalized_policy_entries, policy_paths)
+    }
+    return {
+        "format": POLICY_TEST_REPORT_FORMAT,
+        "suite": suite_path.name,
+        "suite_sha256": hashlib.sha256(suite_path.read_bytes()).hexdigest(),
+        "policies": policy_digests,
+        "passed": failed_assertions == 0,
+        "assertions": {
+            "total": total_assertions,
+            "failed": failed_assertions,
+        },
+        "coverage": {
+            "rules": {
+                "covered": sorted(covered_rules),
+                "missing": sorted(all_rules - covered_rules),
+            },
+            "exceptions": {
+                "covered": sorted(covered_exceptions),
+                "missing": sorted(all_exceptions - covered_exceptions),
+            },
+            "percent": (
+                100 if coverage_total == 0
+                else round(coverage_count * 100 / coverage_total)
+            ),
+        },
+        "baseline": (
+            {
+                "source": baseline_path.name,
+                "changed": bool(baseline_changes),
+                "changes": baseline_changes,
+            }
+            if baseline_path else None
+        ),
+        "cases": case_reports,
+    }
+
+
 def sarif_result(
     rule_id: str,
     level: str,
@@ -6686,6 +7003,115 @@ def load_review_ownership(path: Path | None) -> dict[str, Any] | None:
     return normalized
 
 
+def normalize_repository_path(value: str, label: str = "source path") -> str:
+    normalized = value.strip().replace("\\", "/")
+    if (
+        not normalized
+        or normalized.startswith("/")
+        or normalized.endswith("/")
+        or "//" in normalized
+        or any(part in {"", ".", ".."} for part in normalized.split("/"))
+        or any(ord(character) < 32 for character in normalized)
+    ):
+        raise ValueError(f"{label} must be a repository-relative file path")
+    return normalized
+
+
+def codeowners_pattern_regex(pattern: str) -> re.Pattern[str]:
+    if pattern.startswith("!"):
+        raise ValueError("CODEOWNERS negation patterns are not supported")
+    directory = pattern.endswith("/")
+    anchored = pattern.startswith("/") or "/" in pattern.rstrip("/")
+    normalized = pattern.lstrip("/").rstrip("/")
+    if not normalized:
+        raise ValueError("CODEOWNERS pattern must not be empty")
+    expression = []
+    index = 0
+    while index < len(normalized):
+        character = normalized[index]
+        if character == "*":
+            if index + 1 < len(normalized) and normalized[index + 1] == "*":
+                expression.append(".*")
+                index += 2
+                continue
+            expression.append("[^/]*")
+        elif character == "?":
+            expression.append("[^/]")
+        else:
+            expression.append(re.escape(character))
+        index += 1
+    prefix = "^" if anchored else r"(?:^|.*/)"
+    suffix = r"(?:/.*)?$" if directory else "$"
+    try:
+        return re.compile(prefix + "".join(expression) + suffix)
+    except re.error as error:
+        raise ValueError(f"invalid CODEOWNERS pattern: {pattern}") from error
+
+
+def load_codeowners_default(
+    path: Path | None,
+    source_path: str,
+) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    if not path.is_file():
+        raise ValueError(f"CODEOWNERS file not found: {path}")
+    if path.stat().st_size > MAX_STRUCTURED_INPUT_BYTES:
+        raise ValueError("CODEOWNERS file exceeds the structured input limit")
+    rules = []
+    for line_number, raw_line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        lexer = shlex.shlex(raw_line, posix=True)
+        lexer.whitespace_split = True
+        lexer.commenters = "#"
+        try:
+            fields = list(lexer)
+        except ValueError as error:
+            raise ValueError(
+                f"invalid CODEOWNERS syntax on line {line_number}"
+            ) from error
+        if not fields:
+            continue
+        if len(fields) < 2:
+            raise ValueError(
+                f"CODEOWNERS line {line_number} requires at least one owner"
+            )
+        pattern = fields[0]
+        owners = fields[1:]
+        if any(
+            (
+                not owner.startswith("@")
+                and not re.fullmatch(r"[^@\s]+@[^@\s]+", owner)
+            )
+            or any(ord(character) < 32 for character in owner)
+            for owner in owners
+        ):
+            raise ValueError(
+                f"CODEOWNERS line {line_number} contains an invalid owner"
+            )
+        rules.append({
+            "line": line_number,
+            "pattern": pattern,
+            "owners": owners,
+            "regex": codeowners_pattern_regex(pattern),
+        })
+    normalized_source = normalize_repository_path(source_path)
+    matched = None
+    for rule in rules:
+        if rule["regex"].match(normalized_source):
+            matched = rule
+    return {
+        "source": path.name,
+        "source_path": normalized_source,
+        "matched": matched is not None,
+        "line": matched["line"] if matched else None,
+        "pattern": matched["pattern"] if matched else None,
+        "owners": list(matched["owners"]) if matched else [],
+    }
+
+
 def ownership_route_matches(
     route: dict[str, Any],
     result: dict[str, Any],
@@ -6711,6 +7137,7 @@ def ownership_route_matches(
 def apply_finding_ownership(
     sarif: dict[str, Any],
     ownership: dict[str, Any] | None,
+    codeowners: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     routes = ownership.get("routes", []) if ownership else []
     assignments = []
@@ -6721,15 +7148,25 @@ def apply_finding_ownership(
             route for route in routes
             if ownership_route_matches(route, result)
         ]
-        owners = sorted({
+        explicit_owners = sorted({
             str(owner)
             for route in matched
             for owner in route.get("owners", [])
         })
+        owners = (
+            explicit_owners
+            if explicit_owners else sorted(codeowners.get("owners", []))
+            if codeowners else []
+        )
+        assignment_source = (
+            "routes" if explicit_owners else "codeowners"
+            if owners else "unassigned"
+        )
         properties = result.setdefault("properties", {})
         if owners:
             assigned += 1
             properties["owners"] = owners
+            properties["ownerSource"] = assignment_source
             properties["ownerRouteIds"] = [
                 str(route["id"]) for route in matched
             ]
@@ -6740,18 +7177,21 @@ def apply_finding_ownership(
             "cell": properties.get("cell"),
             "owners": owners,
             "routes": [str(route["id"]) for route in matched],
+            "source": assignment_source,
         })
     total = len(results)
     unassigned = total - assigned
+    configured = ownership is not None or codeowners is not None
     return {
         "format": OWNERSHIP_REPORT_FORMAT,
         "status": (
             "not-configured"
-            if ownership is None else "passed"
+            if not configured else "passed"
             if unassigned == 0 else "partial"
         ),
-        "configured": ownership is not None,
+        "configured": configured,
         "source": ownership.get("source") if ownership else None,
+        "codeowners": copy.deepcopy(codeowners),
         "passed": unassigned == 0,
         "total_findings": total,
         "assigned": assigned,
@@ -6796,6 +7236,7 @@ def bundle_provenance(
     source_revision: str | None,
     source_repository: str | None,
     source_url: str | None,
+    source_path: str | None,
 ) -> dict[str, Any]:
     artifact_paths = {"bundle.json"}
     for value in manifest.get("artifacts", {}).values():
@@ -6832,6 +7273,9 @@ def bundle_provenance(
         256,
     )
     revision_url = validate_web_url(source_url, "source URL")
+    repository_path = normalize_repository_path(
+        source_path or str(manifest.get("source", {}).get("name", "diagram.json"))
+    )
     if revision_url is None and revision and repository:
         server = validate_web_url(
             os.environ.get("GITHUB_SERVER_URL"),
@@ -6844,6 +7288,7 @@ def bundle_provenance(
         "revision_type": "scm" if revision else "bundle",
         "repository": repository,
         "source_url": revision_url,
+        "source_path": repository_path,
         "bundle_sha256": bundle_digest,
         "artifacts": artifact_digests,
     }
@@ -6983,9 +7428,166 @@ def review_summary_markdown(
         f"- [Policy report]({review_artifact_url(base_url, 'reports/policy.json')})",
         f"- [Ownership report]({review_artifact_url(base_url, 'reports/ownership.json')})",
         f"- [SARIF findings]({review_artifact_url(base_url, 'reports/findings.sarif')})",
+        f"- [Review attestation]({review_artifact_url(base_url, 'reports/attestation.json')})",
         "",
     ])
     return "\n".join(lines)
+
+
+def review_gate_failed(review: dict[str, Any]) -> bool:
+    status = review["status"]
+    return (
+        not status["audit"]["passed"]
+        or not status["security"]["passed"]
+        or not status["extraction"]["lossless"]
+        or not status["extraction"]["semantic_match"]
+        or status["exports"]["status"] == "failed"
+        or not status["policy"]["passed"]
+        or (
+            status["ownership"]["configured"]
+            and not status["ownership"]["passed"]
+        )
+    )
+
+
+def github_checks_report(
+    review: dict[str, Any],
+    sarif: dict[str, Any],
+    summary_markdown: str,
+    public_base_url: str | None,
+) -> dict[str, Any]:
+    provenance = review["provenance"]
+    revision = str(provenance["revision"])
+    repository = provenance.get("repository")
+    if (
+        provenance.get("revision_type") != "scm"
+        or not re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", revision)
+        or not repository
+    ):
+        raise ValueError(
+            "--github-checks requires a full SCM revision and source repository"
+        )
+    base_url = validate_web_url(public_base_url, "public base URL")
+    annotations = []
+    for result in sarif["runs"][0]["results"]:
+        level = str(result.get("level", "warning"))
+        properties = result.get("properties", {})
+        artifact = (
+            result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+        )
+        cell = properties.get("cell")
+        artifact_target = (
+            f"{artifact}#{cell}"
+            if cell and artifact.startswith("pages/") else artifact
+        )
+        evidence_url = review_artifact_url(base_url, artifact_target)
+        owners = ", ".join(properties.get("owners", [])) or "unassigned"
+        raw_details = (
+            f"Evidence: {evidence_url}\n"
+            f"Owners: {owners}\n"
+            "Stable finding: "
+            f"{result['partialFingerprints']['stableFinding']}"
+        )
+        annotations.append({
+            "path": str(provenance["source_path"]),
+            "start_line": 1,
+            "end_line": 1,
+            "annotation_level": (
+                "failure" if level == "error" else "warning"
+                if level == "warning" else "notice"
+            ),
+            "message": str(result["message"]["text"])[:65535],
+            "title": str(result["ruleId"])[:255],
+            "raw_details": raw_details[:65535],
+        })
+    maximum_annotations = 50
+    included = annotations[:maximum_annotations]
+    conclusion = (
+        "failure" if review_gate_failed(review) else "neutral"
+        if annotations else "success"
+    )
+    details_url = (
+        urllib.parse.urljoin(f"{base_url.rstrip('/')}/", "index.html")
+        if base_url else None
+    )
+    request = {
+        "name": "Diagram architecture review",
+        "head_sha": revision,
+        "status": "completed",
+        "conclusion": conclusion,
+        "output": {
+            "title": f"{review['title']} architecture review"[:255],
+            "summary": summary_markdown[:65535],
+            "text": (
+                f"{len(annotations)} finding(s); "
+                f"{len(included)} annotation(s) included. "
+                "Portable SARIF and review evidence remain authoritative."
+            ),
+            "annotations": included,
+        },
+    }
+    if details_url:
+        request["details_url"] = details_url
+    return {
+        "format": GITHUB_CHECKS_FORMAT,
+        "repository": str(repository),
+        "source_path": str(provenance["source_path"]),
+        "total_findings": len(annotations),
+        "included_annotations": len(included),
+        "omitted_annotations": max(0, len(annotations) - len(included)),
+        "request": request,
+    }
+
+
+def review_attestation_statement(
+    review: dict[str, Any],
+    review_bytes: bytes,
+) -> dict[str, Any]:
+    provenance = review["provenance"]
+    return {
+        "_type": "https://in-toto.io/Statement/v1",
+        "subject": [{
+            "name": "review.json",
+            "digest": {
+                "sha256": hashlib.sha256(review_bytes).hexdigest(),
+            },
+        }],
+        "predicateType": REVIEW_ATTESTATION_PREDICATE,
+        "predicate": {
+            "generator": "drawio-diagram-engineer",
+            "tool_version": review["tool_version"],
+            "source": {
+                "revision": provenance["revision"],
+                "revision_type": provenance["revision_type"],
+                "repository": provenance.get("repository"),
+                "path": provenance["source_path"],
+                "url": provenance.get("source_url"),
+            },
+            "bundle": {
+                "sha256": provenance["bundle_sha256"],
+                "artifacts": copy.deepcopy(provenance["artifacts"]),
+            },
+        },
+    }
+
+
+def validate_review_attestation(
+    review_directory: Path,
+) -> tuple[dict[str, Any], dict[str, Any], list[str]]:
+    review_path = review_directory / "review.json"
+    attestation_path = review_directory / "reports/attestation.json"
+    if not review_path.is_file() or not attestation_path.is_file():
+        raise ValueError("review site requires review.json and reports/attestation.json")
+    review_bytes = review_path.read_bytes()
+    review = json.loads(review_bytes)
+    statement = json.loads(attestation_path.read_text(encoding="utf-8"))
+    errors = []
+    expected = review_attestation_statement(review, review_bytes)
+    if statement != expected:
+        errors.append(
+            "attestation statement does not match the review manifest and provenance"
+        )
+    return review, statement, errors
 
 
 def status_badge(label: str, passed: bool, detail: str) -> str:
@@ -7124,13 +7726,30 @@ def review_site_html(review: dict[str, Any]) -> str:
         f"<td>{html.escape(', '.join(str(owner) for owner in route['owners']))}</td>"
         f"<td>{html.escape(ownership_route_selectors(route))}</td></tr>"
         for route in review["ownership"]["routes"]
-    ) or '<tr><td colspan="3">No ownership routes configured.</td></tr>'
+    )
+    codeowners = review["ownership"].get("codeowners")
+    if codeowners:
+        ownership_rows += (
+            "<tr><td>CODEOWNERS fallback</td>"
+            f"<td>{html.escape(', '.join(codeowners.get('owners', [])) or 'no match')}</td>"
+            f"<td>{html.escape(str(codeowners['source_path']))}"
+            f" · {html.escape(str(codeowners.get('pattern') or 'unmatched'))}</td></tr>"
+        )
+    ownership_rows = (
+        ownership_rows
+        or '<tr><td colspan="3">No ownership routes configured.</td></tr>'
+    )
     lifecycle = status["annotations"]
     provenance = review["provenance"]
     source_link = (
         f'<a href="{html.escape(provenance["source_url"])}" '
         'rel="noreferrer">Open source revision</a>'
         if provenance.get("source_url") else "No source URL supplied"
+    )
+    github_checks_link = (
+        '          <a href="reports/github-checks.json">'
+        "GitHub Checks request</a>\n"
+        if review["artifacts"].get("github_checks") else ""
     )
     return f"""<!doctype html>
 <html lang="en">
@@ -7191,6 +7810,7 @@ def review_site_html(review: dict[str, Any]) -> str:
           <dt>Revision</dt><dd>{html.escape(str(provenance["revision"]))}</dd>
           <dt>Type</dt><dd>{html.escape(str(provenance["revision_type"]))}</dd>
           <dt>Repository</dt><dd>{html.escape(str(provenance.get("repository") or "not supplied"))}</dd>
+          <dt>Source path</dt><dd>{html.escape(str(provenance["source_path"]))}</dd>
           <dt>Bundle SHA-256</dt><dd>{html.escape(str(provenance["bundle_sha256"]))}</dd>
           <dt>Source</dt><dd>{source_link}</dd>
         </dl>
@@ -7206,6 +7826,7 @@ def review_site_html(review: dict[str, Any]) -> str:
           <a href="reports/ownership.json">Ownership report</a>
           <a href="reports/findings.sarif">SARIF findings</a>
           <a href="reports/summary.md">PR check summary</a>
+{github_checks_link}          <a href="reports/attestation.json">Review attestation</a>
         </div>
       </section>
     </div>
@@ -7226,11 +7847,14 @@ def publish_review_site(
     baseline: Path | None = None,
     policy_paths: list[Path] | None = None,
     ownership_path: Path | None = None,
+    codeowners_path: Path | None = None,
     evaluation_date_value: str | None = None,
     source_revision: str | None = None,
     source_repository: str | None = None,
     source_url: str | None = None,
+    source_path: str | None = None,
     public_base_url: str | None = None,
+    github_checks: bool = False,
     force: bool = False,
 ) -> dict[str, Any]:
     manifest, diagram_ir, audit, persisted_security, drawio_path = (
@@ -7245,6 +7869,11 @@ def publish_review_site(
         source_revision,
         source_repository,
         source_url,
+        source_path,
+    )
+    codeowners_default = load_codeowners_default(
+        codeowners_path,
+        str(provenance["source_path"]),
     )
     if output.exists() and not output.is_dir():
         raise ValueError(f"review output must be a directory: {output}")
@@ -7409,8 +8038,13 @@ def publish_review_site(
                 "ownership": "reports/ownership.json",
                 "sarif": "reports/findings.sarif",
                 "summary": "reports/summary.md",
+                "attestation": "reports/attestation.json",
             },
         }
+        if github_checks:
+            review["artifacts"]["github_checks"] = (
+                "reports/github-checks.json"
+            )
         policy_report = evaluate_architecture_policy(
             architecture_policies, review, evaluation_date,
         )
@@ -7426,7 +8060,7 @@ def publish_review_site(
             review, audit, persisted_security, extraction, policy_report,
         )
         ownership_report = apply_finding_ownership(
-            sarif, ownership_config,
+            sarif, ownership_config, codeowners_default,
         )
         review["ownership"] = ownership_report
         review["status"]["ownership"] = {
@@ -7442,14 +8076,28 @@ def publish_review_site(
         summary_markdown = review_summary_markdown(
             review, sarif, public_base_url,
         )
-        for name, report in (
+        checks_report = (
+            github_checks_report(
+                review,
+                sarif,
+                summary_markdown,
+                public_base_url,
+            )
+            if github_checks else None
+        )
+        reports_to_write = [
             ("audit.json", audit),
             ("security.json", persisted_security),
             ("extraction.json", extraction),
             ("policy.json", policy_report),
             ("ownership.json", ownership_report),
             ("findings.sarif", sarif),
-        ):
+        ]
+        if checks_report:
+            reports_to_write.append(
+                ("github-checks.json", checks_report)
+            )
+        for name, report in reports_to_write:
             (reports_dir / name).write_text(
                 json.dumps(report, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
@@ -7458,8 +8106,16 @@ def publish_review_site(
             summary_markdown,
             encoding="utf-8",
         )
-        (staging / "review.json").write_text(
-            json.dumps(review, indent=2, ensure_ascii=False) + "\n",
+        review_bytes = (
+            json.dumps(review, indent=2, ensure_ascii=False) + "\n"
+        ).encode("utf-8")
+        (staging / "review.json").write_bytes(review_bytes)
+        attestation = review_attestation_statement(
+            review,
+            review_bytes,
+        )
+        (reports_dir / "attestation.json").write_text(
+            json.dumps(attestation, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
         (staging / "index.html").write_text(
@@ -7530,11 +8186,14 @@ def command_publish(args: argparse.Namespace) -> int:
         baseline=Path(args.baseline) if args.baseline else None,
         policy_paths=[Path(path) for path in (args.policy or [])],
         ownership_path=Path(args.ownership) if args.ownership else None,
+        codeowners_path=Path(args.codeowners) if args.codeowners else None,
         evaluation_date_value=args.evaluation_date,
         source_revision=args.source_revision,
         source_repository=args.source_repository,
         source_url=args.source_url,
+        source_path=args.source_path,
         public_base_url=args.public_base_url,
+        github_checks=args.github_checks,
         force=args.force,
     )
     summary = {
@@ -7545,22 +8204,16 @@ def command_publish(args: argparse.Namespace) -> int:
         "annotations": len(review["annotations"]),
         "sarif": str(output / review["artifacts"]["sarif"]),
         "summary": str(output / review["artifacts"]["summary"]),
+        "attestation": str(output / review["artifacts"]["attestation"]),
         "revision": review["provenance"]["revision"],
         "status": review["status"],
     }
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
-    strict_failed = (
-        not review["status"]["audit"]["passed"]
-        or not review["status"]["security"]["passed"]
-        or not review["status"]["extraction"]["lossless"]
-        or not review["status"]["extraction"]["semantic_match"]
-        or review["status"]["exports"]["status"] == "failed"
-        or not review["status"]["policy"]["passed"]
-        or (
-            review["status"]["ownership"]["configured"]
-            and not review["status"]["ownership"]["passed"]
+    if review["artifacts"].get("github_checks"):
+        summary["github_checks"] = str(
+            output / review["artifacts"]["github_checks"]
         )
-    )
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    strict_failed = review_gate_failed(review)
     if args.fail_on_policy and not review["status"]["policy"]["passed"]:
         return 8
     if (
@@ -7573,6 +8226,186 @@ def command_publish(args: argparse.Namespace) -> int:
     if args.strict and strict_failed:
         return 3
     return 0
+
+
+def command_policy_test(args: argparse.Namespace) -> int:
+    report = run_policy_test_suite(
+        Path(args.input),
+        Path(args.baseline) if args.baseline else None,
+    )
+    coverage_failed = args.strict and report["coverage"]["percent"] < 100
+    baseline_failed = (
+        args.fail_on_change
+        and report["baseline"] is not None
+        and report["baseline"]["changed"]
+    )
+    report["gate"] = {
+        "passed": bool(
+            report["passed"] and not coverage_failed and not baseline_failed
+        ),
+        "strict_coverage_failed": bool(coverage_failed),
+        "baseline_change_failed": bool(baseline_failed),
+    }
+    if args.output:
+        output = Path(args.output)
+        if output.exists() and not args.force:
+            raise ValueError(
+                f"{output} already exists; choose another file or pass --force"
+            )
+        if output.exists() and output.is_dir():
+            raise ValueError("policy test output must be a file")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["gate"]["passed"] else 10
+
+
+def command_attest_review(args: argparse.Namespace) -> int:
+    review_directory = Path(args.input)
+    _, statement, errors = validate_review_attestation(review_directory)
+    if errors:
+        raise ValueError(errors[0])
+    ssh_keygen = shutil.which("ssh-keygen")
+    if not ssh_keygen:
+        raise ValueError("ssh-keygen is required to sign a review attestation")
+    key = Path(args.signing_key)
+    if not key.is_file():
+        raise ValueError(f"signing key not found: {key}")
+    namespace = validate_optional_text(
+        args.namespace,
+        "signature namespace",
+        128,
+    )
+    if namespace is None or any(character.isspace() for character in namespace):
+        raise ValueError("signature namespace must not contain whitespace")
+    attestation_path = review_directory / "reports/attestation.json"
+    signature_path = attestation_path.with_suffix(
+        attestation_path.suffix + ".sig"
+    )
+    if signature_path.exists():
+        if not args.force:
+            raise ValueError(
+                f"{signature_path} already exists; pass --force to replace it"
+            )
+        if not signature_path.is_file():
+            raise ValueError("review attestation signature must be a file")
+    with tempfile.TemporaryDirectory(
+        prefix=".attestation-sign-",
+        dir=attestation_path.parent,
+    ) as temporary_directory:
+        temporary_attestation = (
+            Path(temporary_directory) / attestation_path.name
+        )
+        temporary_attestation.write_bytes(attestation_path.read_bytes())
+        temporary_signature = temporary_attestation.with_suffix(
+            temporary_attestation.suffix + ".sig"
+        )
+        completed = subprocess.run(
+            [
+                ssh_keygen,
+                "-Y",
+                "sign",
+                "-f",
+                str(key),
+                "-n",
+                namespace,
+                str(temporary_attestation),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0 or not temporary_signature.is_file():
+            raise ValueError(
+                "ssh-keygen failed to sign the review attestation: "
+                f"{completed.stderr.strip() or 'no signature was produced'}"
+            )
+        temporary_signature.replace(signature_path)
+    print(json.dumps({
+        "review": str(review_directory),
+        "attestation": str(attestation_path),
+        "signature": str(signature_path),
+        "namespace": namespace,
+        "statement_sha256": hashlib.sha256(
+            json.dumps(
+                statement,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
+def command_verify_review_attestation(args: argparse.Namespace) -> int:
+    review_directory = Path(args.input)
+    _, _, errors = validate_review_attestation(review_directory)
+    ssh_keygen = shutil.which("ssh-keygen")
+    allowed_signers = Path(args.allowed_signers)
+    attestation_path = review_directory / "reports/attestation.json"
+    signature_path = attestation_path.with_suffix(
+        attestation_path.suffix + ".sig"
+    )
+    if not ssh_keygen:
+        raise ValueError("ssh-keygen is required to verify a review attestation")
+    if not allowed_signers.is_file():
+        raise ValueError(f"allowed signers file not found: {allowed_signers}")
+    if not signature_path.is_file():
+        errors.append("review attestation signature is missing")
+    namespace = validate_optional_text(
+        args.namespace,
+        "signature namespace",
+        128,
+    )
+    identity = validate_optional_text(
+        args.identity,
+        "signer identity",
+        256,
+    )
+    if (
+        namespace is None
+        or any(character.isspace() for character in namespace)
+        or identity is None
+    ):
+        raise ValueError("signature namespace and signer identity are required")
+    if not errors:
+        completed = subprocess.run(
+            [
+                ssh_keygen,
+                "-Y",
+                "verify",
+                "-f",
+                str(allowed_signers),
+                "-I",
+                identity,
+                "-n",
+                namespace,
+                "-s",
+                str(signature_path),
+            ],
+            input=attestation_path.read_text(encoding="utf-8"),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            errors.append(
+                completed.stderr.strip()
+                or "OpenSSH signature verification failed"
+            )
+    report = {
+        "format": "drawio-review-attestation-verification/v1",
+        "review": str(review_directory),
+        "identity": identity,
+        "namespace": namespace,
+        "passed": not errors,
+        "errors": errors,
+    }
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if not errors else 11
 
 
 def command_compile(args: argparse.Namespace) -> int:
@@ -8249,6 +9082,62 @@ def build_parser() -> argparse.ArgumentParser:
     merge_annotations_parser.add_argument("--force", action="store_true")
     merge_annotations_parser.set_defaults(func=command_merge_annotations)
 
+    policy_test_parser = subparsers.add_parser(
+        "policy-test",
+        help="run deterministic architecture policy contract tests",
+    )
+    policy_test_parser.add_argument(
+        "input",
+        help="drawio-policy-tests/v1 JSON or YAML suite",
+    )
+    policy_test_parser.add_argument("-o", "--output")
+    policy_test_parser.add_argument(
+        "--baseline",
+        help="prior drawio-policy-test-report/v1 used for outcome drift",
+    )
+    policy_test_parser.add_argument("--fail-on-change", action="store_true")
+    policy_test_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="require assertions to cover every rule and exception",
+    )
+    policy_test_parser.add_argument("--force", action="store_true")
+    policy_test_parser.set_defaults(func=command_policy_test)
+
+    attest_review_parser = subparsers.add_parser(
+        "attest-review",
+        help="sign a published review attestation with an OpenSSH key",
+    )
+    attest_review_parser.add_argument("input", help="published review directory")
+    attest_review_parser.add_argument("--signing-key", required=True)
+    attest_review_parser.add_argument(
+        "--namespace",
+        default="drawio-review",
+    )
+    attest_review_parser.add_argument("--force", action="store_true")
+    attest_review_parser.set_defaults(func=command_attest_review)
+
+    verify_attestation_parser = subparsers.add_parser(
+        "verify-review-attestation",
+        help="verify review provenance and its OpenSSH signature",
+    )
+    verify_attestation_parser.add_argument(
+        "input",
+        help="published review directory",
+    )
+    verify_attestation_parser.add_argument(
+        "--allowed-signers",
+        required=True,
+    )
+    verify_attestation_parser.add_argument("--identity", required=True)
+    verify_attestation_parser.add_argument(
+        "--namespace",
+        default="drawio-review",
+    )
+    verify_attestation_parser.set_defaults(
+        func=command_verify_review_attestation
+    )
+
     publish_parser = subparsers.add_parser(
         "publish",
         help="create an atomic portable HTML/SVG review site from a bundle",
@@ -8278,6 +9167,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="finding ownership routes for SARIF page, cell, and rule matches",
     )
     publish_parser.add_argument(
+        "--codeowners",
+        help="repository CODEOWNERS used only for unassigned fallback findings",
+    )
+    publish_parser.add_argument(
         "--evaluation-date",
         help="YYYY-MM-DD date used to evaluate expiring policy exceptions",
     )
@@ -8285,8 +9178,17 @@ def build_parser() -> argparse.ArgumentParser:
     publish_parser.add_argument("--source-repository")
     publish_parser.add_argument("--source-url")
     publish_parser.add_argument(
+        "--source-path",
+        help="repository-relative diagram source path for CODEOWNERS and Checks",
+    )
+    publish_parser.add_argument(
         "--public-base-url",
         help="HTTP(S) review root used for direct links in reports/summary.md",
+    )
+    publish_parser.add_argument(
+        "--github-checks",
+        action="store_true",
+        help="emit a GitHub Checks API request backed by summary and SARIF",
     )
     publish_parser.add_argument("--fail-on-visual-change", action="store_true")
     publish_parser.add_argument("--fail-on-policy", action="store_true")

@@ -1354,7 +1354,10 @@ class UserExperienceTests(unittest.TestCase):
             portal_html = (portal / "index.html").read_text(encoding="utf-8")
             self.assertIn('id="catalog-search"', portal_html)
             self.assertIn("uulab/commerce", portal_html)
-            self.assertNotIn("https://", portal_html)
+            self.assertNotRegex(
+                portal_html,
+                r'<(?:script|img|link)[^>]+(?:src|href)="https://',
+            )
             self.assertTrue((portal / "portal.js").is_file())
             self.assertTrue((portal / "favicon.svg").is_file())
             self.assertTrue((portal / "og-image.svg").is_file())

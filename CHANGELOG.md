@@ -2,6 +2,15 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 1.4.0 — 2026-07-29
+
+- Compose multiple architecture policy packs with stable namespaced rule IDs.
+- Add page/cell-scoped, owned, expiring exceptions with explicit applied, unused, and expired evidence.
+- Route SARIF findings to accountable owners and optionally fail publication when findings remain unassigned.
+- Embed source revision, repository URL, bundle digest, and per-artifact SHA-256 provenance in review manifests.
+- Generate portable pull-request summaries with gate status, changed pages, unresolved decisions, owners, and direct evidence links.
+- Extend the script-free review UI, schemas, examples, and pinned GitHub workflow for team-scale governance.
+
 ## 1.3.0 — 2026-07-29
 
 - Carry reviewer annotations across regenerated sites and merge accepted/resolved full-record updates by stable ID.

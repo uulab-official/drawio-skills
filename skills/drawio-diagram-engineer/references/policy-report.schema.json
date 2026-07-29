@@ -7,11 +7,14 @@
   "required": [
     "format",
     "status",
+    "evaluation_date",
     "policy",
+    "policies",
     "passed",
     "errors",
     "warnings",
-    "results"
+    "results",
+    "exceptions"
   ],
   "properties": {
     "format": {
@@ -20,26 +23,25 @@
     "status": {
       "enum": ["not-configured", "passed", "failed"]
     },
+    "evaluation_date": {
+      "type": "string",
+      "format": "date"
+    },
     "policy": {
       "oneOf": [
         {
           "type": "null"
         },
         {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["format", "name"],
-          "properties": {
-            "format": {
-              "const": "drawio-architecture-policy/v1"
-            },
-            "name": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
+          "$ref": "#/$defs/policySummary"
         }
       ]
+    },
+    "policies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/policySummary"
+      }
     },
     "passed": {
       "type": "boolean"
@@ -55,26 +57,144 @@
     "results": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["id", "type", "level", "passed", "message", "detail"],
-        "properties": {
-          "id": {
+        "$ref": "#/$defs/ruleResult"
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exceptionResult"
+      }
+    }
+  },
+  "$defs": {
+    "policySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "id", "name", "source"],
+      "properties": {
+        "format": {
+          "const": "drawio-architecture-policy/v1"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "ruleResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "id",
+        "key",
+        "type",
+        "level",
+        "passed",
+        "compliant",
+        "waived",
+        "exceptions",
+        "message",
+        "detail"
+      ],
+      "properties": {
+        "policy_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "level": {
+          "enum": ["error", "warning"]
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "compliant": {
+          "type": "boolean"
+        },
+        "waived": {
+          "type": "boolean"
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
             "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "level": {
-            "enum": ["error", "warning"]
-          },
-          "passed": {
-            "type": "boolean"
-          },
-          "message": {
-            "type": "string"
-          },
-          "detail": {
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "exceptionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "id",
+        "key",
+        "rule",
+        "level",
+        "reason",
+        "owner",
+        "expires",
+        "scope",
+        "status",
+        "applied_to"
+      ],
+      "properties": {
+        "policy_id": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "rule": {
+          "type": "string"
+        },
+        "level": {
+          "enum": ["error", "warning"]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "expires": {
+          "type": "string",
+          "format": "date"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "status": {
+          "enum": ["applied", "unused", "expired"]
+        },
+        "applied_to": {
+          "type": "array",
+          "items": {
             "type": "string"
           }
         }

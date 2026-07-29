@@ -36,8 +36,10 @@ HTTP, HTTPS, and mail links are listed in `external_links` for human review but 
 - Rendering invokes draw.io Desktop without a shell.
 - JSON workflows require no third-party runtime package.
 - Published review sites contain no scripts or remote assets and apply a restrictive Content Security Policy.
-- Reviewer updates, carried annotations, and policy messages are HTML-escaped before publication; SARIF and policy evidence are JSON encoded.
+- Reviewer updates, carried annotations, policy messages, ownership labels, repository coordinates, and revision labels are HTML-escaped before publication; SARIF, policy, ownership, and provenance evidence are JSON encoded.
 - Policy packs never execute code, fetch links, or read artifacts outside the owned bundle and explicitly supplied local files.
+- Ownership and policy selectors are bounded local glob matches. The publisher validates source/public URLs as HTTP(S) but never fetches them.
+- Markdown summaries escape table and link syntax before writing reviewer-controlled content.
 
 ## Boundaries
 

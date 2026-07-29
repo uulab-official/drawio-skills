@@ -1,0 +1,36 @@
+{
+  "format": "drawio-review-ownership/v1",
+  "routes": [
+    {
+      "id": "platform-event-stream",
+      "owners": [
+        "@uulab/platform"
+      ],
+      "pages": [
+        "logical"
+      ],
+      "cells": [
+        "node-events"
+      ]
+    },
+    {
+      "id": "architecture-policy",
+      "owners": [
+        "@uulab/architecture"
+      ],
+      "rules": [
+        "policy.*",
+        "policy-exception.*"
+      ]
+    },
+    {
+      "id": "security-findings",
+      "owners": [
+        "@uulab/security"
+      ],
+      "rules": [
+        "security.*"
+      ]
+    }
+  ]
+}

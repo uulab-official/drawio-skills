@@ -9,6 +9,10 @@
     "format": {
       "const": "drawio-architecture-policy/v1"
     },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
     "name": {
       "type": "string",
       "minLength": 1
@@ -35,9 +39,71 @@
           }
         ]
       }
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exception"
+      }
     }
   },
   "$defs": {
+    "exception": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rule", "reason", "expires"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "rule": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "level": {
+          "enum": ["error", "warning"],
+          "default": "error"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expires": {
+          "type": "string",
+          "format": "date"
+        },
+        "scope": {
+          "$ref": "#/$defs/exceptionScope"
+        }
+      }
+    },
+    "exceptionScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9*?]+(?:-[a-z0-9*?]+)*$"
+          }
+        },
+        "cells": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9*?]+(?:-[a-z0-9*?]+)*$"
+          }
+        }
+      }
+    },
     "baseRule": {
       "type": "object",
       "required": ["id", "type"],

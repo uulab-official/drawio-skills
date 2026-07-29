@@ -21,7 +21,9 @@ concurrency:
 
 env:
   DIAGRAM_SOURCE: architecture/system.json
-  ARCHITECTURE_POLICY: architecture/review-policy.json
+  ORGANIZATION_POLICY: architecture/policies/organization.json
+  TEAM_POLICY: architecture/policies/team.json
+  REVIEW_OWNERSHIP: architecture/review-ownership.json
 
 jobs:
   publish:
@@ -38,6 +40,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
+
+      - name: Resolve the deterministic policy date
+        run: echo "POLICY_DATE=$(git show -s --format=%cs "$GITHUB_SHA")" >> "$GITHUB_ENV"
+
       - name: Build the diagram evidence bundle
         run: |
           python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
@@ -50,9 +59,26 @@ jobs:
           python skills/drawio-diagram-engineer/scripts/drawio_tool.py \
             publish "${RUNNER_TEMP}/diagram-bundle" \
             -o "${RUNNER_TEMP}/diagram-review" \
-            --policy "$ARCHITECTURE_POLICY" \
+            --policy "$ORGANIZATION_POLICY" \
+            --policy "$TEAM_POLICY" \
+            --ownership "$REVIEW_OWNERSHIP" \
+            --evaluation-date "$POLICY_DATE" \
+            --source-revision "$GITHUB_SHA" \
+            --source-repository "$GITHUB_REPOSITORY" \
+            --source-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA" \
+            --public-base-url "${{ steps.pages.outputs.base_url }}" \
             --fail-on-policy \
+            --fail-on-unowned-findings \
             --strict
+
+      - name: Publish the architecture check summary
+        if: always()
+        run: |
+          if [ -f "${RUNNER_TEMP}/diagram-review/reports/summary.md" ]; then
+            cat "${RUNNER_TEMP}/diagram-review/reports/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Architecture review publication did not produce a summary." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload findings to code scanning
         uses: github/codeql-action/upload-sarif@4187e74d05793876e9989daffde9c3e66b4acd07
@@ -68,9 +94,6 @@ jobs:
           if-no-files-found: error
           overwrite: false
           retention-days: 30
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b
 
       - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa

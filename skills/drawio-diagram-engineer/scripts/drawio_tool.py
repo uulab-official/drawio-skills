@@ -7,6 +7,7 @@ import argparse
 import ast
 import base64
 import copy
+import fnmatch
 import hashlib
 import html
 import importlib.util
@@ -22,16 +23,19 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 import zlib
 from collections import defaultdict, deque
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 IR_VERSION = "1"
 IR_METADATA_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
 REVIEW_FORMAT = "drawio-review-site/v1"
 POLICY_FORMAT = "drawio-architecture-policy/v1"
 POLICY_REPORT_FORMAT = "drawio-architecture-policy-report/v1"
+OWNERSHIP_FORMAT = "drawio-review-ownership/v1"
+OWNERSHIP_REPORT_FORMAT = "drawio-review-ownership-report/v1"
 SARIF_VERSION = "2.1.0"
 MAX_STRUCTURED_INPUT_BYTES = 50 * 1024 * 1024
 MAX_XML_INPUT_BYTES = 50 * 1024 * 1024
@@ -6052,74 +6056,192 @@ POLICY_RULE_TYPES = {
 }
 
 
-def load_architecture_policy(path: Path | None) -> dict[str, Any] | None:
-    if path is None:
-        return None
-    policy = load_data(path)
-    if policy.get("format") != POLICY_FORMAT:
-        raise ValueError(f"policy format must be {POLICY_FORMAT}")
-    name = str(policy.get("name", "")).strip()
-    rules = policy.get("rules")
-    if not name or not isinstance(rules, list) or not rules:
-        raise ValueError("policy requires a name and at least one rule")
-    seen: set[str] = set()
-    for index, rule in enumerate(rules, start=1):
-        if not isinstance(rule, dict):
-            raise ValueError(f"policy rule {index} must be an object")
-        rule_id = str(rule.get("id", ""))
-        rule_type = str(rule.get("type", ""))
-        level = str(rule.get("level", "error"))
-        if not valid_semantic_id(rule_id) or rule_id in seen:
-            raise ValueError(f"policy rule {index} requires a unique semantic id")
-        if rule_type not in POLICY_RULE_TYPES:
-            raise ValueError(f"policy rule {rule_id} has unsupported type {rule_type}")
-        if level not in {"error", "warning"}:
-            raise ValueError(f"policy rule {rule_id} level must be error or warning")
-        if rule_type == "required-pages":
-            pages = rule.get("pages")
+def parse_evaluation_date(value: str | None) -> date:
+    if value:
+        try:
+            return date.fromisoformat(value)
+        except ValueError as error:
+            raise ValueError("evaluation date must use YYYY-MM-DD") from error
+    source_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    if source_epoch:
+        try:
+            return datetime.fromtimestamp(
+                int(source_epoch), timezone.utc,
+            ).date()
+        except (ValueError, OverflowError, OSError) as error:
+            raise ValueError("SOURCE_DATE_EPOCH must be a valid Unix timestamp") from error
+    return datetime.now(timezone.utc).date()
+
+
+def valid_selector_pattern(value: str) -> bool:
+    return bool(re.fullmatch(r"[a-z0-9*?]+(?:-[a-z0-9*?]+)*", value))
+
+
+def load_architecture_policies(paths: list[Path]) -> list[dict[str, Any]]:
+    policies = []
+    seen_policy_ids: set[str] = set()
+    for path in paths:
+        policy = load_data(path)
+        if policy.get("format") != POLICY_FORMAT:
+            raise ValueError(f"policy format must be {POLICY_FORMAT}: {path}")
+        name = str(policy.get("name", "")).strip()
+        policy_id = str(policy.get("id") or slugify(name))
+        rules = policy.get("rules")
+        if (
+            not name
+            or not valid_semantic_id(policy_id)
+            or policy_id in seen_policy_ids
+            or not isinstance(rules, list)
+            or not rules
+        ):
+            raise ValueError(
+                "each policy requires a unique semantic id, name, and at least one rule"
+            )
+        seen: set[str] = set()
+        for index, rule in enumerate(rules, start=1):
+            if not isinstance(rule, dict):
+                raise ValueError(f"policy rule {index} must be an object")
+            rule_id = str(rule.get("id", ""))
+            rule_type = str(rule.get("type", ""))
+            level = str(rule.get("level", "error"))
+            if not valid_semantic_id(rule_id) or rule_id in seen:
+                raise ValueError(f"policy rule {index} requires a unique semantic id")
+            if rule_type not in POLICY_RULE_TYPES:
+                raise ValueError(
+                    f"policy rule {rule_id} has unsupported type {rule_type}"
+                )
+            if level not in {"error", "warning"}:
+                raise ValueError(f"policy rule {rule_id} level must be error or warning")
+            if rule_type == "required-pages":
+                pages = rule.get("pages")
+                if (
+                    not isinstance(pages, list)
+                    or not pages
+                    or any(not valid_semantic_id(str(page)) for page in pages)
+                ):
+                    raise ValueError(f"policy rule {rule_id} requires semantic page ids")
+            elif rule_type == "required-export-formats":
+                formats = rule.get("formats")
+                if (
+                    not isinstance(formats, list)
+                    or not formats
+                    or any(
+                        str(fmt) not in {"png", "svg", "pdf", "jpg"}
+                        for fmt in formats
+                    )
+                ):
+                    raise ValueError(
+                        f"policy rule {rule_id} requires png, svg, pdf, or jpg formats"
+                    )
+            elif rule_type == "minimum-audit-score":
+                value = rule.get("value")
+                if (
+                    not isinstance(value, int)
+                    or isinstance(value, bool)
+                    or not 0 <= value <= 100
+                ):
+                    raise ValueError(f"policy rule {rule_id} value must be 0..100")
+            elif rule_type == "maximum-open-annotations":
+                value = rule.get("value")
+                if (
+                    not isinstance(value, int)
+                    or isinstance(value, bool)
+                    or value < 0
+                ):
+                    raise ValueError(
+                        f"policy rule {rule_id} value must be a non-negative integer"
+                    )
+            seen.add(rule_id)
+        exceptions = policy.get("exceptions", [])
+        if not isinstance(exceptions, list):
+            raise ValueError(f"policy {policy_id} exceptions must be an array")
+        seen_exceptions: set[str] = set()
+        for index, exception in enumerate(exceptions, start=1):
+            if not isinstance(exception, dict):
+                raise ValueError(f"policy exception {index} must be an object")
+            exception_id = str(exception.get("id", ""))
+            rule_id = str(exception.get("rule", ""))
+            reason = str(exception.get("reason", "")).strip()
+            expires = str(exception.get("expires", ""))
+            level = str(exception.get("level", "error"))
             if (
-                not isinstance(pages, list)
-                or not pages
-                or any(not valid_semantic_id(str(page)) for page in pages)
-            ):
-                raise ValueError(f"policy rule {rule_id} requires semantic page ids")
-        elif rule_type == "required-export-formats":
-            formats = rule.get("formats")
-            if (
-                not isinstance(formats, list)
-                or not formats
-                or any(str(fmt) not in {"png", "svg", "pdf", "jpg"} for fmt in formats)
+                not valid_semantic_id(exception_id)
+                or exception_id in seen_exceptions
+                or rule_id not in seen
+                or not reason
             ):
                 raise ValueError(
-                    f"policy rule {rule_id} requires png, svg, pdf, or jpg formats"
+                    f"policy exception {index} requires a unique id, known rule, and reason"
                 )
-        elif rule_type == "minimum-audit-score":
-            value = rule.get("value")
-            if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 100:
-                raise ValueError(f"policy rule {rule_id} value must be 0..100")
-        elif rule_type == "maximum-open-annotations":
-            value = rule.get("value")
-            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            try:
+                date.fromisoformat(expires)
+            except ValueError as error:
                 raise ValueError(
-                    f"policy rule {rule_id} value must be a non-negative integer"
+                    f"policy exception {exception_id} expires must use YYYY-MM-DD"
+                ) from error
+            if level not in {"error", "warning"}:
+                raise ValueError(
+                    f"policy exception {exception_id} level must be error or warning"
                 )
-        seen.add(rule_id)
-    return policy
+            scope = exception.get("scope", {})
+            if not isinstance(scope, dict):
+                raise ValueError(f"policy exception {exception_id} scope must be an object")
+            for selector in ("pages", "cells"):
+                values = scope.get(selector, [])
+                if (
+                    not isinstance(values, list)
+                    or any(not valid_selector_pattern(str(value)) for value in values)
+                ):
+                    raise ValueError(
+                        f"policy exception {exception_id} {selector} must be selector ids"
+                    )
+            seen_exceptions.add(exception_id)
+        normalized = copy.deepcopy(policy)
+        normalized["id"] = policy_id
+        normalized["source"] = path.name
+        policies.append(normalized)
+        seen_policy_ids.add(policy_id)
+    return policies
+
+
+def exception_scope_matches(
+    exception: dict[str, Any],
+    page: str | None,
+    cell: str | None,
+) -> bool:
+    scope = exception.get("scope", {})
+    page_patterns = [str(value) for value in scope.get("pages", [])]
+    cell_patterns = [str(value) for value in scope.get("cells", [])]
+    if page_patterns and (
+        page is None
+        or not any(fnmatch.fnmatchcase(page, pattern) for pattern in page_patterns)
+    ):
+        return False
+    if cell_patterns and (
+        cell is None
+        or not any(fnmatch.fnmatchcase(cell, pattern) for pattern in cell_patterns)
+    ):
+        return False
+    return True
 
 
 def evaluate_architecture_policy(
-    policy: dict[str, Any] | None,
+    policies: list[dict[str, Any]],
     review: dict[str, Any],
+    evaluation_date: date,
 ) -> dict[str, Any]:
-    if policy is None:
+    if not policies:
         return {
             "format": POLICY_REPORT_FORMAT,
             "status": "not-configured",
+            "evaluation_date": evaluation_date.isoformat(),
             "policy": None,
+            "policies": [],
             "passed": True,
             "errors": 0,
             "warnings": 0,
             "results": [],
+            "exceptions": [],
         }
     page_ids = {str(page["id"]) for page in review["pages"]}
     export_formats = {
@@ -6127,88 +6249,202 @@ def evaluate_architecture_policy(
         for report in review["status"]["exports"]["reports"]
         if report.get("passed") and report.get("format")
     }
-    open_annotations = sum(
-        1
+    open_annotations = [
+        annotation
         for annotation in review["annotations"]
         if annotation.get("source") == "reviewer"
         and annotation.get("status") == "open"
-    )
+    ]
     results = []
-    for rule in policy["rules"]:
-        rule_type = str(rule["type"])
-        passed = True
-        detail = ""
-        if rule_type == "required-pages":
-            required = {str(page) for page in rule["pages"]}
-            missing = sorted(required - page_ids)
-            passed = not missing
-            detail = (
-                "all required pages are present"
-                if passed else f"missing pages: {', '.join(missing)}"
-            )
-        elif rule_type == "minimum-audit-score":
-            actual = int(review["status"]["audit"]["score"])
-            expected = int(rule["value"])
-            passed = actual >= expected
-            detail = f"audit score {actual}; required {expected}"
-        elif rule_type == "require-security":
-            passed = bool(review["status"]["security"]["passed"])
-            detail = "security gate passed" if passed else "security gate failed"
-        elif rule_type == "require-lossless-extraction":
-            passed = bool(review["status"]["extraction"]["lossless"])
-            detail = "round trip is lossless" if passed else "round trip required inference"
-        elif rule_type == "require-semantic-match":
-            passed = bool(review["status"]["extraction"]["semantic_match"])
-            detail = (
-                "bundle and draw.io semantics match"
-                if passed else "bundle and draw.io semantics differ"
-            )
-        elif rule_type == "required-export-formats":
-            required = {str(fmt) for fmt in rule["formats"]}
-            missing = sorted(required - export_formats)
-            passed = not missing
-            detail = (
-                "all required native exports passed"
-                if passed else f"missing verified exports: {', '.join(missing)}"
-            )
-        elif rule_type == "require-visual-baseline":
-            status = str(review["status"]["visual_regression"]["status"])
-            passed = status != "not-configured"
-            detail = (
-                f"visual baseline status: {status}"
-                if passed else "visual baseline is not configured"
-            )
-        elif rule_type == "maximum-open-annotations":
-            maximum = int(rule["value"])
-            passed = open_annotations <= maximum
-            detail = f"{open_annotations} open reviewer annotation(s); maximum {maximum}"
-        results.append({
-            "id": str(rule["id"]),
-            "type": rule_type,
-            "level": str(rule.get("level", "error")),
-            "passed": passed,
-            "message": str(rule.get("message") or detail),
-            "detail": detail,
-        })
-    errors = sum(
+    exception_reports = []
+    exception_lookup: dict[tuple[str, str], dict[str, Any]] = {}
+    for policy in policies:
+        for exception in policy.get("exceptions", []):
+            active = evaluation_date <= date.fromisoformat(str(exception["expires"]))
+            report = {
+                "policy_id": str(policy["id"]),
+                "id": str(exception["id"]),
+                "key": f"{policy['id']}/{exception['id']}",
+                "rule": str(exception["rule"]),
+                "level": str(exception.get("level", "error")),
+                "reason": str(exception["reason"]),
+                "owner": str(exception.get("owner", "")),
+                "expires": str(exception["expires"]),
+                "scope": copy.deepcopy(exception.get("scope", {})),
+                "status": "active" if active else "expired",
+                "applied_to": [],
+            }
+            exception_reports.append(report)
+            exception_lookup[(str(policy["id"]), str(exception["id"]))] = report
+
+    for policy in policies:
+        active_by_rule: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for exception in policy.get("exceptions", []):
+            report = exception_lookup[(str(policy["id"]), str(exception["id"]))]
+            if report["status"] == "active":
+                active_by_rule[str(exception["rule"])].append(exception)
+        for rule in policy["rules"]:
+            rule_id = str(rule["id"])
+            rule_key = f"{policy['id']}/{rule_id}"
+            rule_type = str(rule["type"])
+            passed = True
+            compliant: bool | None = None
+            detail = ""
+            applied: set[str] = set()
+            if rule_type == "required-pages":
+                required = {str(page) for page in rule["pages"]}
+                missing = sorted(required - page_ids)
+                compliant = not missing
+                remaining = []
+                for page in missing:
+                    matching = [
+                        exception
+                        for exception in active_by_rule[rule_id]
+                        if exception_scope_matches(exception, page, None)
+                    ]
+                    if matching:
+                        applied.update(str(item["id"]) for item in matching)
+                    else:
+                        remaining.append(page)
+                passed = not remaining
+                detail = (
+                    "all required pages are present"
+                    if not missing
+                    else f"waived missing pages: {', '.join(missing)}"
+                    if not remaining
+                    else f"missing pages: {', '.join(remaining)}"
+                )
+            elif rule_type == "minimum-audit-score":
+                actual = int(review["status"]["audit"]["score"])
+                expected = int(rule["value"])
+                passed = actual >= expected
+                detail = f"audit score {actual}; required {expected}"
+            elif rule_type == "require-security":
+                passed = bool(review["status"]["security"]["passed"])
+                detail = "security gate passed" if passed else "security gate failed"
+            elif rule_type == "require-lossless-extraction":
+                passed = bool(review["status"]["extraction"]["lossless"])
+                detail = (
+                    "round trip is lossless"
+                    if passed else "round trip required inference"
+                )
+            elif rule_type == "require-semantic-match":
+                passed = bool(review["status"]["extraction"]["semantic_match"])
+                detail = (
+                    "bundle and draw.io semantics match"
+                    if passed else "bundle and draw.io semantics differ"
+                )
+            elif rule_type == "required-export-formats":
+                required = {str(fmt) for fmt in rule["formats"]}
+                missing = sorted(required - export_formats)
+                passed = not missing
+                detail = (
+                    "all required native exports passed"
+                    if passed else f"missing verified exports: {', '.join(missing)}"
+                )
+            elif rule_type == "require-visual-baseline":
+                status = str(review["status"]["visual_regression"]["status"])
+                passed = status != "not-configured"
+                detail = (
+                    f"visual baseline status: {status}"
+                    if passed else "visual baseline is not configured"
+                )
+            elif rule_type == "maximum-open-annotations":
+                compliant = len(open_annotations) <= int(rule["value"])
+                counted = []
+                for annotation in open_annotations:
+                    matching = [
+                        exception
+                        for exception in active_by_rule[rule_id]
+                        if exception_scope_matches(
+                            exception,
+                            str(annotation["page"]),
+                            str(annotation["cell"]),
+                        )
+                    ]
+                    if matching:
+                        applied.update(str(item["id"]) for item in matching)
+                    else:
+                        counted.append(annotation)
+                maximum = int(rule["value"])
+                passed = len(counted) <= maximum
+                detail = (
+                    f"{len(counted)} unwaived open reviewer annotation(s); "
+                    f"maximum {maximum}"
+                )
+            if compliant is None:
+                compliant = passed
+            if not passed:
+                global_exceptions = [
+                    exception
+                    for exception in active_by_rule[rule_id]
+                    if exception_scope_matches(exception, None, None)
+                ]
+                if global_exceptions:
+                    applied.update(str(item["id"]) for item in global_exceptions)
+                    passed = True
+                    detail = (
+                        f"{detail}; waived by "
+                        f"{', '.join(sorted(applied))}"
+                    )
+            for exception_id in sorted(applied):
+                report = exception_lookup[(str(policy["id"]), exception_id)]
+                report["applied_to"].append(rule_key)
+                report["status"] = "applied"
+            results.append({
+                "policy_id": str(policy["id"]),
+                "id": rule_id,
+                "key": rule_key,
+                "type": rule_type,
+                "level": str(rule.get("level", "error")),
+                "passed": passed,
+                "compliant": compliant,
+                "waived": bool(applied),
+                "exceptions": sorted(applied),
+                "message": str(rule.get("message") or detail),
+                "detail": detail,
+            })
+    for report in exception_reports:
+        if report["status"] == "active":
+            report["status"] = "unused"
+    rule_errors = sum(
         1 for result in results
         if not result["passed"] and result["level"] == "error"
     )
-    warnings = sum(
+    rule_warnings = sum(
         1 for result in results
         if not result["passed"] and result["level"] == "warning"
     )
+    expired_errors = sum(
+        1 for item in exception_reports
+        if item["status"] == "expired" and item["level"] == "error"
+    )
+    expired_warnings = sum(
+        1 for item in exception_reports
+        if item["status"] == "expired" and item["level"] == "warning"
+    )
+    errors = rule_errors + expired_errors
+    warnings = rule_warnings + expired_warnings
+    policy_summaries = [
+        {
+            "format": POLICY_FORMAT,
+            "id": str(policy["id"]),
+            "name": str(policy["name"]),
+            "source": str(policy["source"]),
+        }
+        for policy in policies
+    ]
     return {
         "format": POLICY_REPORT_FORMAT,
         "status": "passed" if errors == 0 else "failed",
-        "policy": {
-            "format": POLICY_FORMAT,
-            "name": str(policy["name"]),
-        },
+        "evaluation_date": evaluation_date.isoformat(),
+        "policy": policy_summaries[0] if len(policy_summaries) == 1 else None,
+        "policies": policy_summaries,
         "passed": errors == 0,
         "errors": errors,
         "warnings": warnings,
         "results": results,
+        "exceptions": exception_reports,
     }
 
 
@@ -6268,14 +6504,14 @@ def review_sarif(
     def finding_location(
         finding: dict[str, Any],
         fallback: str,
-    ) -> tuple[str, str | None]:
+    ) -> tuple[str, str | None, str | None, str | None]:
         page = str(finding.get("page", ""))
         page = page_aliases.get(page, page)
         cell = str(finding.get("cell", ""))
         if page in page_ids:
             logical = f"{page}#{cell}" if cell else page
-            return f"pages/{page}.svg", logical
-        return fallback, str(finding.get("location", "")) or None
+            return f"pages/{page}.svg", logical, page, cell or None
+        return fallback, str(finding.get("location", "")) or None, None, None
 
     for source, report, key, fallback in (
         ("audit", audit, "issues", "reports/audit.json"),
@@ -6285,14 +6521,19 @@ def review_sarif(
         for finding in report.get(key, []):
             if not isinstance(finding, dict):
                 continue
-            artifact, logical = finding_location(finding, fallback)
+            artifact, logical, page, cell = finding_location(finding, fallback)
+            properties = {"source": source}
+            if page:
+                properties["page"] = page
+            if cell:
+                properties["cell"] = cell
             results.append(sarif_result(
                 str(finding.get("code", f"{source}.finding")),
                 str(finding.get("level", "warning")),
                 str(finding.get("message", "Review finding")),
                 artifact,
                 logical,
-                {"source": source},
+                properties,
             ))
     for page in review["status"]["visual_regression"]["pages"]:
         if page["status"] in {"added", "removed", "changed"}:
@@ -6302,17 +6543,39 @@ def review_sarif(
                 f"Visual baseline page {page['id']} is {page['status']}.",
                 f"pages/{page['id']}.svg",
                 str(page["id"]),
-                {"source": "visual"},
+                {"source": "visual", "page": str(page["id"])},
             ))
     for result in policy["results"]:
         if not result["passed"]:
             results.append(sarif_result(
-                f"policy.{result['id']}",
+                f"policy.{str(result['key']).replace('/', '.')}",
                 str(result["level"]),
                 str(result["message"]),
                 "reports/policy.json",
-                str(result["id"]),
-                {"source": "policy", "detail": result["detail"]},
+                str(result["key"]),
+                {
+                    "source": "policy",
+                    "policyId": result["policy_id"],
+                    "detail": result["detail"],
+                },
+            ))
+    for exception in policy["exceptions"]:
+        if exception["status"] == "expired":
+            results.append(sarif_result(
+                f"policy-exception.{exception['policy_id']}.{exception['id']}",
+                str(exception["level"]),
+                (
+                    f"Policy exception {exception['key']} expired on "
+                    f"{exception['expires']}: {exception['reason']}"
+                ),
+                "reports/policy.json",
+                str(exception["key"]),
+                {
+                    "source": "policy-exception",
+                    "policyId": exception["policy_id"],
+                    "expires": exception["expires"],
+                    "owner": exception["owner"],
+                },
             ))
     for annotation in review["annotations"]:
         if (
@@ -6328,6 +6591,8 @@ def review_sarif(
                 {
                     "source": "reviewer",
                     "annotationId": annotation["id"],
+                    "page": annotation["page"],
+                    "cell": annotation["cell"],
                 },
             ))
     rules = {}
@@ -6361,12 +6626,382 @@ def review_sarif(
     }
 
 
+def load_review_ownership(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    ownership = load_data(path)
+    if ownership.get("format") != OWNERSHIP_FORMAT:
+        raise ValueError(f"ownership format must be {OWNERSHIP_FORMAT}")
+    routes = ownership.get("routes")
+    if not isinstance(routes, list) or not routes:
+        raise ValueError("ownership requires at least one route")
+    seen: set[str] = set()
+    for index, route in enumerate(routes, start=1):
+        if not isinstance(route, dict):
+            raise ValueError(f"ownership route {index} must be an object")
+        route_id = str(route.get("id", ""))
+        owners = route.get("owners")
+        if (
+            not valid_semantic_id(route_id)
+            or route_id in seen
+            or not isinstance(owners, list)
+            or not owners
+            or any(
+                not str(owner).strip()
+                or any(ord(character) < 32 for character in str(owner))
+                for owner in owners
+            )
+        ):
+            raise ValueError(
+                f"ownership route {index} requires a unique id and owner list"
+            )
+        selectors = 0
+        for selector in ("pages", "cells"):
+            patterns = route.get(selector, [])
+            if (
+                not isinstance(patterns, list)
+                or any(not valid_selector_pattern(str(pattern)) for pattern in patterns)
+            ):
+                raise ValueError(
+                    f"ownership route {route_id} {selector} must be selector ids"
+                )
+            selectors += len(patterns)
+        rule_patterns = route.get("rules", [])
+        if (
+            not isinstance(rule_patterns, list)
+            or any(
+                not re.fullmatch(r"[a-z0-9.*?/-]+", str(pattern))
+                for pattern in rule_patterns
+            )
+        ):
+            raise ValueError(
+                f"ownership route {route_id} rules must be SARIF rule patterns"
+            )
+        selectors += len(rule_patterns)
+        if selectors == 0:
+            raise ValueError(f"ownership route {route_id} requires a selector")
+        seen.add(route_id)
+    normalized = copy.deepcopy(ownership)
+    normalized["source"] = path.name
+    return normalized
+
+
+def ownership_route_matches(
+    route: dict[str, Any],
+    result: dict[str, Any],
+) -> bool:
+    properties = result.get("properties", {})
+    page = str(properties.get("page", ""))
+    cell = str(properties.get("cell", ""))
+    rule_id = str(result.get("ruleId", ""))
+    for selector, value in (
+        ("pages", page),
+        ("cells", cell),
+        ("rules", rule_id),
+    ):
+        patterns = [str(pattern) for pattern in route.get(selector, [])]
+        if patterns and (
+            not value
+            or not any(fnmatch.fnmatchcase(value, pattern) for pattern in patterns)
+        ):
+            return False
+    return True
+
+
+def apply_finding_ownership(
+    sarif: dict[str, Any],
+    ownership: dict[str, Any] | None,
+) -> dict[str, Any]:
+    routes = ownership.get("routes", []) if ownership else []
+    assignments = []
+    assigned = 0
+    results = sarif["runs"][0]["results"]
+    for result in results:
+        matched = [
+            route for route in routes
+            if ownership_route_matches(route, result)
+        ]
+        owners = sorted({
+            str(owner)
+            for route in matched
+            for owner in route.get("owners", [])
+        })
+        properties = result.setdefault("properties", {})
+        if owners:
+            assigned += 1
+            properties["owners"] = owners
+            properties["ownerRouteIds"] = [
+                str(route["id"]) for route in matched
+            ]
+        assignments.append({
+            "fingerprint": result["partialFingerprints"]["stableFinding"],
+            "rule_id": str(result["ruleId"]),
+            "page": properties.get("page"),
+            "cell": properties.get("cell"),
+            "owners": owners,
+            "routes": [str(route["id"]) for route in matched],
+        })
+    total = len(results)
+    unassigned = total - assigned
+    return {
+        "format": OWNERSHIP_REPORT_FORMAT,
+        "status": (
+            "not-configured"
+            if ownership is None else "passed"
+            if unassigned == 0 else "partial"
+        ),
+        "configured": ownership is not None,
+        "source": ownership.get("source") if ownership else None,
+        "passed": unassigned == 0,
+        "total_findings": total,
+        "assigned": assigned,
+        "unassigned": unassigned,
+        "coverage_percent": 100 if total == 0 else round(assigned * 100 / total),
+        "routes": copy.deepcopy(routes),
+        "assignments": assignments,
+    }
+
+
+def validate_optional_text(value: str | None, label: str, limit: int = 512) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    if (
+        not normalized
+        or len(normalized) > limit
+        or any(ord(character) < 32 for character in normalized)
+    ):
+        raise ValueError(f"{label} contains invalid text")
+    return normalized
+
+
+def validate_web_url(value: str | None, label: str) -> str | None:
+    normalized = validate_optional_text(value, label, 2048)
+    if normalized is None:
+        return None
+    parsed = urllib.parse.urlparse(normalized)
+    if (
+        parsed.scheme.lower() not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+    ):
+        raise ValueError(f"{label} must be an HTTP(S) URL without credentials")
+    return normalized.rstrip("/")
+
+
+def bundle_provenance(
+    bundle: Path,
+    manifest: dict[str, Any],
+    source_revision: str | None,
+    source_repository: str | None,
+    source_url: str | None,
+) -> dict[str, Any]:
+    artifact_paths = {"bundle.json"}
+    for value in manifest.get("artifacts", {}).values():
+        if isinstance(value, str):
+            artifact_paths.add(value)
+        elif isinstance(value, list):
+            artifact_paths.update(
+                item for item in value if isinstance(item, str)
+            )
+    artifact_digests = {}
+    for relative in sorted(artifact_paths):
+        candidate = safe_artifact_path(bundle, relative)
+        if candidate.is_file():
+            artifact_digests[relative] = hashlib.sha256(
+                candidate.read_bytes()
+            ).hexdigest()
+    digest_input = "".join(
+        f"{relative}\0{digest}\n"
+        for relative, digest in sorted(artifact_digests.items())
+    ).encode("utf-8")
+    bundle_digest = hashlib.sha256(digest_input).hexdigest()
+    revision = validate_optional_text(
+        source_revision
+        or os.environ.get("GITHUB_SHA")
+        or os.environ.get("CI_COMMIT_SHA"),
+        "source revision",
+        128,
+    )
+    repository = validate_optional_text(
+        source_repository
+        or os.environ.get("GITHUB_REPOSITORY")
+        or os.environ.get("CI_PROJECT_PATH"),
+        "source repository",
+        256,
+    )
+    revision_url = validate_web_url(source_url, "source URL")
+    if revision_url is None and revision and repository:
+        server = validate_web_url(
+            os.environ.get("GITHUB_SERVER_URL"),
+            "GitHub server URL",
+        )
+        if server:
+            revision_url = f"{server}/{repository}/commit/{revision}"
+    return {
+        "revision": revision or bundle_digest,
+        "revision_type": "scm" if revision else "bundle",
+        "repository": repository,
+        "source_url": revision_url,
+        "bundle_sha256": bundle_digest,
+        "artifacts": artifact_digests,
+    }
+
+
+def markdown_text(value: Any) -> str:
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    return re.sub(r"([\\`*_[\]{}()<>#+.!|])", r"\\\1", text)
+
+
+def markdown_url(value: str) -> str:
+    return urllib.parse.quote(
+        value,
+        safe=":/?#[]@!$&'*+,;=%-._~",
+    )
+
+
+def review_artifact_url(base_url: str | None, relative: str) -> str:
+    if not base_url:
+        return markdown_url(relative)
+    return markdown_url(
+        urllib.parse.urljoin(f"{base_url.rstrip('/')}/", relative)
+    )
+
+
+def review_summary_markdown(
+    review: dict[str, Any],
+    sarif: dict[str, Any],
+    public_base_url: str | None,
+) -> str:
+    base_url = validate_web_url(public_base_url, "public base URL")
+    status = review["status"]
+    provenance = review["provenance"]
+    lines = [
+        f"# {markdown_text(review['title'])}",
+        "",
+        (
+            f"Revision `{markdown_text(provenance['revision'])}` "
+            f"({markdown_text(provenance['revision_type'])}) · "
+            f"bundle `{provenance['bundle_sha256'][:12]}`"
+        ),
+        "",
+        "| Gate | Status | Detail |",
+        "| --- | --- | --- |",
+        (
+            f"| Audit | {'PASS' if status['audit']['passed'] else 'REVIEW'} | "
+            f"{status['audit']['score']}/100 |"
+        ),
+        (
+            f"| Security | {'PASS' if status['security']['passed'] else 'REVIEW'} | "
+            f"{status['security']['errors']} error(s) |"
+        ),
+        (
+            f"| Round trip | "
+            f"{'PASS' if status['extraction']['lossless'] and status['extraction']['semantic_match'] else 'REVIEW'} | "
+            f"{'lossless and aligned' if status['extraction']['lossless'] and status['extraction']['semantic_match'] else 'inspect extraction'} |"
+        ),
+        (
+            f"| Policy | {'PASS' if status['policy']['passed'] else 'REVIEW'} | "
+            f"{status['policy']['errors']} error(s), "
+            f"{status['policy']['warnings']} warning(s) |"
+        ),
+        (
+            f"| Ownership | "
+            f"{'PASS' if status['ownership']['passed'] else 'REVIEW'} | "
+            f"{status['ownership']['assigned']}/{status['ownership']['total_findings']} assigned |"
+        ),
+        "",
+    ]
+    if provenance.get("source_url"):
+        lines.extend([
+            (
+                "[Open immutable source revision]"
+                f"({markdown_url(str(provenance['source_url']))})"
+            ),
+            "",
+        ])
+    changed_pages = [
+        page for page in status["visual_regression"]["pages"]
+        if page["status"] in {"added", "removed", "changed"}
+    ]
+    lines.extend(["## Changed pages", ""])
+    if changed_pages:
+        for page in changed_pages:
+            relative = f"pages/{page['id']}.svg"
+            lines.append(
+                f"- [{markdown_text(page['id'])}]"
+                f"({review_artifact_url(base_url, relative)}): "
+                f"{markdown_text(page['status'])}"
+            )
+    else:
+        lines.append("- No page changes detected or no baseline configured.")
+    lines.extend(["", "## Unresolved decisions", ""])
+    open_annotations = [
+        annotation for annotation in review["annotations"]
+        if annotation.get("source") == "reviewer"
+        and annotation.get("status") == "open"
+    ]
+    if open_annotations:
+        for annotation in open_annotations:
+            relative = (
+                f"pages/{annotation['page']}.svg#{annotation['cell']}"
+            )
+            lines.append(
+                f"- [{markdown_text(annotation['id'])}]"
+                f"({review_artifact_url(base_url, relative)}): "
+                f"{markdown_text(annotation['message'])}"
+            )
+    else:
+        lines.append("- No open reviewer annotations.")
+    lines.extend(["", "## Findings", ""])
+    results = sarif["runs"][0]["results"]
+    if results:
+        for result in results:
+            properties = result.get("properties", {})
+            artifact = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+            logical = properties.get("cell")
+            relative = (
+                f"{artifact}#{logical}"
+                if logical and artifact.startswith("pages/") else artifact
+            )
+            owners = ", ".join(properties.get("owners", [])) or "unassigned"
+            lines.append(
+                f"- [{markdown_text(result['ruleId'])}]"
+                f"({review_artifact_url(base_url, relative)}): "
+                f"{markdown_text(result['message']['text'])} "
+                f"— {markdown_text(owners)}"
+            )
+    else:
+        lines.append("- No SARIF findings.")
+    lines.extend([
+        "",
+        "## Evidence",
+        "",
+        f"- [Review site]({review_artifact_url(base_url, 'index.html')})",
+        f"- [Review manifest]({review_artifact_url(base_url, 'review.json')})",
+        f"- [Policy report]({review_artifact_url(base_url, 'reports/policy.json')})",
+        f"- [Ownership report]({review_artifact_url(base_url, 'reports/ownership.json')})",
+        f"- [SARIF findings]({review_artifact_url(base_url, 'reports/findings.sarif')})",
+        "",
+    ])
+    return "\n".join(lines)
+
+
 def status_badge(label: str, passed: bool, detail: str) -> str:
     state = "pass" if passed else "fail"
     return (
         f'<article class="status {state}"><span>{html.escape(label)}</span>'
         f"<strong>{'PASS' if passed else 'REVIEW'}</strong>"
         f"<small>{html.escape(detail)}</small></article>"
+    )
+
+
+def ownership_route_selectors(route: dict[str, Any]) -> str:
+    return ", ".join(
+        str(value)
+        for selector in ("pages", "cells", "rules")
+        for value in route.get(selector, [])
     )
 
 
@@ -6421,6 +7056,18 @@ def review_site_html(review: dict[str, Any]) -> str:
                 )
             ),
         ),
+        status_badge(
+            "Finding ownership",
+            bool(status["ownership"]["passed"]),
+            (
+                "not configured"
+                if status["ownership"]["status"] == "not-configured"
+                else (
+                    f'{status["ownership"]["assigned"]}/'
+                    f'{status["ownership"]["total_findings"]} assigned'
+                )
+            ),
+        ),
     ])
     annotations = "".join(
         (
@@ -6454,13 +7101,37 @@ def review_site_html(review: dict[str, Any]) -> str:
         for page in status["visual_regression"]["pages"]
     ) or '<tr><td colspan="2">No baseline configured.</td></tr>'
     policy_rows = "".join(
-        f"<tr><td>{html.escape(result['id'])}</td>"
-        f"<td><span class=\"pill {'passed' if result['passed'] else 'failed'}\">"
-        f"{'passed' if result['passed'] else html.escape(result['level'])}"
+        f"<tr><td>{html.escape(result['key'])}</td>"
+        f"<td><span class=\"pill {'waived' if result['waived'] else 'passed' if result['passed'] else 'failed'}\">"
+        f"{'waived' if result['waived'] else 'passed' if result['passed'] else html.escape(result['level'])}"
         f"</span></td><td>{html.escape(result['detail'])}</td></tr>"
         for result in review["policy"]["results"]
-    ) or '<tr><td colspan="3">No architecture policy configured.</td></tr>'
+    )
+    policy_rows += "".join(
+        f"<tr><td>exception · {html.escape(exception['key'])}</td>"
+        f"<td><span class=\"pill {html.escape(exception['status'])}\">"
+        f"{html.escape(exception['status'])}</span></td>"
+        f"<td>{html.escape(exception['reason'])} · expires "
+        f"{html.escape(exception['expires'])}</td></tr>"
+        for exception in review["policy"]["exceptions"]
+    )
+    policy_rows = (
+        policy_rows
+        or '<tr><td colspan="3">No architecture policy configured.</td></tr>'
+    )
+    ownership_rows = "".join(
+        f"<tr><td>{html.escape(route['id'])}</td>"
+        f"<td>{html.escape(', '.join(str(owner) for owner in route['owners']))}</td>"
+        f"<td>{html.escape(ownership_route_selectors(route))}</td></tr>"
+        for route in review["ownership"]["routes"]
+    ) or '<tr><td colspan="3">No ownership routes configured.</td></tr>'
     lifecycle = status["annotations"]
+    provenance = review["provenance"]
+    source_link = (
+        f'<a href="{html.escape(provenance["source_url"])}" '
+        'rel="noreferrer">Open source revision</a>'
+        if provenance.get("source_url") else "No source URL supplied"
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -6471,6 +7142,8 @@ def review_site_html(review: dict[str, Any]) -> str:
   <meta property="og:description" content="Portable architecture evidence, policy, and review lifecycle.">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{title} · Diagram review">
+  <meta name="twitter:description" content="Portable architecture evidence, ownership, policy, and review lifecycle.">
   <meta name="color-scheme" content="light">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%233157d5'/%3E%3Cpath d='M17 18h30v10H17zm0 18h30v10H17z' fill='white'/%3E%3C/svg%3E">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; img-src 'self' data:;">
@@ -6489,14 +7162,15 @@ def review_site_html(review: dict[str, Any]) -> str:
     section h2{{margin:0 0 12px;font-size:17px}} ul{{list-style:none;padding:0;margin:0;display:grid;gap:8px}} li{{display:grid;grid-template-columns:auto 1fr auto;gap:10px;border-bottom:1px solid var(--line);padding:8px 0}}
     li a{{color:var(--accent);font-weight:650;text-decoration:none}} li small,.empty{{color:var(--muted)}} details{{border-top:1px solid var(--line);padding:10px 0}} summary{{cursor:pointer;font-weight:650}}
     .chips{{display:flex;flex-wrap:wrap;gap:7px;padding:10px 0}} .chips a{{font-size:12px;padding:5px 8px}} table{{width:100%;border-collapse:collapse}} td{{padding:7px;border-bottom:1px solid var(--line)}}
-    .pill{{padding:3px 7px;border-radius:999px;background:#e8edf5}} .pill.changed,.pill.added,.pill.removed,.pill.failed,.pill.error,.pill.warning{{background:#fff0d6;color:#7c4600}}
+    .pill{{padding:3px 7px;border-radius:999px;background:#e8edf5}} .pill.changed,.pill.added,.pill.removed,.pill.failed,.pill.error,.pill.warning,.pill.expired{{background:#fff0d6;color:#7c4600}} .pill.waived,.pill.applied{{background:#e8f1ff;color:#2447a8}}
     li.resolved{{opacity:.64}} li.accepted{{border-left:3px solid var(--pass);padding-left:9px}} .lifecycle{{margin:0 0 12px;color:var(--muted)}}
+    td{{overflow-wrap:anywhere}} .provenance{{display:grid;grid-template-columns:max-content 1fr;gap:8px 12px}} .provenance dt{{color:var(--muted)}} .provenance dd{{margin:0;overflow-wrap:anywhere}}
     footer{{padding:18px 34px;color:var(--muted)}} footer a{{color:var(--accent)}}
     @media(max-width:900px){{.panels{{grid-template-columns:1fr}}main,nav{{padding-left:16px;padding-right:16px}}li{{grid-template-columns:1fr}}}}
   </style>
 </head>
 <body>
-  <header><h1>{title}</h1><p>Portable architecture review · {len(review["pages"])} page(s) · policy and SARIF evidence enabled</p></header>
+  <header><h1>{title}</h1><p>Portable architecture review · {len(review["pages"])} page(s) · revision {html.escape(str(provenance["revision"])[:12])}</p></header>
   <nav aria-label="Diagram pages">{page_links}</nav>
   <main>
     <div class="status-grid">{statuses}</div>
@@ -6508,6 +7182,19 @@ def review_site_html(review: dict[str, Any]) -> str:
       </section>
       <section><h2>Visual baseline</h2><table>{visual_rows}</table></section>
       <section><h2>Architecture policy</h2><table>{policy_rows}</table></section>
+      <section><h2>Finding ownership</h2>
+        <p class="lifecycle">{status["ownership"]["assigned"]} assigned · {status["ownership"]["unassigned"]} unassigned · {status["ownership"]["coverage_percent"]}% coverage</p>
+        <table>{ownership_rows}</table>
+      </section>
+      <section><h2>Artifact provenance</h2>
+        <dl class="provenance">
+          <dt>Revision</dt><dd>{html.escape(str(provenance["revision"]))}</dd>
+          <dt>Type</dt><dd>{html.escape(str(provenance["revision_type"]))}</dd>
+          <dt>Repository</dt><dd>{html.escape(str(provenance.get("repository") or "not supplied"))}</dd>
+          <dt>Bundle SHA-256</dt><dd>{html.escape(str(provenance["bundle_sha256"]))}</dd>
+          <dt>Source</dt><dd>{source_link}</dd>
+        </dl>
+      </section>
       <section><h2>Semantic element index</h2>{catalogs}</section>
       <section><h2>Machine-readable evidence</h2>
         <div class="chips">
@@ -6516,7 +7203,9 @@ def review_site_html(review: dict[str, Any]) -> str:
           <a href="reports/security.json">Security report</a>
           <a href="reports/extraction.json">Extraction report</a>
           <a href="reports/policy.json">Policy report</a>
+          <a href="reports/ownership.json">Ownership report</a>
           <a href="reports/findings.sarif">SARIF findings</a>
+          <a href="reports/summary.md">PR check summary</a>
         </div>
       </section>
     </div>
@@ -6530,17 +7219,33 @@ def review_site_html(review: dict[str, Any]) -> str:
 def publish_review_site(
     bundle: Path,
     output: Path,
+    *,
     title: str | None = None,
     annotations_path: Path | None = None,
     carry_review_path: Path | None = None,
     baseline: Path | None = None,
-    policy_path: Path | None = None,
+    policy_paths: list[Path] | None = None,
+    ownership_path: Path | None = None,
+    evaluation_date_value: str | None = None,
+    source_revision: str | None = None,
+    source_repository: str | None = None,
+    source_url: str | None = None,
+    public_base_url: str | None = None,
     force: bool = False,
 ) -> dict[str, Any]:
     manifest, diagram_ir, audit, persisted_security, drawio_path = (
         load_bundle_for_publish(bundle)
     )
-    architecture_policy = load_architecture_policy(policy_path)
+    architecture_policies = load_architecture_policies(policy_paths or [])
+    ownership_config = load_review_ownership(ownership_path)
+    evaluation_date = parse_evaluation_date(evaluation_date_value)
+    provenance = bundle_provenance(
+        bundle,
+        manifest,
+        source_revision,
+        source_repository,
+        source_url,
+    )
     if output.exists() and not output.is_dir():
         raise ValueError(f"review output must be a directory: {output}")
     if output.exists() and any(output.iterdir()):
@@ -6663,6 +7368,7 @@ def publish_review_site(
                 or manifest.get("name", "Diagram review")
             ),
             "source_bundle": bundle.name,
+            "provenance": provenance,
             "pages": pages,
             "catalog": catalog,
             "annotations": supplied_annotations + generated_annotations,
@@ -6700,11 +7406,13 @@ def publish_review_site(
                 "security": "reports/security.json",
                 "extraction": "reports/extraction.json",
                 "policy": "reports/policy.json",
+                "ownership": "reports/ownership.json",
                 "sarif": "reports/findings.sarif",
+                "summary": "reports/summary.md",
             },
         }
         policy_report = evaluate_architecture_policy(
-            architecture_policy, review,
+            architecture_policies, review, evaluation_date,
         )
         review["policy"] = policy_report
         review["status"]["policy"] = {
@@ -6717,17 +7425,39 @@ def publish_review_site(
         sarif = review_sarif(
             review, audit, persisted_security, extraction, policy_report,
         )
+        ownership_report = apply_finding_ownership(
+            sarif, ownership_config,
+        )
+        review["ownership"] = ownership_report
+        review["status"]["ownership"] = {
+            "status": ownership_report["status"],
+            "configured": bool(ownership_report["configured"]),
+            "passed": bool(ownership_report["passed"]),
+            "assigned": int(ownership_report["assigned"]),
+            "unassigned": int(ownership_report["unassigned"]),
+            "total_findings": int(ownership_report["total_findings"]),
+            "coverage_percent": int(ownership_report["coverage_percent"]),
+            "report": "reports/ownership.json",
+        }
+        summary_markdown = review_summary_markdown(
+            review, sarif, public_base_url,
+        )
         for name, report in (
             ("audit.json", audit),
             ("security.json", persisted_security),
             ("extraction.json", extraction),
             ("policy.json", policy_report),
+            ("ownership.json", ownership_report),
             ("findings.sarif", sarif),
         ):
             (reports_dir / name).write_text(
                 json.dumps(report, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
+        (reports_dir / "summary.md").write_text(
+            summary_markdown,
+            encoding="utf-8",
+        )
         (staging / "review.json").write_text(
             json.dumps(review, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
@@ -6794,12 +7524,18 @@ def command_publish(args: argparse.Namespace) -> int:
     review = publish_review_site(
         Path(args.input),
         output,
-        args.title,
-        Path(args.annotations) if args.annotations else None,
-        Path(args.carry_review) if args.carry_review else None,
-        Path(args.baseline) if args.baseline else None,
-        Path(args.policy) if args.policy else None,
-        args.force,
+        title=args.title,
+        annotations_path=Path(args.annotations) if args.annotations else None,
+        carry_review_path=Path(args.carry_review) if args.carry_review else None,
+        baseline=Path(args.baseline) if args.baseline else None,
+        policy_paths=[Path(path) for path in (args.policy or [])],
+        ownership_path=Path(args.ownership) if args.ownership else None,
+        evaluation_date_value=args.evaluation_date,
+        source_revision=args.source_revision,
+        source_repository=args.source_repository,
+        source_url=args.source_url,
+        public_base_url=args.public_base_url,
+        force=args.force,
     )
     summary = {
         "output": str(output),
@@ -6808,6 +7544,8 @@ def command_publish(args: argparse.Namespace) -> int:
         "pages": len(review["pages"]),
         "annotations": len(review["annotations"]),
         "sarif": str(output / review["artifacts"]["sarif"]),
+        "summary": str(output / review["artifacts"]["summary"]),
+        "revision": review["provenance"]["revision"],
         "status": review["status"],
     }
     print(json.dumps(summary, indent=2, ensure_ascii=False))
@@ -6818,9 +7556,18 @@ def command_publish(args: argparse.Namespace) -> int:
         or not review["status"]["extraction"]["semantic_match"]
         or review["status"]["exports"]["status"] == "failed"
         or not review["status"]["policy"]["passed"]
+        or (
+            review["status"]["ownership"]["configured"]
+            and not review["status"]["ownership"]["passed"]
+        )
     )
     if args.fail_on_policy and not review["status"]["policy"]["passed"]:
         return 8
+    if (
+        args.fail_on_unowned_findings
+        and review["status"]["ownership"]["unassigned"]
+    ):
+        return 9
     if args.fail_on_visual_change and review["status"]["visual_regression"]["changed"]:
         return 7
     if args.strict and strict_failed:
@@ -7523,10 +8270,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     publish_parser.add_argument(
         "--policy",
-        help="architecture policy pack evaluated against the published evidence",
+        action="append",
+        help="repeatable architecture policy pack evaluated in composition order",
+    )
+    publish_parser.add_argument(
+        "--ownership",
+        help="finding ownership routes for SARIF page, cell, and rule matches",
+    )
+    publish_parser.add_argument(
+        "--evaluation-date",
+        help="YYYY-MM-DD date used to evaluate expiring policy exceptions",
+    )
+    publish_parser.add_argument("--source-revision")
+    publish_parser.add_argument("--source-repository")
+    publish_parser.add_argument("--source-url")
+    publish_parser.add_argument(
+        "--public-base-url",
+        help="HTTP(S) review root used for direct links in reports/summary.md",
     )
     publish_parser.add_argument("--fail-on-visual-change", action="store_true")
     publish_parser.add_argument("--fail-on-policy", action="store_true")
+    publish_parser.add_argument("--fail-on-unowned-findings", action="store_true")
     publish_parser.add_argument("--strict", action="store_true")
     publish_parser.add_argument("--force", action="store_true")
     publish_parser.set_defaults(func=command_publish)

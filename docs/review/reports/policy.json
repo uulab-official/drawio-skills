@@ -1,69 +1,155 @@
 {
   "format": "drawio-architecture-policy-report/v1",
   "status": "passed",
-  "policy": {
-    "format": "drawio-architecture-policy/v1",
-    "name": "Production architecture review"
-  },
+  "evaluation_date": "2026-07-29",
+  "policy": null,
+  "policies": [
+    {
+      "format": "drawio-architecture-policy/v1",
+      "id": "production",
+      "name": "Production architecture review",
+      "source": "production-review.json"
+    },
+    {
+      "format": "drawio-architecture-policy/v1",
+      "id": "team-governance",
+      "name": "Team governance overlay",
+      "source": "team-governance.json"
+    }
+  ],
   "passed": true,
   "errors": 0,
   "warnings": 0,
   "results": [
     {
+      "policy_id": "production",
       "id": "required-views",
+      "key": "production/required-views",
       "type": "required-pages",
       "level": "error",
       "passed": true,
+      "compliant": true,
+      "waived": false,
+      "exceptions": [],
       "message": "all required pages are present",
       "detail": "all required pages are present"
     },
     {
+      "policy_id": "production",
       "id": "audit-score",
+      "key": "production/audit-score",
       "type": "minimum-audit-score",
       "level": "error",
       "passed": true,
+      "compliant": true,
+      "waived": false,
+      "exceptions": [],
       "message": "audit score 100; required 95",
       "detail": "audit score 100; required 95"
     },
     {
+      "policy_id": "production",
       "id": "security-gate",
+      "key": "production/security-gate",
       "type": "require-security",
       "level": "error",
       "passed": true,
+      "compliant": true,
+      "waived": false,
+      "exceptions": [],
       "message": "security gate passed",
       "detail": "security gate passed"
     },
     {
+      "policy_id": "production",
       "id": "lossless-round-trip",
+      "key": "production/lossless-round-trip",
       "type": "require-lossless-extraction",
       "level": "error",
       "passed": true,
+      "compliant": true,
+      "waived": false,
+      "exceptions": [],
       "message": "round trip is lossless",
       "detail": "round trip is lossless"
     },
     {
+      "policy_id": "production",
       "id": "semantic-alignment",
+      "key": "production/semantic-alignment",
       "type": "require-semantic-match",
       "level": "error",
       "passed": true,
+      "compliant": true,
+      "waived": false,
+      "exceptions": [],
       "message": "bundle and draw.io semantics match",
       "detail": "bundle and draw.io semantics match"
     },
     {
+      "policy_id": "production",
       "id": "approved-baseline",
+      "key": "production/approved-baseline",
       "type": "require-visual-baseline",
       "level": "warning",
       "passed": true,
+      "compliant": true,
+      "waived": false,
+      "exceptions": [],
       "message": "visual baseline status: passed",
       "detail": "visual baseline status: passed"
     },
     {
+      "policy_id": "production",
       "id": "open-review-items",
+      "key": "production/open-review-items",
       "type": "maximum-open-annotations",
       "level": "warning",
       "passed": true,
-      "message": "0 open reviewer annotation(s); maximum 1",
-      "detail": "0 open reviewer annotation(s); maximum 1"
+      "compliant": true,
+      "waived": false,
+      "exceptions": [],
+      "message": "1 unwaived open reviewer annotation(s); maximum 1",
+      "detail": "1 unwaived open reviewer annotation(s); maximum 1"
+    },
+    {
+      "policy_id": "team-governance",
+      "id": "no-open-decisions",
+      "key": "team-governance/no-open-decisions",
+      "type": "maximum-open-annotations",
+      "level": "error",
+      "passed": true,
+      "compliant": false,
+      "waived": true,
+      "exceptions": [
+        "event-stream-review-window"
+      ],
+      "message": "0 unwaived open reviewer annotation(s); maximum 0",
+      "detail": "0 unwaived open reviewer annotation(s); maximum 0"
+    }
+  ],
+  "exceptions": [
+    {
+      "policy_id": "team-governance",
+      "id": "event-stream-review-window",
+      "key": "team-governance/event-stream-review-window",
+      "rule": "no-open-decisions",
+      "level": "error",
+      "reason": "Event-stream ownership is being finalized during the platform migration.",
+      "owner": "@uulab/platform",
+      "expires": "2026-12-31",
+      "scope": {
+        "pages": [
+          "logical"
+        ],
+        "cells": [
+          "node-events"
+        ]
+      },
+      "status": "applied",
+      "applied_to": [
+        "team-governance/no-open-decisions"
+      ]
     }
   ]
 }

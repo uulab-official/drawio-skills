@@ -1,0 +1,58 @@
+{
+  "format": "drawio-review-ownership-report/v1",
+  "status": "passed",
+  "configured": true,
+  "source": "example.ownership.json",
+  "passed": true,
+  "total_findings": 1,
+  "assigned": 1,
+  "unassigned": 0,
+  "coverage_percent": 100,
+  "routes": [
+    {
+      "id": "platform-event-stream",
+      "owners": [
+        "@uulab/platform"
+      ],
+      "pages": [
+        "logical"
+      ],
+      "cells": [
+        "node-events"
+      ]
+    },
+    {
+      "id": "architecture-policy",
+      "owners": [
+        "@uulab/architecture"
+      ],
+      "rules": [
+        "policy.*",
+        "policy-exception.*"
+      ]
+    },
+    {
+      "id": "security-findings",
+      "owners": [
+        "@uulab/security"
+      ],
+      "rules": [
+        "security.*"
+      ]
+    }
+  ],
+  "assignments": [
+    {
+      "fingerprint": "0604decbc23b1989a034109f3827d10a6f47fe1fef35dc54e78c9c1c8f00dbba",
+      "rule_id": "review.annotation-open",
+      "page": "logical",
+      "cell": "node-events",
+      "owners": [
+        "@uulab/platform"
+      ],
+      "routes": [
+        "platform-event-stream"
+      ]
+    }
+  ]
+}

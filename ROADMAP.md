@@ -177,9 +177,18 @@ Exit criteria: teams can carry review decisions across regenerated sites, apply 
 
 ## v1.4 — Team-scale governance
 
-- [ ] Composable policy packs with scoped, expiring exceptions
-- [ ] Ownership rules that route page and semantic-cell findings to accountable teams
-- [ ] Source revision and artifact provenance embedded in review manifests
-- [ ] Pull-request check summaries with direct links to changed pages and unresolved decisions
+- [x] Composable policy packs with scoped, expiring exceptions
+- [x] Ownership rules that route page and semantic-cell findings to accountable teams
+- [x] Source revision and artifact provenance embedded in review manifests
+- [x] Pull-request check summaries with direct links to changed pages and unresolved decisions
 
 Exit criteria: larger organizations can reuse policy layers, make exceptions auditable, route findings to owners, and trace each published review to one immutable source revision.
+
+## v1.5 — Enterprise review integrations
+
+- [ ] Import ownership defaults from CODEOWNERS without weakening explicit semantic routes
+- [ ] Optional GitHub Checks annotations backed by the portable SARIF and summary artifacts
+- [ ] Signed review-manifest attestations tied to the source revision and bundle digest
+- [ ] Policy-pack test harness for exception expiry, selector coverage, and breaking-change detection
+
+Exit criteria: repository-native ownership and checks remain optional adapters over the portable review contract, while signed manifests and policy tests make approval evidence independently verifiable.

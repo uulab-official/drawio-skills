@@ -36,6 +36,14 @@ def sample_ir():
 
 
 class DrawioToolTests(unittest.TestCase):
+    def test_markdown_summary_urls_encode_destination_breakers(self):
+        self.assertEqual(
+            "https://example.com/review%29%20candidate#node-api",
+            TOOL.markdown_url(
+                "https://example.com/review) candidate#node-api"
+            ),
+        )
+
     def test_compile_is_deterministic_and_valid(self):
         first = TOOL.compile_drawio(sample_ir())
         second = TOOL.compile_drawio(sample_ir())

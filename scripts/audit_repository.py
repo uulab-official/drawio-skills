@@ -18,6 +18,8 @@ STDLIB_IMPORTS = {
     "base64",
     "collections",
     "copy",
+    "datetime",
+    "fnmatch",
     "hashlib",
     "html",
     "importlib",

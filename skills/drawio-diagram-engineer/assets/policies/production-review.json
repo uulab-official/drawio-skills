@@ -1,5 +1,6 @@
 {
   "format": "drawio-architecture-policy/v1",
+  "id": "production",
   "name": "Production architecture review",
   "rules": [
     {

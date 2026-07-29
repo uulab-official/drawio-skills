@@ -51,6 +51,8 @@ class SkillContractTests(unittest.TestCase):
             "review-annotations.schema.json",
             "architecture-policy.schema.json",
             "policy-report.schema.json",
+            "ownership.schema.json",
+            "ownership-report.schema.json",
         ):
             schema = SKILL / f"references/{filename}"
             self.assertIn('"$schema"', schema.read_text(encoding="utf-8"))

@@ -14,8 +14,12 @@ merge-annotations <prior-review|annotations.json> <updates.json>
                   -o <merged.json> [--force]
 publish <bundle-dir> -o <review-dir> [--title <title>]
         [--annotations <annotations.json>] [--carry-review <prior-review>]
-        [--baseline <review|bundle>] [--policy <policy.json>]
-        [--fail-on-visual-change] [--fail-on-policy] [--strict] [--force]
+        [--baseline <review|bundle>] [--policy <policy.json>]...
+        [--ownership <ownership.json>] [--evaluation-date <YYYY-MM-DD>]
+        [--source-revision <revision>] [--source-repository <repository>]
+        [--source-url <https-url>] [--public-base-url <https-url>]
+        [--fail-on-visual-change] [--fail-on-policy]
+        [--fail-on-unowned-findings] [--strict] [--force]
 ```
 
 `init` profiles: `architecture`, `blueprint`, `erd`, `ha`, `routing`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
@@ -24,7 +28,7 @@ publish <bundle-dir> -o <review-dir> [--title <title>]
 
 `merge-annotations` replaces matching stable IDs with full-record updates and carries all untouched reviewer records. `publish --carry-review` performs the same merge against a regenerated diagram and validates every page/cell link.
 
-`publish` creates an atomic, script-free HTML/SVG review site from a bundle. It indexes audit, security, round-trip extraction, export, annotation lifecycle, policy, SARIF, semantic-cell, and visual-baseline evidence. See [collaborative-review.md](collaborative-review.md).
+`publish` creates an atomic, script-free HTML/SVG review site from a bundle. Repeat `--policy` to compose organization and team packs. Scoped exceptions use the deterministic `--evaluation-date`; when omitted, `SOURCE_DATE_EPOCH` or the current UTC date is used. `--ownership` routes SARIF findings, and `--public-base-url` makes summary links absolute for pull-request checks. Source revision defaults to `GITHUB_SHA`, then `CI_COMMIT_SHA`, then the bundle digest. See [collaborative-review.md](collaborative-review.md).
 
 ## Contract and security
 
@@ -92,3 +96,4 @@ verify-export <output.png|svg|pdf|jpg> [-f <format>] [-o <export-report.json>]
 | `6` | Migration required with `migrate --check` |
 | `7` | Visual baseline change found with `publish --fail-on-visual-change` |
 | `8` | Architecture policy error found with `publish --fail-on-policy` |
+| `9` | One or more findings lack an owner with `publish --fail-on-unowned-findings` |

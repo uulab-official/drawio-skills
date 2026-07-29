@@ -59,10 +59,13 @@ When the deliverable needs to be reviewed without draw.io Desktop, publish the b
 ```bash
 python3 <skill-dir>/scripts/drawio_tool.py publish build/architecture \
   -o build/architecture-review \
-  --policy architecture-policy.json --fail-on-policy --strict
+  --policy organization-policy.json \
+  --policy team-policy.json \
+  --ownership review-ownership.json \
+  --fail-on-policy --fail-on-unowned-findings --strict
 ```
 
-The review site provides page navigation, semantic node/edge/group anchors, persistent reviewer decisions, policy status, SARIF, machine-readable `review.json`, and optional visual-baseline comparison. Use `--carry-review <prior-review>` with an annotation update file to retain accepted and resolved decisions. Read [collaborative-review.md](collaborative-review.md) for the complete contract.
+The review site provides page navigation, semantic node/edge/group anchors, persistent reviewer decisions, composed policy status, auditable exceptions, owner-routed SARIF, source provenance, `reports/summary.md`, machine-readable `review.json`, and optional visual-baseline comparison. Use `--carry-review <prior-review>` with an annotation update file to retain accepted and resolved decisions. Read [collaborative-review.md](collaborative-review.md) for the complete contract.
 
 ## Detection and overrides
 
@@ -108,6 +111,8 @@ Use generic `--type sql` only for a table dependency overview. Use `--type sql-e
 | `5` | Semantic drift found with `diff --fail-on-drift` |
 | `6` | Diagram IR migration required with `migrate --check` |
 | `7` | Published SVG pages differ from the configured visual baseline |
+| `8` | An error-level architecture policy or expired exception failed |
+| `9` | An explicit ownership gate found one or more unassigned findings |
 
 ## Troubleshooting
 
@@ -115,7 +120,9 @@ Use generic `--type sql` only for a table dependency overview. Use `--type sql-e
 - Run `migrate --check` before editing unversioned or legacy Diagram IR.
 - Run `security <bundle> --strict` as the final publication gate.
 - Run `publish <bundle> -o <review> --strict` to create a portable evidence index.
-- Add `--policy <policy.json> --fail-on-policy` for organization gates and retain `reports/findings.sarif` for code scanning.
+- Repeat `--policy <policy.json>` for reusable organization/team layers, use an explicit `--evaluation-date` in reproducible CI, and retain `reports/policy.json`.
+- Add `--ownership <ownership.json> --fail-on-unowned-findings` to route SARIF and enforce accountable review coverage.
+- Append `reports/summary.md` to the CI job summary; set `--public-base-url` when direct hosted evidence links are available.
 - Run `verify-export <artifact>` when checking a native export produced on another machine.
 - If YAML fails, use JSON or install PyYAML. No third-party package is required for JSON.
 - If Desktop export is unavailable, deliver the editable `.drawio` and bundled SVG previews.

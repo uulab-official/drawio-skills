@@ -4,7 +4,7 @@ An open-source, deterministic diagram engineering skill for AI coding agents.
 
 `drawio-diagram-engineer` turns a compact Diagram IR into editable `.drawio` XML, validates the result with a measurable quality gate, and exports through draw.io Desktop when available. The project is intentionally compiler-oriented: the structured IR is reviewable source, and `.drawio` is a reproducible build artifact.
 
-> Status: **v1.3**. The stable Diagram IR v1 contract now includes persistent review decisions, architecture policy packs, SARIF findings, and portable collaborative review sites, while retaining round-trip editing, native export verification, security gates, and signed-release controls.
+> Status: **v1.4**. The stable Diagram IR v1 contract now includes composable policy packs, auditable expiring exceptions, accountable finding ownership, source provenance, and pull-request summaries, while retaining ERD, HA, round-trip editing, native export verification, security gates, and signed-release controls.
 
 ![Order-processing architecture generated from Diagram IR](docs/example.architecture.svg)
 
@@ -93,7 +93,7 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
   --strict
 ```
 
-The site provides multi-page navigation, stable semantic links such as `#node-api-gateway`, audit/security/extraction/export status, machine-readable evidence, reviewer-decision lifecycle, policy evaluation, and SARIF. It opens locally and requires neither draw.io Desktop nor a web service.
+The site provides multi-page navigation, stable semantic links such as `#node-api-gateway`, audit/security/extraction/export status, machine-readable evidence, reviewer-decision lifecycle, composed policy evaluation, owner-routed SARIF, source provenance, and a Markdown check summary. It opens locally and requires neither draw.io Desktop nor a web service.
 
 Carry reviewer decisions across regeneration and apply accepted/resolved updates by stable annotation ID:
 
@@ -106,18 +106,22 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
   --strict
 ```
 
-Apply an organization policy pack and fail CI only for error-level policy violations:
+Compose organization and team policy packs, route findings, and fail only on explicit gates:
 
 ```bash
 python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
   publish build/my-system \
   -o build/my-system-review \
-  --policy architecture-policy.json \
+  --policy organization-policy.json \
+  --policy team-policy.json \
+  --ownership review-ownership.json \
+  --evaluation-date 2026-07-29 \
   --fail-on-policy \
+  --fail-on-unowned-findings \
   --strict
 ```
 
-Every site includes `reports/policy.json` and SARIF 2.1.0 `reports/findings.sarif` for GitHub code scanning. A [pinned GitHub Pages workflow recipe](skills/drawio-diagram-engineer/assets/github-pages-workflow.yml) retains an immutable `diagram-review-<commit-sha>` artifact and deploys the same evidence directory.
+Scoped exceptions record a reason, owner, expiry, and optional page/cell selectors. Waived rules remain visibly non-compliant, and expired error-level exceptions block policy. Every site includes `reports/policy.json`, `reports/ownership.json`, `reports/summary.md`, and SARIF 2.1.0 `reports/findings.sarif`. A [pinned GitHub Pages workflow recipe](skills/drawio-diagram-engineer/assets/github-pages-workflow.yml) appends the summary to the job, retains an immutable `diagram-review-<commit-sha>` artifact, and deploys the same evidence directory.
 
 Use an approved review site or bundle as a deterministic visual baseline:
 
@@ -129,7 +133,7 @@ python3 skills/drawio-diagram-engineer/scripts/drawio_tool.py \
   --fail-on-visual-change
 ```
 
-Exit code `7` means at least one page was added, removed, or changed; exit code `8` means an error-level architecture policy failed. The diagnostic site is still written for CI retention. See the [collaborative review contract](skills/drawio-diagram-engineer/references/collaborative-review.md), [annotation example](skills/drawio-diagram-engineer/assets/example.review-annotations.json), and [production policy example](skills/drawio-diagram-engineer/assets/policies/production-review.json).
+Exit code `7` means at least one page was added, removed, or changed; exit code `8` means an error-level architecture policy failed; exit code `9` means the explicit ownership gate found an unassigned finding. The diagnostic site is still written for CI retention. See the [collaborative review contract](skills/drawio-diagram-engineer/references/collaborative-review.md), [governance annotation example](skills/drawio-diagram-engineer/assets/example.governance-annotations.json), [composable policy examples](skills/drawio-diagram-engineer/assets/policies), and [ownership example](skills/drawio-diagram-engineer/assets/example.ownership.json).
 
 Open the checked-in [Commerce Platform review site](docs/review/index.html) or inspect its [machine-readable review manifest](docs/review/review.json).
 
@@ -359,7 +363,7 @@ drawio_tool.py doctor [--format human|json]
 drawio_tool.py init <architecture|blueprint|erd|ha|routing|terraform|kubernetes|github-actions|gitlab-ci> [-o <starter>]
 drawio_tool.py build <model|source> [-o <bundle-dir>] [--type auto|...] [--strict]
 drawio_tool.py merge-annotations <prior-review|annotations> <updates> -o <merged.json>
-drawio_tool.py publish <bundle-dir> -o <review-dir> [--annotations <json>] [--carry-review <review>] [--baseline <review|bundle>] [--policy <json>] [--fail-on-visual-change] [--fail-on-policy] [--strict]
+drawio_tool.py publish <bundle-dir> -o <review-dir> [--annotations <json>] [--carry-review <review>] [--baseline <review|bundle>] [--policy <json>]... [--ownership <json>] [--source-revision <revision>] [--public-base-url <url>] [--fail-on-visual-change] [--fail-on-policy] [--fail-on-unowned-findings] [--strict]
 drawio_tool.py migrate <legacy-ir.json> [-o <v1-ir.json>] [--report <report.json>] [--check]
 drawio_tool.py security <model|diagram.drawio|bundle-dir> [-o <report.json>] [--strict]
 drawio_tool.py compile <ir.json> -o <diagram.drawio> [--theme-file <theme.json>]
@@ -386,7 +390,7 @@ For every command and exit code, see the [CLI reference](skills/drawio-diagram-e
 
 ## Roadmap
 
-The v0.1–v1.0 roadmap is complete. v1.1 added round-trip editing, v1.2 added portable publication, and v1.3 adds persistent decisions, policy as code, SARIF, and immutable hosted evidence while keeping the stable Diagram IR contract and release trust chain. See [ROADMAP.md](ROADMAP.md).
+The v0.1–v1.0 roadmap is complete. v1.1 added round-trip editing, v1.2 portable publication, v1.3 persistent policy review, and v1.4 team-scale governance with composable exceptions, ownership, provenance, and PR summaries. v1.5 tracks optional enterprise integrations without weakening the portable contract. See [ROADMAP.md](ROADMAP.md).
 
 ## Development
 

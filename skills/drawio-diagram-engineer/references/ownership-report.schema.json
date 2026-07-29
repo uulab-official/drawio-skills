@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/review-ownership-report-v1.json",
+  "title": "Draw.io Review Ownership Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "status",
+    "configured",
+    "source",
+    "passed",
+    "total_findings",
+    "assigned",
+    "unassigned",
+    "coverage_percent",
+    "routes",
+    "assignments"
+  ],
+  "properties": {
+    "format": {
+      "const": "drawio-review-ownership-report/v1"
+    },
+    "status": {
+      "enum": ["not-configured", "passed", "partial"]
+    },
+    "configured": {
+      "type": "boolean"
+    },
+    "source": {
+      "type": ["string", "null"]
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "total_findings": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "assigned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unassigned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "coverage_percent": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "routes": {
+      "type": "array"
+    },
+    "assignments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fingerprint",
+          "rule_id",
+          "page",
+          "cell",
+          "owners",
+          "routes"
+        ],
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "rule_id": {
+            "type": "string"
+          },
+          "page": {
+            "type": ["string", "null"]
+          },
+          "cell": {
+            "type": ["string", "null"]
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

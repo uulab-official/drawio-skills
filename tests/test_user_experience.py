@@ -466,7 +466,197 @@ class UserExperienceTests(unittest.TestCase):
                 result["ruleId"]
                 for result in sarif["runs"][0]["results"]
             }
-            self.assertIn("policy.required-views", rule_ids)
+            self.assertIn("policy.production.required-views", rule_ids)
+
+    def test_composed_policy_exception_ownership_provenance_and_summary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            prior_review = temp / "prior-review"
+            governed_review = temp / "governed-review"
+            revision = "0123456789abcdef0123456789abcdef01234567"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.blueprint.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                prior_review,
+                "--annotations",
+                ASSETS / "example.review-annotations.json",
+                "--strict",
+            )
+            run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                governed_review,
+                "--carry-review",
+                prior_review,
+                "--annotations",
+                ASSETS / "example.governance-annotations.json",
+                "--baseline",
+                prior_review,
+                "--policy",
+                ASSETS / "policies/production-review.json",
+                "--policy",
+                ASSETS / "policies/team-governance.json",
+                "--ownership",
+                ASSETS / "example.ownership.json",
+                "--evaluation-date",
+                "2026-07-29",
+                "--source-revision",
+                revision,
+                "--source-repository",
+                "uulab/example",
+                "--source-url",
+                f"https://github.com/uulab/example/commit/{revision}",
+                "--public-base-url",
+                "https://reviews.example.com/pr-42",
+                "--fail-on-policy",
+                "--fail-on-unowned-findings",
+                "--strict",
+            )
+            manifest = json.loads(
+                (governed_review / "review.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(2, len(manifest["policy"]["policies"]))
+            governed_rule = next(
+                result
+                for result in manifest["policy"]["results"]
+                if result["key"] == "team-governance/no-open-decisions"
+            )
+            self.assertTrue(governed_rule["passed"])
+            self.assertFalse(governed_rule["compliant"])
+            self.assertTrue(governed_rule["waived"])
+            exception = manifest["policy"]["exceptions"][0]
+            self.assertEqual("applied", exception["status"])
+            self.assertEqual(
+                ["team-governance/no-open-decisions"],
+                exception["applied_to"],
+            )
+            self.assertTrue(manifest["status"]["ownership"]["passed"])
+            self.assertEqual(1, manifest["status"]["ownership"]["assigned"])
+            self.assertEqual(revision, manifest["provenance"]["revision"])
+            self.assertEqual("scm", manifest["provenance"]["revision_type"])
+            self.assertRegex(
+                manifest["provenance"]["bundle_sha256"],
+                r"^[0-9a-f]{64}$",
+            )
+            sarif = json.loads(
+                (governed_review / "reports/findings.sarif").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(1, len(sarif["runs"][0]["results"]))
+            finding = sarif["runs"][0]["results"][0]
+            self.assertEqual("review.annotation-open", finding["ruleId"])
+            self.assertEqual(
+                ["@uulab/platform"],
+                finding["properties"]["owners"],
+            )
+            summary = (
+                governed_review / "reports/summary.md"
+            ).read_text(encoding="utf-8")
+            self.assertIn(
+                "https://reviews.example.com/pr-42/pages/logical.svg#node-events",
+                summary,
+            )
+            self.assertIn("@uulab/platform", summary)
+            html_text = (governed_review / "index.html").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("Artifact provenance", html_text)
+            self.assertIn("Finding ownership", html_text)
+
+    def test_expired_exception_fails_policy_and_surfaces_sarif(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.blueprint.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            completed = run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                review,
+                "--annotations",
+                ASSETS / "example.governance-annotations.json",
+                "--policy",
+                ASSETS / "policies/team-governance.json",
+                "--evaluation-date",
+                "2027-01-01",
+                "--fail-on-policy",
+                check=False,
+            )
+            self.assertEqual(8, completed.returncode)
+            policy = json.loads(
+                (review / "reports/policy.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual("expired", policy["exceptions"][0]["status"])
+            self.assertGreaterEqual(policy["errors"], 2)
+            sarif = json.loads(
+                (review / "reports/findings.sarif").read_text(encoding="utf-8")
+            )
+            rule_ids = {
+                result["ruleId"]
+                for result in sarif["runs"][0]["results"]
+            }
+            self.assertIn(
+                "policy-exception.team-governance.event-stream-review-window",
+                rule_ids,
+            )
+            self.assertIn(
+                "policy.team-governance.no-open-decisions",
+                rule_ids,
+            )
+
+    def test_unowned_finding_gate_returns_nine(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.blueprint.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            completed = run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                review,
+                "--annotations",
+                ASSETS / "example.governance-annotations.json",
+                "--fail-on-unowned-findings",
+                check=False,
+            )
+            self.assertEqual(9, completed.returncode)
+            ownership = json.loads(
+                (review / "reports/ownership.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual("not-configured", ownership["status"])
+            self.assertEqual(1, ownership["unassigned"])
 
     def test_migrate_check_and_write_workflow(self):
         legacy = {

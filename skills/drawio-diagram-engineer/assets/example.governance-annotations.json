@@ -1,0 +1,29 @@
+{
+  "version": "1",
+  "annotations": [
+    {
+      "id": "confirm-platform-boundary",
+      "page": "context",
+      "cell": "commerce",
+      "status": "accepted",
+      "author": "Architecture Review Board",
+      "message": "Platform ownership boundary accepted for this release."
+    },
+    {
+      "id": "accept-data-ownership",
+      "page": "data",
+      "cell": "node-orders-db",
+      "status": "resolved",
+      "author": "Data Governance",
+      "message": "Residency controls are documented in the deployment evidence."
+    },
+    {
+      "id": "assign-event-stream-owner",
+      "page": "logical",
+      "cell": "node-events",
+      "status": "open",
+      "author": "Architecture Review Board",
+      "message": "Confirm the long-term owning team for the order event stream."
+    }
+  ]
+}

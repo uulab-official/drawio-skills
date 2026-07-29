@@ -1,0 +1,31 @@
+{
+  "format": "drawio-architecture-policy/v1",
+  "id": "team-governance",
+  "name": "Team governance overlay",
+  "rules": [
+    {
+      "id": "no-open-decisions",
+      "type": "maximum-open-annotations",
+      "level": "error",
+      "value": 0
+    }
+  ],
+  "exceptions": [
+    {
+      "id": "event-stream-review-window",
+      "rule": "no-open-decisions",
+      "level": "error",
+      "reason": "Event-stream ownership is being finalized during the platform migration.",
+      "owner": "@uulab/platform",
+      "expires": "2026-12-31",
+      "scope": {
+        "pages": [
+          "logical"
+        ],
+        "cells": [
+          "node-events"
+        ]
+      }
+    }
+  ]
+}

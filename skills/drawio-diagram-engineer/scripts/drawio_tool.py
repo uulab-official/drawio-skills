@@ -25,11 +25,14 @@ from collections import defaultdict, deque
 from pathlib import Path
 from typing import Any
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 IR_VERSION = "1"
 IR_METADATA_VERSION = "1"
 BUNDLE_FORMAT = "drawio-diagram-bundle/v1"
 REVIEW_FORMAT = "drawio-review-site/v1"
+POLICY_FORMAT = "drawio-architecture-policy/v1"
+POLICY_REPORT_FORMAT = "drawio-architecture-policy-report/v1"
+SARIF_VERSION = "2.1.0"
 MAX_STRUCTURED_INPUT_BYTES = 50 * 1024 * 1024
 MAX_XML_INPUT_BYTES = 50 * 1024 * 1024
 MAX_DECOMPRESSED_PAGE_BYTES = 100 * 1024 * 1024
@@ -5866,18 +5869,43 @@ def resolve_annotation_anchor(
     return matches[0]
 
 
-def load_review_annotations(
-    path: Path | None,
-    allowed: dict[str, set[str]],
-) -> list[dict[str, Any]]:
+def annotation_source_records(path: Path | None) -> list[dict[str, Any]]:
     if path is None:
         return []
-    data = load_data(path)
-    if str(data.get("version", "")) != "1" or not isinstance(data.get("annotations"), list):
-        raise ValueError("annotation file requires version 1 and an annotations array")
+    source = path / "review.json" if path.is_dir() else path
+    data = load_data(source)
+    if data.get("format") == REVIEW_FORMAT:
+        records = data.get("annotations")
+        if not isinstance(records, list):
+            raise ValueError("review site contains an invalid annotations array")
+        human_records = []
+        for annotation in records:
+            if not isinstance(annotation, dict):
+                raise ValueError("review site contains a non-object annotation")
+            if annotation.get("source") not in {None, "reviewer"}:
+                continue
+            human_records.append({
+                key: annotation[key]
+                for key in ("id", "page", "cell", "status", "author", "message")
+                if key in annotation
+            })
+        return human_records
+    if str(data.get("version", "")) != "1" or not isinstance(
+        data.get("annotations"), list,
+    ):
+        raise ValueError(
+            "annotation source must be a version 1 annotation file or review site"
+        )
+    return copy.deepcopy(data["annotations"])
+
+
+def normalize_annotation_records(
+    records: list[dict[str, Any]],
+    allowed: dict[str, set[str]] | None = None,
+) -> list[dict[str, Any]]:
     annotations = []
     seen: set[str] = set()
-    for index, annotation in enumerate(data["annotations"], start=1):
+    for index, annotation in enumerate(records, start=1):
         if not isinstance(annotation, dict):
             raise ValueError(f"annotation {index} must be an object")
         annotation_id = str(annotation.get("id", ""))
@@ -5893,20 +5921,84 @@ def load_review_annotations(
             raise ValueError(
                 f"annotation {annotation_id} status must be open, accepted, or resolved"
             )
-        anchor = resolve_annotation_anchor(page_id, raw_cell, allowed)
+        if not valid_semantic_id(page_id) or not valid_semantic_id(raw_cell):
+            raise ValueError(
+                f"annotation {annotation_id} requires semantic page and cell ids"
+            )
+        anchor = (
+            resolve_annotation_anchor(page_id, raw_cell, allowed)
+            if allowed is not None else raw_cell
+        )
         normalized = {
             "id": annotation_id,
             "page": page_id,
             "cell": anchor,
             "status": status,
             "message": message,
-            "href": f"pages/{page_id}.svg#{anchor}",
         }
+        if allowed is not None:
+            normalized["href"] = f"pages/{page_id}.svg#{anchor}"
         if annotation.get("author"):
             normalized["author"] = str(annotation["author"])
         annotations.append(normalized)
         seen.add(annotation_id)
     return annotations
+
+
+def merge_annotation_records(
+    base: list[dict[str, Any]],
+    updates: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    normalized_base = normalize_annotation_records(base)
+    normalized_updates = normalize_annotation_records(updates)
+    update_by_id = {item["id"]: item for item in normalized_updates}
+    base_ids = {item["id"] for item in normalized_base}
+    merged = [
+        copy.deepcopy(update_by_id.get(item["id"], item))
+        for item in normalized_base
+    ]
+    merged.extend(
+        copy.deepcopy(item)
+        for item in normalized_updates
+        if item["id"] not in base_ids
+    )
+    status_counts = {
+        status: sum(1 for item in merged if item["status"] == status)
+        for status in ("open", "accepted", "resolved")
+    }
+    return merged, {
+        "base": len(normalized_base),
+        "updates": len(normalized_updates),
+        "carried": sum(1 for item in normalized_base if item["id"] not in update_by_id),
+        "updated": sum(1 for item in normalized_base if item["id"] in update_by_id),
+        "added": sum(1 for item in normalized_updates if item["id"] not in base_ids),
+        "total": len(merged),
+        **status_counts,
+    }
+
+
+def merge_review_annotations(
+    carry_path: Path | None,
+    updates_path: Path | None,
+    allowed: dict[str, set[str]],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    base = annotation_source_records(carry_path)
+    updates = annotation_source_records(updates_path)
+    merged, summary = merge_annotation_records(base, updates)
+    base_ids = {str(item.get("id", "")) for item in base}
+    update_ids = {str(item.get("id", "")) for item in updates}
+    normalized = normalize_annotation_records(merged, allowed)
+    for annotation in normalized:
+        annotation["source"] = "reviewer"
+        annotation_id = annotation["id"]
+        annotation["lifecycle"] = (
+            "updated"
+            if annotation_id in base_ids and annotation_id in update_ids
+            else "carried"
+            if annotation_id in base_ids
+            else "added"
+        )
+    return normalized, summary
 
 
 def report_annotations(
@@ -5946,6 +6038,327 @@ def report_annotations(
                 "href": f"pages/{page_id}.svg#{anchor}",
             })
     return generated
+
+
+POLICY_RULE_TYPES = {
+    "required-pages",
+    "minimum-audit-score",
+    "require-security",
+    "require-lossless-extraction",
+    "require-semantic-match",
+    "required-export-formats",
+    "require-visual-baseline",
+    "maximum-open-annotations",
+}
+
+
+def load_architecture_policy(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    policy = load_data(path)
+    if policy.get("format") != POLICY_FORMAT:
+        raise ValueError(f"policy format must be {POLICY_FORMAT}")
+    name = str(policy.get("name", "")).strip()
+    rules = policy.get("rules")
+    if not name or not isinstance(rules, list) or not rules:
+        raise ValueError("policy requires a name and at least one rule")
+    seen: set[str] = set()
+    for index, rule in enumerate(rules, start=1):
+        if not isinstance(rule, dict):
+            raise ValueError(f"policy rule {index} must be an object")
+        rule_id = str(rule.get("id", ""))
+        rule_type = str(rule.get("type", ""))
+        level = str(rule.get("level", "error"))
+        if not valid_semantic_id(rule_id) or rule_id in seen:
+            raise ValueError(f"policy rule {index} requires a unique semantic id")
+        if rule_type not in POLICY_RULE_TYPES:
+            raise ValueError(f"policy rule {rule_id} has unsupported type {rule_type}")
+        if level not in {"error", "warning"}:
+            raise ValueError(f"policy rule {rule_id} level must be error or warning")
+        if rule_type == "required-pages":
+            pages = rule.get("pages")
+            if (
+                not isinstance(pages, list)
+                or not pages
+                or any(not valid_semantic_id(str(page)) for page in pages)
+            ):
+                raise ValueError(f"policy rule {rule_id} requires semantic page ids")
+        elif rule_type == "required-export-formats":
+            formats = rule.get("formats")
+            if (
+                not isinstance(formats, list)
+                or not formats
+                or any(str(fmt) not in {"png", "svg", "pdf", "jpg"} for fmt in formats)
+            ):
+                raise ValueError(
+                    f"policy rule {rule_id} requires png, svg, pdf, or jpg formats"
+                )
+        elif rule_type == "minimum-audit-score":
+            value = rule.get("value")
+            if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 100:
+                raise ValueError(f"policy rule {rule_id} value must be 0..100")
+        elif rule_type == "maximum-open-annotations":
+            value = rule.get("value")
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(
+                    f"policy rule {rule_id} value must be a non-negative integer"
+                )
+        seen.add(rule_id)
+    return policy
+
+
+def evaluate_architecture_policy(
+    policy: dict[str, Any] | None,
+    review: dict[str, Any],
+) -> dict[str, Any]:
+    if policy is None:
+        return {
+            "format": POLICY_REPORT_FORMAT,
+            "status": "not-configured",
+            "policy": None,
+            "passed": True,
+            "errors": 0,
+            "warnings": 0,
+            "results": [],
+        }
+    page_ids = {str(page["id"]) for page in review["pages"]}
+    export_formats = {
+        str(report.get("format"))
+        for report in review["status"]["exports"]["reports"]
+        if report.get("passed") and report.get("format")
+    }
+    open_annotations = sum(
+        1
+        for annotation in review["annotations"]
+        if annotation.get("source") == "reviewer"
+        and annotation.get("status") == "open"
+    )
+    results = []
+    for rule in policy["rules"]:
+        rule_type = str(rule["type"])
+        passed = True
+        detail = ""
+        if rule_type == "required-pages":
+            required = {str(page) for page in rule["pages"]}
+            missing = sorted(required - page_ids)
+            passed = not missing
+            detail = (
+                "all required pages are present"
+                if passed else f"missing pages: {', '.join(missing)}"
+            )
+        elif rule_type == "minimum-audit-score":
+            actual = int(review["status"]["audit"]["score"])
+            expected = int(rule["value"])
+            passed = actual >= expected
+            detail = f"audit score {actual}; required {expected}"
+        elif rule_type == "require-security":
+            passed = bool(review["status"]["security"]["passed"])
+            detail = "security gate passed" if passed else "security gate failed"
+        elif rule_type == "require-lossless-extraction":
+            passed = bool(review["status"]["extraction"]["lossless"])
+            detail = "round trip is lossless" if passed else "round trip required inference"
+        elif rule_type == "require-semantic-match":
+            passed = bool(review["status"]["extraction"]["semantic_match"])
+            detail = (
+                "bundle and draw.io semantics match"
+                if passed else "bundle and draw.io semantics differ"
+            )
+        elif rule_type == "required-export-formats":
+            required = {str(fmt) for fmt in rule["formats"]}
+            missing = sorted(required - export_formats)
+            passed = not missing
+            detail = (
+                "all required native exports passed"
+                if passed else f"missing verified exports: {', '.join(missing)}"
+            )
+        elif rule_type == "require-visual-baseline":
+            status = str(review["status"]["visual_regression"]["status"])
+            passed = status != "not-configured"
+            detail = (
+                f"visual baseline status: {status}"
+                if passed else "visual baseline is not configured"
+            )
+        elif rule_type == "maximum-open-annotations":
+            maximum = int(rule["value"])
+            passed = open_annotations <= maximum
+            detail = f"{open_annotations} open reviewer annotation(s); maximum {maximum}"
+        results.append({
+            "id": str(rule["id"]),
+            "type": rule_type,
+            "level": str(rule.get("level", "error")),
+            "passed": passed,
+            "message": str(rule.get("message") or detail),
+            "detail": detail,
+        })
+    errors = sum(
+        1 for result in results
+        if not result["passed"] and result["level"] == "error"
+    )
+    warnings = sum(
+        1 for result in results
+        if not result["passed"] and result["level"] == "warning"
+    )
+    return {
+        "format": POLICY_REPORT_FORMAT,
+        "status": "passed" if errors == 0 else "failed",
+        "policy": {
+            "format": POLICY_FORMAT,
+            "name": str(policy["name"]),
+        },
+        "passed": errors == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "results": results,
+    }
+
+
+def sarif_result(
+    rule_id: str,
+    level: str,
+    message: str,
+    artifact: str,
+    logical_name: str | None = None,
+    properties: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    sarif_level = {
+        "error": "error",
+        "warning": "warning",
+        "note": "note",
+        "info": "note",
+    }.get(level, "warning")
+    location: dict[str, Any] = {
+        "physicalLocation": {
+            "artifactLocation": {"uri": artifact},
+        },
+    }
+    if logical_name:
+        location["logicalLocations"] = [{
+            "name": logical_name,
+            "fullyQualifiedName": logical_name,
+        }]
+    fingerprint = hashlib.sha256(
+        f"{rule_id}\0{message}\0{artifact}\0{logical_name or ''}".encode("utf-8")
+    ).hexdigest()
+    result = {
+        "ruleId": rule_id,
+        "level": sarif_level,
+        "message": {"text": message},
+        "locations": [location],
+        "partialFingerprints": {"stableFinding": fingerprint},
+    }
+    if properties:
+        result["properties"] = properties
+    return result
+
+
+def review_sarif(
+    review: dict[str, Any],
+    audit: dict[str, Any],
+    security: dict[str, Any],
+    extraction: dict[str, Any],
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    page_ids = [str(page["id"]) for page in review["pages"]]
+    page_aliases = {
+        f"page-{index}": page_id
+        for index, page_id in enumerate(page_ids, start=1)
+    }
+    results: list[dict[str, Any]] = []
+
+    def finding_location(
+        finding: dict[str, Any],
+        fallback: str,
+    ) -> tuple[str, str | None]:
+        page = str(finding.get("page", ""))
+        page = page_aliases.get(page, page)
+        cell = str(finding.get("cell", ""))
+        if page in page_ids:
+            logical = f"{page}#{cell}" if cell else page
+            return f"pages/{page}.svg", logical
+        return fallback, str(finding.get("location", "")) or None
+
+    for source, report, key, fallback in (
+        ("audit", audit, "issues", "reports/audit.json"),
+        ("security", security, "findings", "reports/security.json"),
+        ("extraction", extraction, "findings", "reports/extraction.json"),
+    ):
+        for finding in report.get(key, []):
+            if not isinstance(finding, dict):
+                continue
+            artifact, logical = finding_location(finding, fallback)
+            results.append(sarif_result(
+                str(finding.get("code", f"{source}.finding")),
+                str(finding.get("level", "warning")),
+                str(finding.get("message", "Review finding")),
+                artifact,
+                logical,
+                {"source": source},
+            ))
+    for page in review["status"]["visual_regression"]["pages"]:
+        if page["status"] in {"added", "removed", "changed"}:
+            results.append(sarif_result(
+                f"visual.{page['status']}",
+                "warning",
+                f"Visual baseline page {page['id']} is {page['status']}.",
+                f"pages/{page['id']}.svg",
+                str(page["id"]),
+                {"source": "visual"},
+            ))
+    for result in policy["results"]:
+        if not result["passed"]:
+            results.append(sarif_result(
+                f"policy.{result['id']}",
+                str(result["level"]),
+                str(result["message"]),
+                "reports/policy.json",
+                str(result["id"]),
+                {"source": "policy", "detail": result["detail"]},
+            ))
+    for annotation in review["annotations"]:
+        if (
+            annotation.get("source") == "reviewer"
+            and annotation.get("status") == "open"
+        ):
+            results.append(sarif_result(
+                "review.annotation-open",
+                "warning",
+                str(annotation["message"]),
+                f"pages/{annotation['page']}.svg",
+                f"{annotation['page']}#{annotation['cell']}",
+                {
+                    "source": "reviewer",
+                    "annotationId": annotation["id"],
+                },
+            ))
+    rules = {}
+    for result in results:
+        rule_id = str(result["ruleId"])
+        rules.setdefault(rule_id, {
+            "id": rule_id,
+            "name": slugify(rule_id).replace("-", "_"),
+            "shortDescription": {
+                "text": rule_id.replace(".", " ").replace("-", " ").title(),
+            },
+        })
+    return {
+        "$schema": (
+            "https://json.schemastore.org/sarif-2.1.0.json"
+        ),
+        "version": SARIF_VERSION,
+        "runs": [{
+            "tool": {
+                "driver": {
+                    "name": "drawio-diagram-engineer",
+                    "version": VERSION,
+                    "informationUri": (
+                        "https://github.com/uulab-official/drawio-skills"
+                    ),
+                    "rules": [rules[key] for key in sorted(rules)],
+                },
+            },
+            "results": results,
+        }],
+    }
 
 
 def status_badge(label: str, passed: bool, detail: str) -> str:
@@ -5996,6 +6409,18 @@ def review_site_html(review: dict[str, Any]) -> str:
             status["visual_regression"]["status"] in {"passed", "not-configured"},
             status["visual_regression"]["status"],
         ),
+        status_badge(
+            "Architecture policy",
+            bool(status["policy"]["passed"]),
+            (
+                "not configured"
+                if status["policy"]["status"] == "not-configured"
+                else (
+                    f'{status["policy"]["errors"]} error(s) · '
+                    f'{status["policy"]["warnings"]} warning(s)'
+                )
+            ),
+        ),
     ])
     annotations = "".join(
         (
@@ -6003,7 +6428,9 @@ def review_site_html(review: dict[str, Any]) -> str:
             f'<a href="{html.escape(item["href"])}" target="diagram-frame">'
             f'{html.escape(item["page"])} · {html.escape(item["cell"])}</a>'
             f'<span>{html.escape(item["message"])}</span>'
-            f'<small>{html.escape(item["status"])}</small></li>'
+            f'<small>{html.escape(item["status"])}'
+            f' · {html.escape(str(item.get("lifecycle") or item.get("source") or "generated"))}'
+            f"</small></li>"
         )
         for item in review["annotations"]
     ) or "<li class=\"empty\">No open or supplied annotations.</li>"
@@ -6026,23 +6453,35 @@ def review_site_html(review: dict[str, Any]) -> str:
         f"{html.escape(page['status'])}</span></td></tr>"
         for page in status["visual_regression"]["pages"]
     ) or '<tr><td colspan="2">No baseline configured.</td></tr>'
+    policy_rows = "".join(
+        f"<tr><td>{html.escape(result['id'])}</td>"
+        f"<td><span class=\"pill {'passed' if result['passed'] else 'failed'}\">"
+        f"{'passed' if result['passed'] else html.escape(result['level'])}"
+        f"</span></td><td>{html.escape(result['detail'])}</td></tr>"
+        for result in review["policy"]["results"]
+    ) or '<tr><td colspan="3">No architecture policy configured.</td></tr>'
+    lifecycle = status["annotations"]
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Portable, machine-verifiable architecture diagram review site.">
+  <meta property="og:title" content="{title} · Diagram review">
+  <meta property="og:description" content="Portable architecture evidence, policy, and review lifecycle.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
   <meta name="color-scheme" content="light">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%233157d5'/%3E%3Cpath d='M17 18h30v10H17zm0 18h30v10H17z' fill='white'/%3E%3C/svg%3E">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; img-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; frame-src 'self'; img-src 'self' data:;">
   <title>{title} · Diagram review</title>
   <style>
-    :root{{--ink:#172033;--muted:#64748b;--line:#dbe3ef;--paper:#fff;--wash:#f4f7fb;--accent:#3157d5;--pass:#16794b;--warn:#a15c00}}
+    :root{{--ink:#172033;--muted:#64748b;--line:#dbe3ef;--paper:#fff;--wash:#f4f7fb;--accent:#3157d5;--pass:#16794b;--warn:#a15c00;--resolved:#52606d}}
     *{{box-sizing:border-box}} body{{margin:0;background:var(--wash);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif}}
     header{{padding:28px 34px 20px;background:#10182b;color:white}} header p{{color:#b9c6df;margin:4px 0 0}} h1{{margin:0;font-size:28px}}
     nav{{display:flex;gap:8px;overflow:auto;padding:12px 34px;background:var(--paper);border-bottom:1px solid var(--line)}}
     nav a,.chips a{{color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:7px 11px;white-space:nowrap}}
-    main{{padding:22px 34px 42px;display:grid;gap:18px}} .status-grid{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}}
+    main{{padding:22px 34px 42px;display:grid;gap:18px}} .status-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}}
     .status{{background:white;border:1px solid var(--line);border-top:4px solid var(--pass);border-radius:10px;padding:12px;display:grid;gap:3px}}
     .status.fail{{border-top-color:var(--warn)}} .status strong{{font-size:12px;color:var(--pass)}} .status.fail strong{{color:var(--warn)}} .status small{{color:var(--muted)}}
     .viewer{{width:100%;height:min(72vh,860px);border:1px solid var(--line);border-radius:12px;background:white}}
@@ -6050,20 +6489,25 @@ def review_site_html(review: dict[str, Any]) -> str:
     section h2{{margin:0 0 12px;font-size:17px}} ul{{list-style:none;padding:0;margin:0;display:grid;gap:8px}} li{{display:grid;grid-template-columns:auto 1fr auto;gap:10px;border-bottom:1px solid var(--line);padding:8px 0}}
     li a{{color:var(--accent);font-weight:650;text-decoration:none}} li small,.empty{{color:var(--muted)}} details{{border-top:1px solid var(--line);padding:10px 0}} summary{{cursor:pointer;font-weight:650}}
     .chips{{display:flex;flex-wrap:wrap;gap:7px;padding:10px 0}} .chips a{{font-size:12px;padding:5px 8px}} table{{width:100%;border-collapse:collapse}} td{{padding:7px;border-bottom:1px solid var(--line)}}
-    .pill{{padding:3px 7px;border-radius:999px;background:#e8edf5}} .pill.changed,.pill.added,.pill.removed{{background:#fff0d6;color:#7c4600}}
+    .pill{{padding:3px 7px;border-radius:999px;background:#e8edf5}} .pill.changed,.pill.added,.pill.removed,.pill.failed,.pill.error,.pill.warning{{background:#fff0d6;color:#7c4600}}
+    li.resolved{{opacity:.64}} li.accepted{{border-left:3px solid var(--pass);padding-left:9px}} .lifecycle{{margin:0 0 12px;color:var(--muted)}}
     footer{{padding:18px 34px;color:var(--muted)}} footer a{{color:var(--accent)}}
-    @media(max-width:900px){{.status-grid{{grid-template-columns:1fr 1fr}}.panels{{grid-template-columns:1fr}}main,nav{{padding-left:16px;padding-right:16px}}}}
+    @media(max-width:900px){{.panels{{grid-template-columns:1fr}}main,nav{{padding-left:16px;padding-right:16px}}li{{grid-template-columns:1fr}}}}
   </style>
 </head>
 <body>
-  <header><h1>{title}</h1><p>Portable architecture review · {len(review["pages"])} page(s) · semantic anchors enabled</p></header>
+  <header><h1>{title}</h1><p>Portable architecture review · {len(review["pages"])} page(s) · policy and SARIF evidence enabled</p></header>
   <nav aria-label="Diagram pages">{page_links}</nav>
   <main>
     <div class="status-grid">{statuses}</div>
     <iframe class="viewer" name="diagram-frame" src="{first_page}" title="Diagram preview" sandbox="" referrerpolicy="no-referrer"></iframe>
     <div class="panels">
-      <section><h2>Review annotations</h2><ul>{annotations}</ul></section>
+      <section><h2>Review annotations</h2>
+        <p class="lifecycle">{lifecycle["open"]} open · {lifecycle["accepted"]} accepted · {lifecycle["resolved"]} resolved · {lifecycle["carried"]} carried</p>
+        <ul>{annotations}</ul>
+      </section>
       <section><h2>Visual baseline</h2><table>{visual_rows}</table></section>
+      <section><h2>Architecture policy</h2><table>{policy_rows}</table></section>
       <section><h2>Semantic element index</h2>{catalogs}</section>
       <section><h2>Machine-readable evidence</h2>
         <div class="chips">
@@ -6071,6 +6515,8 @@ def review_site_html(review: dict[str, Any]) -> str:
           <a href="reports/audit.json">Audit report</a>
           <a href="reports/security.json">Security report</a>
           <a href="reports/extraction.json">Extraction report</a>
+          <a href="reports/policy.json">Policy report</a>
+          <a href="reports/findings.sarif">SARIF findings</a>
         </div>
       </section>
     </div>
@@ -6086,12 +6532,15 @@ def publish_review_site(
     output: Path,
     title: str | None = None,
     annotations_path: Path | None = None,
+    carry_review_path: Path | None = None,
     baseline: Path | None = None,
+    policy_path: Path | None = None,
     force: bool = False,
 ) -> dict[str, Any]:
     manifest, diagram_ir, audit, persisted_security, drawio_path = (
         load_bundle_for_publish(bundle)
     )
+    architecture_policy = load_architecture_policy(policy_path)
     if output.exists() and not output.is_dir():
         raise ValueError(f"review output must be a directory: {output}")
     if output.exists() and any(output.iterdir()):
@@ -6134,9 +6583,15 @@ def publish_review_site(
 
     catalog, allowed = semantic_cell_catalog(diagram_ir)
     page_ids = [page["id"] for page in catalog]
-    supplied_annotations = load_review_annotations(annotations_path, allowed)
+    supplied_annotations, annotation_summary = merge_review_annotations(
+        carry_review_path, annotations_path, allowed,
+    )
     generated_annotations = report_annotations(
         audit, extraction, page_ids, allowed,
+    )
+    annotation_summary["generated"] = len(generated_annotations)
+    annotation_summary["all"] = (
+        annotation_summary["total"] + len(generated_annotations)
     )
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -6236,6 +6691,7 @@ def publish_review_site(
                     "reports": export_reports,
                 },
                 "visual_regression": visual,
+                "annotations": annotation_summary,
             },
             "artifacts": {
                 "index": "index.html",
@@ -6243,12 +6699,30 @@ def publish_review_site(
                 "audit": "reports/audit.json",
                 "security": "reports/security.json",
                 "extraction": "reports/extraction.json",
+                "policy": "reports/policy.json",
+                "sarif": "reports/findings.sarif",
             },
         }
+        policy_report = evaluate_architecture_policy(
+            architecture_policy, review,
+        )
+        review["policy"] = policy_report
+        review["status"]["policy"] = {
+            "status": policy_report["status"],
+            "passed": bool(policy_report["passed"]),
+            "errors": int(policy_report["errors"]),
+            "warnings": int(policy_report["warnings"]),
+            "report": "reports/policy.json",
+        }
+        sarif = review_sarif(
+            review, audit, persisted_security, extraction, policy_report,
+        )
         for name, report in (
             ("audit.json", audit),
             ("security.json", persisted_security),
             ("extraction.json", extraction),
+            ("policy.json", policy_report),
+            ("findings.sarif", sarif),
         ):
             (reports_dir / name).write_text(
                 json.dumps(report, indent=2, ensure_ascii=False) + "\n",
@@ -6275,6 +6749,46 @@ def publish_review_site(
     return review
 
 
+def command_merge_annotations(args: argparse.Namespace) -> int:
+    base = annotation_source_records(Path(args.base))
+    updates = annotation_source_records(Path(args.updates))
+    merged, summary = merge_annotation_records(base, updates)
+    output = Path(args.output)
+    if output.exists():
+        if output.is_dir():
+            raise ValueError(f"annotation output must be a file: {output}")
+        if not args.force:
+            raise ValueError(
+                f"{output} already exists; choose another file or pass --force"
+            )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{output.name}.",
+        suffix=".tmp",
+        dir=output.parent,
+    )
+    os.close(descriptor)
+    temporary = Path(temporary_name)
+    try:
+        temporary.write_text(
+            json.dumps(
+                {"version": "1", "annotations": merged},
+                indent=2,
+                ensure_ascii=False,
+            ) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(output)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+    print(json.dumps({
+        "output": str(output),
+        "summary": summary,
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
 def command_publish(args: argparse.Namespace) -> int:
     output = Path(args.output)
     review = publish_review_site(
@@ -6282,7 +6796,9 @@ def command_publish(args: argparse.Namespace) -> int:
         output,
         args.title,
         Path(args.annotations) if args.annotations else None,
+        Path(args.carry_review) if args.carry_review else None,
         Path(args.baseline) if args.baseline else None,
+        Path(args.policy) if args.policy else None,
         args.force,
     )
     summary = {
@@ -6291,6 +6807,7 @@ def command_publish(args: argparse.Namespace) -> int:
         "manifest": str(output / "review.json"),
         "pages": len(review["pages"]),
         "annotations": len(review["annotations"]),
+        "sarif": str(output / review["artifacts"]["sarif"]),
         "status": review["status"],
     }
     print(json.dumps(summary, indent=2, ensure_ascii=False))
@@ -6300,7 +6817,10 @@ def command_publish(args: argparse.Namespace) -> int:
         or not review["status"]["extraction"]["lossless"]
         or not review["status"]["extraction"]["semantic_match"]
         or review["status"]["exports"]["status"] == "failed"
+        or not review["status"]["policy"]["passed"]
     )
+    if args.fail_on_policy and not review["status"]["policy"]["passed"]:
+        return 8
     if args.fail_on_visual_change and review["status"]["visual_regression"]["changed"]:
         return 7
     if args.strict and strict_failed:
@@ -6966,6 +7486,22 @@ def build_parser() -> argparse.ArgumentParser:
     build_one_parser.add_argument("--force", action="store_true")
     build_one_parser.set_defaults(func=command_build)
 
+    merge_annotations_parser = subparsers.add_parser(
+        "merge-annotations",
+        help="merge reviewer annotation updates by stable annotation id",
+    )
+    merge_annotations_parser.add_argument(
+        "base",
+        help="prior review site, review manifest, or version 1 annotation file",
+    )
+    merge_annotations_parser.add_argument(
+        "updates",
+        help="version 1 annotation file whose matching ids replace prior records",
+    )
+    merge_annotations_parser.add_argument("-o", "--output", required=True)
+    merge_annotations_parser.add_argument("--force", action="store_true")
+    merge_annotations_parser.set_defaults(func=command_merge_annotations)
+
     publish_parser = subparsers.add_parser(
         "publish",
         help="create an atomic portable HTML/SVG review site from a bundle",
@@ -6978,10 +7514,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="version 1 JSON annotations linked to semantic cells",
     )
     publish_parser.add_argument(
+        "--carry-review",
+        help="prior review site or manifest whose reviewer annotations are carried forward",
+    )
+    publish_parser.add_argument(
         "--baseline",
         help="prior review site or bundle used as the visual baseline",
     )
+    publish_parser.add_argument(
+        "--policy",
+        help="architecture policy pack evaluated against the published evidence",
+    )
     publish_parser.add_argument("--fail-on-visual-change", action="store_true")
+    publish_parser.add_argument("--fail-on-policy", action="store_true")
     publish_parser.add_argument("--strict", action="store_true")
     publish_parser.add_argument("--force", action="store_true")
     publish_parser.set_defaults(func=command_publish)

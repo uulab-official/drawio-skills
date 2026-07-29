@@ -1,7 +1,7 @@
 {
   "format": "drawio-review-site/v1",
   "generator": "drawio-diagram-engineer",
-  "tool_version": "1.2.0",
+  "tool_version": "1.3.0",
   "title": "Commerce Platform Architecture Review",
   "source_bundle": "blueprint-bundle",
   "pages": [
@@ -628,19 +628,23 @@
       "id": "confirm-platform-boundary",
       "page": "context",
       "cell": "node-commerce",
-      "status": "open",
-      "message": "Confirm the platform boundary and external payment-provider responsibility.",
+      "status": "accepted",
+      "message": "Platform ownership boundary accepted for this release.",
       "href": "pages/context.svg#node-commerce",
-      "author": "Architecture Review"
+      "author": "Architecture Review Board",
+      "source": "reviewer",
+      "lifecycle": "updated"
     },
     {
       "id": "accept-data-ownership",
       "page": "data",
       "cell": "node-orders-db",
-      "status": "accepted",
-      "message": "Order service remains the system of record for order state.",
+      "status": "resolved",
+      "message": "Residency controls are documented in the deployment evidence.",
       "href": "pages/data.svg#node-orders-db",
-      "author": "Data Review"
+      "author": "Data Governance",
+      "source": "reviewer",
+      "lifecycle": "updated"
     }
   ],
   "status": {
@@ -665,15 +669,72 @@
       "reports": []
     },
     "visual_regression": {
-      "status": "not-configured",
+      "status": "passed",
       "changed": false,
       "summary": {
         "added": 0,
         "removed": 0,
         "changed": 0,
-        "unchanged": 0
+        "unchanged": 6
       },
-      "pages": []
+      "pages": [
+        {
+          "id": "context",
+          "status": "unchanged",
+          "baseline_sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0",
+          "current_sha256": "84bf2290fb2f8e22552ec6dc67e6f1af6e13578eb70668883ea2d500c55810d0"
+        },
+        {
+          "id": "data",
+          "status": "unchanged",
+          "baseline_sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63",
+          "current_sha256": "58b04d0300b5f0bd5f3ad93b9bb0746b86340149218ac695d447eec538aefb63"
+        },
+        {
+          "id": "decisions",
+          "status": "unchanged",
+          "baseline_sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09",
+          "current_sha256": "35d5b051d095136e824767577a6c01467c6479e445719771c2391acb83bc7d09"
+        },
+        {
+          "id": "deployment",
+          "status": "unchanged",
+          "baseline_sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891",
+          "current_sha256": "4b67f052b7242486a782a8bfc50989146875aae96b1c9a1badf11f38f40bd891"
+        },
+        {
+          "id": "logical",
+          "status": "unchanged",
+          "baseline_sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2",
+          "current_sha256": "594cfc6cf24ec82c077eaf1fb9231b4d175d3a7f0597372e950edd4fb971e6f2"
+        },
+        {
+          "id": "security",
+          "status": "unchanged",
+          "baseline_sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb",
+          "current_sha256": "3cad69ba128bdafaf8082717ff3bf3a38417a7af7f3f115fcc88b7fbc1fa54bb"
+        }
+      ]
+    },
+    "annotations": {
+      "base": 2,
+      "updates": 2,
+      "carried": 0,
+      "updated": 2,
+      "added": 0,
+      "total": 2,
+      "open": 0,
+      "accepted": 1,
+      "resolved": 1,
+      "generated": 0,
+      "all": 2
+    },
+    "policy": {
+      "status": "passed",
+      "passed": true,
+      "errors": 0,
+      "warnings": 0,
+      "report": "reports/policy.json"
     }
   },
   "artifacts": {
@@ -681,6 +742,77 @@
     "manifest": "review.json",
     "audit": "reports/audit.json",
     "security": "reports/security.json",
-    "extraction": "reports/extraction.json"
+    "extraction": "reports/extraction.json",
+    "policy": "reports/policy.json",
+    "sarif": "reports/findings.sarif"
+  },
+  "policy": {
+    "format": "drawio-architecture-policy-report/v1",
+    "status": "passed",
+    "policy": {
+      "format": "drawio-architecture-policy/v1",
+      "name": "Production architecture review"
+    },
+    "passed": true,
+    "errors": 0,
+    "warnings": 0,
+    "results": [
+      {
+        "id": "required-views",
+        "type": "required-pages",
+        "level": "error",
+        "passed": true,
+        "message": "all required pages are present",
+        "detail": "all required pages are present"
+      },
+      {
+        "id": "audit-score",
+        "type": "minimum-audit-score",
+        "level": "error",
+        "passed": true,
+        "message": "audit score 100; required 95",
+        "detail": "audit score 100; required 95"
+      },
+      {
+        "id": "security-gate",
+        "type": "require-security",
+        "level": "error",
+        "passed": true,
+        "message": "security gate passed",
+        "detail": "security gate passed"
+      },
+      {
+        "id": "lossless-round-trip",
+        "type": "require-lossless-extraction",
+        "level": "error",
+        "passed": true,
+        "message": "round trip is lossless",
+        "detail": "round trip is lossless"
+      },
+      {
+        "id": "semantic-alignment",
+        "type": "require-semantic-match",
+        "level": "error",
+        "passed": true,
+        "message": "bundle and draw.io semantics match",
+        "detail": "bundle and draw.io semantics match"
+      },
+      {
+        "id": "approved-baseline",
+        "type": "require-visual-baseline",
+        "level": "warning",
+        "passed": true,
+        "message": "visual baseline status: passed",
+        "detail": "visual baseline status: passed"
+      },
+      {
+        "id": "open-review-items",
+        "type": "maximum-open-annotations",
+        "level": "warning",
+        "passed": true,
+        "message": "0 open reviewer annotation(s); maximum 1",
+        "detail": "0 open reviewer annotation(s); maximum 1"
+      }
+    ]
   }
 }

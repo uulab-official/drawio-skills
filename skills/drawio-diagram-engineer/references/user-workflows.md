@@ -58,10 +58,11 @@ When the deliverable needs to be reviewed without draw.io Desktop, publish the b
 
 ```bash
 python3 <skill-dir>/scripts/drawio_tool.py publish build/architecture \
-  -o build/architecture-review --strict
+  -o build/architecture-review \
+  --policy architecture-policy.json --fail-on-policy --strict
 ```
 
-The review site provides page navigation, semantic node/edge/group anchors, evidence status, machine-readable `review.json`, and optional annotations or visual-baseline comparison. Read [collaborative-review.md](collaborative-review.md) for the complete contract.
+The review site provides page navigation, semantic node/edge/group anchors, persistent reviewer decisions, policy status, SARIF, machine-readable `review.json`, and optional visual-baseline comparison. Use `--carry-review <prior-review>` with an annotation update file to retain accepted and resolved decisions. Read [collaborative-review.md](collaborative-review.md) for the complete contract.
 
 ## Detection and overrides
 
@@ -114,6 +115,7 @@ Use generic `--type sql` only for a table dependency overview. Use `--type sql-e
 - Run `migrate --check` before editing unversioned or legacy Diagram IR.
 - Run `security <bundle> --strict` as the final publication gate.
 - Run `publish <bundle> -o <review> --strict` to create a portable evidence index.
+- Add `--policy <policy.json> --fail-on-policy` for organization gates and retain `reports/findings.sarif` for code scanning.
 - Run `verify-export <artifact>` when checking a native export produced on another machine.
 - If YAML fails, use JSON or install PyYAML. No third-party package is required for JSON.
 - If Desktop export is unavailable, deliver the editable `.drawio` and bundled SVG previews.

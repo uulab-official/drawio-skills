@@ -109,6 +109,12 @@
           "href": {
             "type": "string",
             "pattern": "^pages/[a-z0-9-]+\\.svg#[a-z0-9-]+$"
+          },
+          "source": {
+            "type": "string"
+          },
+          "lifecycle": {
+            "enum": ["added", "carried", "updated"]
           }
         }
       }
@@ -137,6 +143,12 @@
         },
         "visual_regression": {
           "type": "object"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "policy": {
+          "type": "object"
         }
       }
     },
@@ -158,8 +170,17 @@
         },
         "extraction": {
           "const": "reports/extraction.json"
+        },
+        "policy": {
+          "const": "reports/policy.json"
+        },
+        "sarif": {
+          "const": "reports/findings.sarif"
         }
       }
+    },
+    "policy": {
+      "type": "object"
     }
   }
 }

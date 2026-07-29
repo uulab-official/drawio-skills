@@ -1,0 +1,51 @@
+{
+  "format": "drawio-architecture-policy/v1",
+  "name": "Production architecture review",
+  "rules": [
+    {
+      "id": "required-views",
+      "type": "required-pages",
+      "level": "error",
+      "pages": [
+        "context",
+        "logical",
+        "data",
+        "deployment",
+        "security",
+        "decisions"
+      ]
+    },
+    {
+      "id": "audit-score",
+      "type": "minimum-audit-score",
+      "level": "error",
+      "value": 95
+    },
+    {
+      "id": "security-gate",
+      "type": "require-security",
+      "level": "error"
+    },
+    {
+      "id": "lossless-round-trip",
+      "type": "require-lossless-extraction",
+      "level": "error"
+    },
+    {
+      "id": "semantic-alignment",
+      "type": "require-semantic-match",
+      "level": "error"
+    },
+    {
+      "id": "approved-baseline",
+      "type": "require-visual-baseline",
+      "level": "warning"
+    },
+    {
+      "id": "open-review-items",
+      "type": "maximum-open-annotations",
+      "level": "warning",
+      "value": 1
+    }
+  ]
+}

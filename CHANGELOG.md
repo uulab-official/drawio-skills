@@ -2,6 +2,15 @@
 
 All notable changes are documented here. The project follows semantic versioning after the 1.0 public contract is frozen.
 
+## 1.3.0 — 2026-07-29
+
+- Carry reviewer annotations across regenerated sites and merge accepted/resolved full-record updates by stable ID.
+- Add declarative architecture policy packs for required pages, quality, security, round trips, exports, baselines, and open-review limits.
+- Add machine-readable policy reports and error-level policy gating with exit code `8`.
+- Emit SARIF 2.1.0 for audit, security, extraction, visual, policy, and open reviewer findings.
+- Add a pinned GitHub Pages and code-scanning workflow recipe with commit-SHA-named immutable artifacts.
+- Extend the portable review UI with annotation lifecycle, policy status, SARIF evidence, responsive tables, and social metadata.
+
 ## 1.2.0 — 2026-07-29
 
 - Add `publish` to create atomic, script-free multi-page HTML/SVG review sites from complete bundles.

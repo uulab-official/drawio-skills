@@ -19,6 +19,8 @@ The `security` command scans models, `.drawio` files, and bundles for embedded c
 
 `publish` rechecks Diagram IR and draw.io content before creating a review site. Generated sites contain no scripts, remote assets, telemetry, or network requests; `index.html` applies a restrictive Content Security Policy and frames only local SVG pages.
 
+Carried annotations, update files, and architecture policy messages are treated as untrusted text and HTML-escaped. Policy evaluation is declarative and does not execute commands or fetch remote content. Generated SARIF contains stable local artifact locations rather than embedded source content.
+
 Structured JSON/YAML and uncompressed draw.io input are limited to 50 MiB; each compressed page is limited to 100 MiB after decompression. DTD and entity declarations are rejected before XML parsing.
 
 Release workflows use only first-party GitHub actions pinned to full commit hashes. The workflow rejects tags that do not carry a trusted SSH signature or whose semantic version differs from the packaged source. Tagged ZIP artifacts include SHA-256 checksums and GitHub/Sigstore provenance attestations. Published GitHub releases are immutable.

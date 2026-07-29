@@ -49,6 +49,8 @@ class SkillContractTests(unittest.TestCase):
             "extraction-report.schema.json",
             "review-site.schema.json",
             "review-annotations.schema.json",
+            "architecture-policy.schema.json",
+            "policy-report.schema.json",
         ):
             schema = SKILL / f"references/{filename}"
             self.assertIn('"$schema"', schema.read_text(encoding="utf-8"))
@@ -88,6 +90,7 @@ class SkillContractTests(unittest.TestCase):
             "init",
             "inspect",
             "migrate",
+            "merge-annotations",
             "patch",
             "preview",
             "publish",
@@ -98,6 +101,19 @@ class SkillContractTests(unittest.TestCase):
         }
         for command in commands:
             self.assertRegex(reference, rf"\b{re.escape(command)}\b", command)
+
+    def test_github_pages_recipe_pins_actions_and_retains_revision_artifact(self):
+        workflow = (
+            SKILL / "assets/github-pages-workflow.yml"
+        ).read_text(encoding="utf-8")
+        action_references = re.findall(r"uses:\s*[^@\s]+@([^\s]+)", workflow)
+        self.assertGreaterEqual(len(action_references), 7)
+        self.assertTrue(
+            all(re.fullmatch(r"[0-9a-f]{40}", ref) for ref in action_references)
+        )
+        self.assertIn("diagram-review-${{ github.sha }}", workflow)
+        self.assertIn("overwrite: false", workflow)
+        self.assertIn("reports/findings.sarif", workflow)
 
     def test_desktop_release_lock_is_complete_and_valid(self):
         completed = subprocess.run(

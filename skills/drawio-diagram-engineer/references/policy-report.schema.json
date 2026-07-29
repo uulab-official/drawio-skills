@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/architecture-policy-report-v1.json",
+  "title": "Draw.io Architecture Policy Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "status",
+    "policy",
+    "passed",
+    "errors",
+    "warnings",
+    "results"
+  ],
+  "properties": {
+    "format": {
+      "const": "drawio-architecture-policy-report/v1"
+    },
+    "status": {
+      "enum": ["not-configured", "passed", "failed"]
+    },
+    "policy": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["format", "name"],
+          "properties": {
+            "format": {
+              "const": "drawio-architecture-policy/v1"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "passed": {
+      "type": "boolean"
+    },
+    "errors": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "warnings": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "level", "passed", "message", "detail"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "level": {
+            "enum": ["error", "warning"]
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

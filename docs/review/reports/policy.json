@@ -1,0 +1,69 @@
+{
+  "format": "drawio-architecture-policy-report/v1",
+  "status": "passed",
+  "policy": {
+    "format": "drawio-architecture-policy/v1",
+    "name": "Production architecture review"
+  },
+  "passed": true,
+  "errors": 0,
+  "warnings": 0,
+  "results": [
+    {
+      "id": "required-views",
+      "type": "required-pages",
+      "level": "error",
+      "passed": true,
+      "message": "all required pages are present",
+      "detail": "all required pages are present"
+    },
+    {
+      "id": "audit-score",
+      "type": "minimum-audit-score",
+      "level": "error",
+      "passed": true,
+      "message": "audit score 100; required 95",
+      "detail": "audit score 100; required 95"
+    },
+    {
+      "id": "security-gate",
+      "type": "require-security",
+      "level": "error",
+      "passed": true,
+      "message": "security gate passed",
+      "detail": "security gate passed"
+    },
+    {
+      "id": "lossless-round-trip",
+      "type": "require-lossless-extraction",
+      "level": "error",
+      "passed": true,
+      "message": "round trip is lossless",
+      "detail": "round trip is lossless"
+    },
+    {
+      "id": "semantic-alignment",
+      "type": "require-semantic-match",
+      "level": "error",
+      "passed": true,
+      "message": "bundle and draw.io semantics match",
+      "detail": "bundle and draw.io semantics match"
+    },
+    {
+      "id": "approved-baseline",
+      "type": "require-visual-baseline",
+      "level": "warning",
+      "passed": true,
+      "message": "visual baseline status: passed",
+      "detail": "visual baseline status: passed"
+    },
+    {
+      "id": "open-review-items",
+      "type": "maximum-open-annotations",
+      "level": "warning",
+      "passed": true,
+      "message": "0 open reviewer annotation(s); maximum 1",
+      "detail": "0 open reviewer annotation(s); maximum 1"
+    }
+  ]
+}

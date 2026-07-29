@@ -1,6 +1,6 @@
 ---
 name: drawio-diagram-engineer
-description: Create, edit, import, extract, compare, compile, migrate, audit, publish, and export editable draw.io diagrams from natural language, JSON/YAML, existing .drawio files, code, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate architecture blueprints, field-level Crow's Foot ERDs, HA/failover packs, infrastructure maps, pipelines, semantic drift reports, and portable HTML/SVG review sites with annotations and visual baselines. Apply deterministic layout, round-trip metadata, explicit ports, obstacle-aware routing, themes, contrast, credential checks, and structured repairs. Use for architecture, database schemas, HA/DR, codebase and deployment topology, flowcharts, data flows, network maps, multi-page views, architecture review publication, legacy IR migration, or .drawio repair. Prefer when output must stay editable, deterministic, secure, source-reviewable, CI-gated, shareable without Desktop, or exportable to PNG, SVG, or PDF.
+description: Create, edit, import, extract, compare, compile, migrate, audit, policy-check, publish, and export editable draw.io diagrams from natural language, JSON/YAML, .drawio files, code, OpenAPI, SQL, Compose, Terraform, Kubernetes, GitHub Actions, or GitLab CI. Generate architecture blueprints, field-level Crow's Foot ERDs, HA/failover packs, infrastructure maps, pipelines, semantic drift reports, and portable HTML/SVG review sites with persistent annotations, visual baselines, policy evidence, and SARIF. Apply deterministic layout, round-trip metadata, explicit ports, obstacle-aware routing, themes, contrast, credential checks, and structured repairs. Use for architecture, database schemas, HA/DR, codebase and deployment topology, flowcharts, data flows, network maps, multi-page views, architecture review publication, legacy IR migration, or .drawio repair. Prefer when output must stay editable, deterministic, secure, source-reviewable, CI-gated, shareable without Desktop, or exportable to PNG, SVG, or PDF.
 ---
 
 # Draw.io Diagram Engineer
@@ -32,8 +32,11 @@ Build diagrams through a small, deterministic intermediate representation (IR). 
 
    ```bash
    python3 <skill-dir>/scripts/drawio_tool.py publish build/diagram \
-     -o build/diagram-review --strict
+     -o build/diagram-review \
+     --policy architecture-policy.json --fail-on-policy --strict
    ```
+
+   Use `--carry-review` plus a version 1 annotation update file to preserve accepted and resolved decisions across regeneration. For GitHub Pages and code-scanning publication, read [github-pages-publication.md](references/github-pages-publication.md).
 
 6. If draw.io Desktop is available and a Desktop export is requested, read [desktop-export.md](references/desktop-export.md), render from the bundle's `.drawio`, and retain its verification report:
 
@@ -103,7 +106,8 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 - `doctor`: verify core files and Python/XML support, then report optional YAML and Desktop capabilities.
 - `init`: copy a safe starter for architecture, Blueprint, ERD, HA, routing, infrastructure, or CI.
 - `build`: auto-detect a model or source and create a complete, audited `drawio-diagram-bundle/v1`.
-- `publish`: create an atomic script-free `drawio-review-site/v1` with page navigation, semantic anchors, annotations, evidence status, and optional visual-baseline gating.
+- `merge-annotations`: carry prior reviewer records and apply accepted/resolved updates by stable annotation ID.
+- `publish`: create an atomic script-free `drawio-review-site/v1` with page navigation, semantic anchors, persistent annotations, policy evaluation, SARIF evidence, and optional visual-baseline gating.
 - `migrate`: deterministically upgrade legacy/unversioned Diagram IR and emit a machine-readable change report.
 - `compile`: validate IR, calculate deterministic layout, and emit uncompressed editable draw.io XML.
 - `extract`: recover Diagram IR from compressed or uncompressed draw.io, preserving compiler-backed semantics and reporting every inferred legacy cell.
@@ -123,4 +127,4 @@ Use `--strict` as a release gate. Read [quality-gates.md](references/quality-gat
 
 Before first use, verify `python3 -c "import xml.etree.ElementTree"`. If a macOS Homebrew Python reports a `pyexpat`/`libexpat` symbol error, use `/usr/bin/python3` or repair that Python installation; do not attribute the ABI failure to the diagram input.
 
-Use [example.architecture.json](assets/example.architecture.json), [example.blueprint.json](assets/example.blueprint.json), [example.erd.json](assets/example.erd.json), [example.ha.json](assets/example.ha.json), [example.routing.json](assets/example.routing.json), [example.terraform.tf](assets/example.terraform.tf), or [example.kubernetes.json](assets/example.kubernetes.json) as a compact starting point, not as a fixed template. Apply [corporate.json](assets/themes/corporate.json) when a reusable custom theme example is useful.
+Use [example.architecture.json](assets/example.architecture.json), [example.blueprint.json](assets/example.blueprint.json), [example.erd.json](assets/example.erd.json), [example.ha.json](assets/example.ha.json), [example.routing.json](assets/example.routing.json), [example.terraform.tf](assets/example.terraform.tf), or [example.kubernetes.json](assets/example.kubernetes.json) as a compact starting point, not as a fixed template. Apply [corporate.json](assets/themes/corporate.json) for custom styling or [production-review.json](assets/policies/production-review.json) for a reusable architecture policy example.

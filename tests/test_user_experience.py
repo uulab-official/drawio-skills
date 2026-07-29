@@ -334,6 +334,140 @@ class UserExperienceTests(unittest.TestCase):
                 (output / "keep.txt").read_text(encoding="utf-8"),
             )
 
+    def test_review_lifecycle_policy_and_sarif_workflow(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            first_review = temp / "first-review"
+            current_review = temp / "current-review"
+            merged_annotations = temp / "merged-annotations.json"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.blueprint.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                first_review,
+                "--annotations",
+                ASSETS / "example.review-annotations.json",
+                "--strict",
+            )
+            merged = run(
+                TOOL,
+                "merge-annotations",
+                first_review,
+                ASSETS / "example.review-annotation-updates.json",
+                "-o",
+                merged_annotations,
+            )
+            merged_result = json.loads(merged.stdout)
+            merged_data = json.loads(
+                merged_annotations.read_text(encoding="utf-8")
+            )
+            self.assertEqual(2, merged_result["summary"]["updated"])
+            self.assertEqual(
+                {"accepted", "resolved"},
+                {
+                    annotation["status"]
+                    for annotation in merged_data["annotations"]
+                },
+            )
+
+            run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                current_review,
+                "--carry-review",
+                first_review,
+                "--annotations",
+                ASSETS / "example.review-annotation-updates.json",
+                "--baseline",
+                first_review,
+                "--policy",
+                ASSETS / "policies/production-review.json",
+                "--fail-on-policy",
+                "--strict",
+            )
+            manifest = json.loads(
+                (current_review / "review.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual("passed", manifest["status"]["policy"]["status"])
+            self.assertEqual(2, manifest["status"]["annotations"]["updated"])
+            self.assertEqual(0, manifest["status"]["annotations"]["open"])
+            self.assertTrue(
+                all(
+                    annotation["lifecycle"] == "updated"
+                    for annotation in manifest["annotations"]
+                    if annotation.get("source") == "reviewer"
+                )
+            )
+            policy = json.loads(
+                (current_review / "reports/policy.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(
+                "drawio-architecture-policy-report/v1",
+                policy["format"],
+            )
+            self.assertTrue(policy["passed"])
+            sarif = json.loads(
+                (current_review / "reports/findings.sarif").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual("2.1.0", sarif["version"])
+            self.assertEqual([], sarif["runs"][0]["results"])
+            html_text = (current_review / "index.html").read_text(encoding="utf-8")
+            self.assertIn("Architecture policy", html_text)
+            self.assertIn("SARIF findings", html_text)
+            self.assertIn("og:title", html_text)
+
+    def test_failing_policy_returns_eight_and_emits_sarif(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bundle = temp / "bundle"
+            review = temp / "review"
+            run(
+                TOOL,
+                "build",
+                ASSETS / "example.architecture.json",
+                "-o",
+                bundle,
+                "--strict",
+            )
+            completed = run(
+                TOOL,
+                "publish",
+                bundle,
+                "-o",
+                review,
+                "--policy",
+                ASSETS / "policies/production-review.json",
+                "--fail-on-policy",
+                check=False,
+            )
+            self.assertEqual(8, completed.returncode)
+            policy = json.loads(
+                (review / "reports/policy.json").read_text(encoding="utf-8")
+            )
+            self.assertFalse(policy["passed"])
+            sarif = json.loads(
+                (review / "reports/findings.sarif").read_text(encoding="utf-8")
+            )
+            rule_ids = {
+                result["ruleId"]
+                for result in sarif["runs"][0]["results"]
+            }
+            self.assertIn("policy.required-views", rule_ids)
+
     def test_migrate_check_and_write_workflow(self):
         legacy = {
             "title": "Legacy",

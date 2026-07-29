@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="1.2.0" data-ir-version="1">
+<mxfile host="app.diagrams.net" agent="drawio-diagram-engineer" version="1.3.0" data-ir-version="1">
   <diagram id="page-main" name="GitLab Delivery Pipeline" data-ir-page="{&quot;diagram&quot;:{&quot;direction&quot;:&quot;TB&quot;,&quot;theme&quot;:&quot;colorblind&quot;,&quot;title&quot;:&quot;GitLab Delivery Pipeline&quot;},&quot;id&quot;:&quot;main&quot;}">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
       <root>

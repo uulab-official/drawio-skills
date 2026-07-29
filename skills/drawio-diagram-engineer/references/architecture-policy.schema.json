@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uulab-official/drawio-skills/schemas/architecture-policy-v1.json",
+  "title": "Draw.io Architecture Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "name", "rules"],
+  "properties": {
+    "format": {
+      "const": "drawio-architecture-policy/v1"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/requiredPages"
+          },
+          {
+            "$ref": "#/$defs/minimumAuditScore"
+          },
+          {
+            "$ref": "#/$defs/booleanGate"
+          },
+          {
+            "$ref": "#/$defs/requiredExportFormats"
+          },
+          {
+            "$ref": "#/$defs/maximumOpenAnnotations"
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "baseRule": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "level": {
+          "enum": ["error", "warning"],
+          "default": "error"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "requiredPages": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseRule"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "type", "pages"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "const": "required-pages"
+            },
+            "level": {
+              "enum": ["error", "warning"]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pages": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "minimumAuditScore": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseRule"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "type", "value"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "const": "minimum-audit-score"
+            },
+            "level": {
+              "enum": ["error", "warning"]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        }
+      ]
+    },
+    "booleanGate": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseRule"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "type"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "enum": [
+                "require-security",
+                "require-lossless-extraction",
+                "require-semantic-match",
+                "require-visual-baseline"
+              ]
+            },
+            "level": {
+              "enum": ["error", "warning"]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "requiredExportFormats": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseRule"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "type", "formats"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "const": "required-export-formats"
+            },
+            "level": {
+              "enum": ["error", "warning"]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "formats": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "enum": ["png", "svg", "pdf", "jpg"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "maximumOpenAnnotations": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/baseRule"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "type", "value"],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            },
+            "type": {
+              "const": "maximum-open-annotations"
+            },
+            "level": {
+              "enum": ["error", "warning"]
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}

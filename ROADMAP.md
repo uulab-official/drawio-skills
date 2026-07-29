@@ -168,9 +168,18 @@ Exit criteria: a reviewer can open one portable artifact, navigate every page, t
 
 ## v1.3 — Review lifecycle and policy
 
-- [ ] Annotation merge and resolution workflows without editing generated HTML
-- [ ] Configurable architecture policy packs for required views and evidence
-- [ ] SARIF output for audit, security, extraction, and visual findings
-- [ ] GitHub Pages publication recipe with immutable review artifacts
+- [x] Annotation merge and resolution workflows without editing generated HTML
+- [x] Configurable architecture policy packs for required views and evidence
+- [x] SARIF output for audit, security, extraction, and visual findings
+- [x] GitHub Pages publication recipe with immutable review artifacts
 
 Exit criteria: teams can carry review decisions across regenerated sites, apply organization policy as code, and surface every finding in standard code-review tooling.
+
+## v1.4 — Team-scale governance
+
+- [ ] Composable policy packs with scoped, expiring exceptions
+- [ ] Ownership rules that route page and semantic-cell findings to accountable teams
+- [ ] Source revision and artifact provenance embedded in review manifests
+- [ ] Pull-request check summaries with direct links to changed pages and unresolved decisions
+
+Exit criteria: larger organizations can reuse policy layers, make exceptions auditable, route findings to owners, and trace each published review to one immutable source revision.

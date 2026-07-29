@@ -10,16 +10,21 @@ init <profile> [-o <starter>] [--force]
 build <model|source> [-o <bundle-dir>] [--type <type>] [--name <name>]
       [--title <title>] [--theme-file <theme.json>] [--max-files 500]
       [--strict] [--force]
+merge-annotations <prior-review|annotations.json> <updates.json>
+                  -o <merged.json> [--force]
 publish <bundle-dir> -o <review-dir> [--title <title>]
-        [--annotations <annotations.json>] [--baseline <review|bundle>]
-        [--fail-on-visual-change] [--strict] [--force]
+        [--annotations <annotations.json>] [--carry-review <prior-review>]
+        [--baseline <review|bundle>] [--policy <policy.json>]
+        [--fail-on-visual-change] [--fail-on-policy] [--strict] [--force]
 ```
 
 `init` profiles: `architecture`, `blueprint`, `erd`, `ha`, `routing`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
 
 `build` types: `auto`, `diagram`, `blueprint`, `erd`, `sql-erd`, `ha`, `python`, `typescript`, `openapi`, `sql`, `compose`, `terraform`, `kubernetes`, `github-actions`, and `gitlab-ci`.
 
-`publish` creates an atomic, script-free HTML/SVG review site from a bundle. It indexes audit, security, round-trip extraction, export, annotation, semantic-cell, and visual-baseline evidence. See [collaborative-review.md](collaborative-review.md).
+`merge-annotations` replaces matching stable IDs with full-record updates and carries all untouched reviewer records. `publish --carry-review` performs the same merge against a regenerated diagram and validates every page/cell link.
+
+`publish` creates an atomic, script-free HTML/SVG review site from a bundle. It indexes audit, security, round-trip extraction, export, annotation lifecycle, policy, SARIF, semantic-cell, and visual-baseline evidence. See [collaborative-review.md](collaborative-review.md).
 
 ## Contract and security
 
@@ -86,3 +91,4 @@ verify-export <output.png|svg|pdf|jpg> [-f <format>] [-o <export-report.json>]
 | `5` | Drift found with `--fail-on-drift` |
 | `6` | Migration required with `migrate --check` |
 | `7` | Visual baseline change found with `publish --fail-on-visual-change` |
+| `8` | Architecture policy error found with `publish --fail-on-policy` |

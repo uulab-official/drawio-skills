@@ -14,6 +14,9 @@ The following identifiers are independent versioned contracts:
 - Extraction report: `drawio-extraction-report/v1`
 - Review site manifest: `drawio-review-site/v1`
 - Review annotations: `version: "1"` and [review-annotations.schema.json](review-annotations.schema.json)
+- Architecture policy: `drawio-architecture-policy/v1`
+- Architecture policy report: `drawio-architecture-policy-report/v1`
+- Review findings: SARIF `2.1.0`
 
 Tool releases use semantic versions. Schema versions do not advance merely because the tool gains a feature.
 
@@ -71,4 +74,4 @@ Conflicting old and new fields fail instead of guessing. Unsupported versions fa
 
 Bundle v1 may gain optional artifacts. Existing artifact paths retain their meaning. Inputs are never copied into a bundle. Consumers must ignore unknown manifest properties and locate files through `artifacts`, not hard-coded directory scans.
 
-Review site v1 may gain optional evidence, catalog, and annotation fields. Existing page artifact and report paths retain their meaning. Consumers should read `review.json` rather than scraping `index.html`.
+Review site v1 may gain optional evidence, catalog, annotation-lifecycle, policy, and SARIF fields. v1.3 adds `reports/policy.json` and `reports/findings.sarif` without changing existing page or report paths. Consumers should read `review.json` rather than scraping `index.html`.
